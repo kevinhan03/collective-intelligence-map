@@ -17,19 +17,17 @@ afterEach(() => {
 });
 describe("provider boundaries", () => {
   it("uses Google New server API, session, region and minimal FieldMask", async () => {
-    const fetch = vi
-      .fn()
-      .mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            suggestions: [
-              {
-                placePrediction: { placeId: "abc", text: { text: "Example" } },
-              },
-            ],
-          }),
-        ),
-      );
+    const fetch = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          suggestions: [
+            {
+              placePrediction: { placeId: "abc", text: { text: "Example" } },
+            },
+          ],
+        }),
+      ),
+    );
     vi.stubGlobal("fetch", fetch);
     const result = await googleProvider("SECRET").search("test", {
       map: demoMap,
@@ -43,7 +41,9 @@ describe("provider boundaries", () => {
     expect(payload.includedRegionCodes).toEqual(["jp"]);
     expect(init.cache).toBe("no-store");
     expect(JSON.stringify(result)).not.toContain("SECRET");
-    expect(GOOGLE_DETAILS_MASK).toBe("id,location");
+    expect(GOOGLE_DETAILS_MASK).toBe(
+      "id,displayName,formattedAddress,location",
+    );
   });
   it("rejects malformed provider data", async () => {
     vi.stubGlobal(
@@ -59,23 +59,21 @@ describe("provider boundaries", () => {
     ).rejects.toThrow();
   });
   it("Kakao search authenticates via header and details add no call", async () => {
-    const fetch = vi
-      .fn()
-      .mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            documents: [
-              {
-                id: "1",
-                place_name: "예시",
-                address_name: "주소",
-                x: "127",
-                y: "37",
-              },
-            ],
-          }),
-        ),
-      );
+    const fetch = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          documents: [
+            {
+              id: "1",
+              place_name: "예시",
+              address_name: "주소",
+              x: "127",
+              y: "37",
+            },
+          ],
+        }),
+      ),
+    );
     vi.stubGlobal("fetch", fetch);
     const provider = kakaoProvider("SECRET");
     const result = await provider.search("예시", {

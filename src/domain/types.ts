@@ -41,7 +41,7 @@ export type MapPlace = {
 export type Comment = {
   id: string;
   map_place_id: string;
-  author_id: string;
+  author_id: string | null;
   body: string;
   created_at: string;
   handle: string;
@@ -57,6 +57,7 @@ export type Sort = "relevance" | "newest" | "verified";
 export type RendererConfig = {
   provider: "google" | "kakao" | "preview";
   key: string;
+  mapId?: string;
 };
 export type Candidate = {
   provider: "google" | "kakao";

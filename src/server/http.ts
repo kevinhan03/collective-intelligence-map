@@ -1,3 +1,4 @@
+import { sameOrigin } from "@/domain/request-origin";
 import "server-only";
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
@@ -39,7 +40,13 @@ export function failure(error: unknown) {
   );
 }
 export async function body(request: Request) {
-  if (request.headers.get("origin") !== new URL(request.url).origin)
+  if (
+    !sameOrigin(
+      request.headers.get("origin"),
+      request.url,
+      process.env.NEXT_PUBLIC_SITE_URL,
+    )
+  )
     throw new HttpError("허용되지 않은 요청입니다.", 403);
   const raw = await request.text();
   if (raw.length > 12000) throw new HttpError("요청이 너무 큽니다.", 413);

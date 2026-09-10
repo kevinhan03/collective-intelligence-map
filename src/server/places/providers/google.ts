@@ -13,7 +13,7 @@ const predictions = z.object({
     )
     .default([]),
 });
-export const GOOGLE_DETAILS_MASK = "id,location";
+export const GOOGLE_DETAILS_MASK = "id,displayName,formattedAddress,location";
 export function googleProvider(key: string): PlaceProvider {
   return {
     async search(query, { map, session }) {
@@ -66,6 +66,8 @@ export function googleProvider(key: string): PlaceProvider {
       const result = z
         .object({
           id: z.string(),
+          displayName: z.object({ text: z.string() }),
+          formattedAddress: z.string().default(""),
           location: z.object({ latitude: z.number(), longitude: z.number() }),
         })
         .parse(
@@ -82,6 +84,8 @@ export function googleProvider(key: string): PlaceProvider {
       return {
         ...candidate,
         externalId: result.id,
+        label: result.displayName.text,
+        address: result.formattedAddress,
         lat: result.location.latitude,
         lng: result.location.longitude,
       };

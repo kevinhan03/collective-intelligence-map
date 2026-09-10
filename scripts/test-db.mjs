@@ -257,6 +257,27 @@ create function storage.foldername(text) returns text[] language sql immutable a
     ),
   );
   console.log("PASS: provider budget hard limit and service-only API");
+  await c.query(
+    "update private.provider_settings set enabled=true,daily_limit=1 where provider='kakao'",
+  );
+  const attempts = await Promise.allSettled(
+    [1, 2].map(async () => {
+      const connection = new pg.Client({ connectionString: url });
+      await connection.connect();
+      try {
+        await connection.query("set role service_role");
+        return await connection.query(
+          "select public.reserve_provider('kakao','keyword',$1,$2,$3,1000)",
+          [a, map, session],
+        );
+      } finally {
+        await connection.end();
+      }
+    }),
+  );
+  assert.equal(attempts.filter((r) => r.status === "fulfilled").length, 1);
+  console.log("PASS: concurrent provider reservations cannot exceed hard cap");
+
   const functions = (
     await c.query(
       "select n.nspname,p.proname from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.prosecdef",

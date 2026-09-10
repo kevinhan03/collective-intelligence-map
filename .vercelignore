@@ -1,0 +1,12 @@
+# Credentials and local databases must never be uploaded as source files.
+.env*
+.local/
+.git/
+.next/
+node_modules/
+artifacts/
+test-results/
+playwright-report/
+coverage/
+*.log
+*.tsbuildinfo

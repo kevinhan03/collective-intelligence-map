@@ -11,7 +11,7 @@ npm run dev
 
 http://localhost:3000 에서 확인합니다. Supabase 키가 없으면 **명시된 가상 장소 미리보기**가 열립니다. 가짜 로그인·저장 성공은 제공하지 않습니다.
 
-실제 연동은 `.env.example`을 `.env.local`로 복사하고 Supabase URL·publishable key·서버 secret을 입력합니다. 현재 전달받은 원격 프로젝트는 `cujmxwlwijwomngchwoi`입니다. 원격 DB는 접근 권한 확인 후 마이그레이션해야 합니다. 외부 검색은 기본 비활성화이며 REST 비밀키와 브라우저 지도 키를 구분합니다.
+실제 연동은 `.env.example`을 `.env.local`로 복사하고 Supabase URL·publishable key·서버 secret을 입력합니다. 현재 전달받은 원격 프로젝트는 `cujmxwlwijwomngchwoi`입니다. 2026-09-10 원격 DB에 네 마이그레이션과 Tokyo Fashion seed를 적용하고 조회를 확인했습니다. 외부 검색은 기본 비활성화이며 REST 비밀키와 브라우저 지도 키를 구분합니다.
 
 ## 기능
 
@@ -58,3 +58,16 @@ scripts/                    DB 통합 검증·비밀키 번들 검사
 - 제공자 정책 경계: [docs/provider-policies.md](docs/provider-policies.md)
 
 초기 공개 범위는 Tokyo Fashion입니다. 가상 샘플은 실제 seed가 아니며, 공개 출시 전 큐레이터의 독립 출처로 실제 장소를 확보해야 합니다. 약관·개인정보 페이지는 운영 주체를 확정하기 전의 명시된 초안입니다.
+
+## 현재 환경의 실행 모드
+
+- `npm run dev`: `.env.local`의 원격 Supabase 사용. 스키마 적용 완료 상태입니다.
+- `npm run dev:preview`: 원격 설정을 보존하면서 가상 장소 화면을 확인합니다.
+- `npm run local:setup` → `npm run dev:local`: 기동 중인 로컬 Supabase를 사용합니다.
+- 로컬 앱 실행 중 `npm run test:live`: 실제 Auth 세션·Storage·제안·승인·참여 UI를 검증합니다. 로컬 전용 테스트 사용자·장소를 생성합니다.
+
+이 워크스페이스에서 준비한 Colima 프로필 이름은 `cim`입니다. 재기동은 `colima start cim --activate=false`, Supabase 실행 명령에는 필요시 `DOCKER_HOST=unix://$HOME/.colima/cim/docker.sock`을 지정합니다. 종료는 `npx supabase stop`(동일 Docker 연결)과 `colima stop cim`입니다.
+
+원격 신규 프로젝트용 검토 가능한 SQL은 [supabase/bootstrap.sql](supabase/bootstrap.sql)입니다. 기존 앱 데이터가 있는 DB에 무조건 실행하지 마세요. 일반 배포는 개별 마이그레이션과 Supabase migration history를 사용합니다.
+
+최종 검증 범위와 남은 연결 설정은 [docs/verification.md](docs/verification.md)를 참고하세요.

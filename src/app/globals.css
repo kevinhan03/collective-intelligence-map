@@ -129,23 +129,74 @@
     @apply font-sans;
   }
 }
+/* Black glass / lemon theme */
 :root {
-  --background: #f8f9f5;
-  --foreground: #252c24;
-  --card: #ffffff;
-  --primary: #3c5036;
-  --primary-foreground: #ffffff;
-  --secondary: #edf0e7;
-  --secondary-foreground: #35482d;
-  --muted: #f0f2eb;
-  --muted-foreground: #687162;
-  --accent: #e8eddf;
-  --accent-foreground: #34452b;
-  --border: #e2e6dc;
-  --input: #d8dfd1;
-  --ring: #758b5f;
-  --radius: 0.7rem;
+  color-scheme: dark;
+  --background: #080909;
+  --foreground: #f5f6f0;
+  --card: #202222;
+  --card-foreground: #f5f6f0;
+  --popover: #242626;
+  --popover-foreground: #f5f6f0;
+  --primary: #edff70;
+  --primary-foreground: #171b08;
+  --secondary: #2c3025;
+  --secondary-foreground: #edff9c;
+  --muted: #202323;
+  --muted-foreground: #a9b0a9;
+  --accent: #303625;
+  --accent-foreground: #efffa0;
+  --border: #383d38;
+  --input: #474d43;
+  --ring: #edff70;
+  --destructive: #ff8585;
+  --radius: 1.15rem;
 }
+.glass-panel, main .bg-card, [data-slot="dialog-content"] {
+  background: linear-gradient(135deg, rgb(255 255 255 / 13%), rgb(255 255 255 / 4%)), #171a18;
+  border: 1px solid rgb(255 255 255 / 20%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 22%), inset 0 -1px 0 rgb(255 255 255 / 5%), 0 16px 40px #0007;
+}
+@supports (backdrop-filter: blur(20px)) {
+  .glass-panel, main .bg-card, [data-slot="dialog-content"] {
+    background: linear-gradient(135deg, rgb(255 255 255 / 14%), rgb(255 255 255 / 4%)), rgb(22 25 22 / 78%);
+    backdrop-filter: blur(28px) saturate(140%);
+    -webkit-backdrop-filter: blur(28px) saturate(140%);
+  }
+}
+.glass-header {
+  margin: 12px auto;
+  width: calc(100% - 32px);
+  max-width: 1408px;
+  border-radius: 999px;
+}
+[data-slot="button"] { border-radius: 999px; }
+[data-slot="button"][data-variant="default"] {
+  box-shadow: inset 0 1px 0 #ffffffe0, 0 4px 22px #edff7026;
+}
+[data-slot="button"][data-variant="outline"],
+[data-slot="button"][data-variant="secondary"] {
+  background: rgb(255 255 255 / 8%);
+  border-color: rgb(255 255 255 / 20%);
+  box-shadow: inset 0 1px 0 #ffffff24, 0 3px 10px #0004;
+  backdrop-filter: blur(12px);
+}
+[data-slot="input"], [data-slot="textarea"], select {
+  background-color: rgb(0 0 0 / 28%);
+  box-shadow: inset 0 2px 6px #0004, 0 1px 0 #ffffff12;
+}
+.glass-map-shell {
+  margin: 20px;
+  border-radius: 28px;
+  overflow: hidden;
+  border: 1px solid #ffffff30;
+  box-shadow: 0 16px 48px #0008;
+}
+@media (max-width: 640px) {
+  .glass-header { width: calc(100% - 16px); margin-block: 8px; }
+  .glass-map-shell { margin: 10px; border-radius: 20px; }
+}
+
 body {
   letter-spacing: -0.02em;
 }
@@ -160,7 +211,8 @@ button:not(:disabled),
   cursor: pointer;
 }
 ::selection {
-  background: #d8e5be;
+  background: #edff70;
+  color: #171b08;
 }
 .page-wrap {
   width: min(1240px, 100%);

@@ -8,8 +8,6 @@ import {
   Bookmark,
   Check,
   Info,
-  List,
-  Map as MapIcon,
   MapPin,
   Plus,
   Search,
@@ -61,7 +59,6 @@ export function CommunityExplorer({
     [tag, setTag] = useState("전체"),
     [sort, setSort] = useState<Sort>("relevance"),
     [selected, setSelected] = useState<string | null>(null),
-    [view, setView] = useState("list"),
     [viewport, setViewport] = useState<Bounds | null>(null),
     [loaded, setLoaded] = useState<MapPlace[] | null>(null),
     [error, setError] = useState(""),
@@ -110,33 +107,28 @@ export function CommunityExplorer({
   const selectedPlace = places.find((p) => p.id === selected) ?? null;
   return (
     <main id="main" className="mx-auto max-w-[1440px]">
-      <div className="border-b px-5 py-7 md:px-9">
-        <Link
-          href="/"
-          className="mb-5 flex items-center gap-1.5 text-xs text-muted-foreground"
-        >
-          <ArrowLeft size={13} />
-          커뮤니티 탐색
-        </Link>
-        <div className="flex flex-wrap items-start justify-between gap-5">
-          <div className="flex gap-4">
-            <div className="hidden size-18 items-center justify-center rounded-2xl bg-primary text-2xl font-medium text-white sm:flex">
-              tf<span className="text-[#c0d197]">.</span>
-            </div>
-            <div>
-              <div className="mb-1.5 flex items-center gap-2">
-                <span className="kicker">Tokyo, Japan</span>
-                <Badge variant="secondary" className="text-[10px]">
-                  공개 커뮤니티
-                </Badge>
-              </div>
-              <h1 className="text-3xl font-semibold tracking-tight">
+      <div className="border-b px-5 py-3 md:px-9">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <Link
+              href="/"
+              className="mb-1 flex items-center gap-1.5 text-xs text-muted-foreground"
+            >
+              <ArrowLeft size={13} />
+              커뮤니티 탐색
+            </Link>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-xl font-semibold tracking-tight">
                 {map.title}
               </h1>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-                {map.description}
-              </p>
+              <Badge variant="secondary" className="text-[10px]">
+                공개 커뮤니티
+              </Badge>
+              <span className="kicker">Tokyo, Japan</span>
             </div>
+            <p className="mt-1 line-clamp-1 max-w-2xl text-xs leading-5 text-muted-foreground">
+              {map.description}
+            </p>
           </div>
           <div className="flex gap-2">
             <Button
@@ -173,13 +165,13 @@ export function CommunityExplorer({
             </Button>
           </div>
         </div>
-        <div className="mt-5 flex flex-wrap items-center gap-5 text-xs text-muted-foreground">
+        <div className="mt-2 flex flex-wrap items-center gap-4 text-[11px] text-muted-foreground">
           <span className="flex gap-1.5">
-            <MapPin size={14} />
+            <MapPin size={13} />
             {map.place_count} 장소
           </span>
           <span className="flex gap-1.5">
-            <Users size={14} />
+            <Users size={13} />
             {map.follower_count} 팔로워
           </span>
           <span>{map.contributor_count} 기여자</span>
@@ -189,7 +181,7 @@ export function CommunityExplorer({
           </details>
         </div>
         {demo && (
-          <p className="mt-4 flex items-center gap-2 text-[11px] text-muted-foreground">
+          <p className="mt-1.5 flex items-center gap-2 text-[11px] text-muted-foreground">
             <Info size={13} />
             미리보기 · 가상 장소이며 실제 추천·검증 정보가 아닙니다.
           </p>
@@ -237,27 +229,9 @@ export function CommunityExplorer({
           {error}
         </p>
       )}
-      <div className="flex gap-2 border-b px-5 py-3 lg:hidden">
-        <Button
-          size="sm"
-          variant={view === "list" ? "default" : "outline"}
-          onClick={() => setView("list")}
-        >
-          <List size={14} />
-          목록
-        </Button>
-        <Button
-          size="sm"
-          variant={view === "map" ? "default" : "outline"}
-          onClick={() => setView("map")}
-        >
-          <MapIcon size={14} />
-          지도
-        </Button>
-      </div>
-      <div className="grid lg:grid-cols-[470px_1fr]">
+      <div className="glass-map-shell lg:grid lg:grid-cols-[20%_80%]">
         <section
-          className={`${view === "map" ? "hidden lg:block" : ""} h-[calc(100dvh-335px)] min-h-[480px] overflow-y-auto border-r bg-card`}
+          className="lg:h-[calc(100dvh-290px)] lg:min-h-[480px] lg:overflow-y-auto lg:border-r bg-card"
           aria-label="장소 목록"
         >
           <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-card px-5 py-3">
@@ -364,7 +338,7 @@ export function CommunityExplorer({
         </section>
         <section
           aria-label="장소 지도"
-          className={`${view === "list" ? "hidden lg:block" : ""} relative min-h-[480px] lg:h-[calc(100dvh-335px)]`}
+          className="relative min-h-[420px] lg:h-[calc(100dvh-290px)]"
         >
           <MapCanvas
             places={filtered}

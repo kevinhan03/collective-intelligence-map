@@ -51,13 +51,13 @@ export default async function Home() {
           </Button>
         </div>
         <div
-          className="relative hidden min-h-80 overflow-hidden rounded-2xl bg-[#e7ecdf] md:block"
+          className="relative hidden min-h-80 overflow-hidden rounded-2xl glass-panel md:block"
           aria-hidden="true"
         >
           <div className="absolute top-7 left-7 text-xs tracking-[.2em] text-primary">
             PLACES × CONTEXT × COMMUNITY
           </div>
-          <div className="absolute top-25 left-7 h-52 w-80 -rotate-12 rounded-xl border-8 border-white bg-[#d3dec4] shadow-xl">
+          <div className="absolute top-25 left-7 h-52 w-80 -rotate-12 rounded-xl border-8 border-white/20 bg-[#343b26] shadow-xl">
             <div className="absolute top-7 left-6 h-40 w-56 rounded-[50%] border border-white/80" />
             <div className="absolute top-2 left-16 h-40 w-36 rotate-45 rounded-[50%] border border-white/80" />
             <MapPin
@@ -69,7 +69,7 @@ export default async function Home() {
               size={30}
             />
           </div>
-          <div className="absolute right-5 bottom-10 rotate-3 rounded-xl bg-white px-5 py-4 shadow-lg">
+          <div className="absolute right-5 bottom-10 rotate-3 rounded-xl glass-panel px-5 py-4 shadow-lg">
             <div className="flex items-center gap-2 text-sm font-semibold">
               <span className="rounded-full bg-secondary p-1.5">
                 <Check size={14} />
@@ -110,7 +110,7 @@ export default async function Home() {
               key={map.id}
               className="group overflow-hidden rounded-2xl border bg-card transition-shadow hover:shadow-md"
             >
-              <div className="relative flex h-56 flex-col justify-between overflow-hidden bg-[#35482f] p-7 text-white">
+              <div className="relative flex h-56 flex-col justify-between overflow-hidden bg-[#24291b] p-7 text-white">
                 <div className="absolute -top-24 right-[-70px] size-96 rounded-full border-[45px] border-[#b7cfa0]/10" />
                 <div className="absolute -top-13 right-[-30px] size-72 rounded-full border border-[#b7cfa0]/30" />
                 <div className="relative flex justify-between">
@@ -123,7 +123,7 @@ export default async function Home() {
                   <ArrowUpRight className="opacity-60 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
                 </div>
                 <div className="relative">
-                  <p className="mb-1 text-xs tracking-[.2em] text-[#c2d4ae]">
+                  <p className="mb-1 text-xs tracking-[.2em] text-[#edff70]">
                     COMMUNITY 001
                   </p>
                   <h3 className="text-4xl font-medium tracking-tight">

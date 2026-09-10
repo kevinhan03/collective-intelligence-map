@@ -16,7 +16,14 @@ export async function GET(
     .select("id,map_id,lat,lng")
     .eq("id", parsed.data)
     .maybeSingle();
-  if (error || !place) return new Response("Not found", { status: 404 });
+  if (
+    error ||
+    !place?.id ||
+    !place.map_id ||
+    place.lat === null ||
+    place.lng === null
+  )
+    return new Response("Not found", { status: 404 });
   productEvent("external_map_open", {
     mapId: place.map_id,
     mapPlaceId: place.id,

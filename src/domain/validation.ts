@@ -36,6 +36,7 @@ export const proposalSchema = z
   .superRefine((v, c) => {
     if (
       !v.placeId &&
+      !v.candidateToken &&
       (!v.name ||
         v.lat === undefined ||
         v.lng === undefined ||

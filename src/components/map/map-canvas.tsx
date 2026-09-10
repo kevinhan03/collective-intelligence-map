@@ -8,6 +8,7 @@ const Kakao = dynamic(() => import("./renderers/kakao"), { ssr: false });
 const Preview = dynamic(() => import("./renderers/preview"), { ssr: false });
 export function MapCanvas({
   config,
+  compact,
   ...props
 }: Omit<MapProps, "apiKey"> & { config: RendererConfig }) {
   if (config.provider === "preview") return <Preview {...props} apiKey="" />;
@@ -22,5 +23,12 @@ export function MapCanvas({
       </div>
     );
   const Renderer = config.provider === "google" ? Google : Kakao;
-  return <Renderer {...props} apiKey={config.key} />;
+  return (
+    <Renderer
+      {...props}
+      apiKey={config.key}
+      mapId={config.mapId}
+      compact={compact}
+    />
+  );
 }

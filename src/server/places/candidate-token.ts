@@ -10,6 +10,10 @@ const schema = z.object({
   session: z.uuid(),
   expires: z.number(),
   selected: z.boolean(),
+  name: z.string().max(120).optional(),
+  address: z.string().max(250).optional(),
+  lat: z.number().min(-90).max(90).optional(),
+  lng: z.number().min(-180).max(180).optional(),
 });
 export type CandidateClaims = z.infer<typeof schema>;
 function secret() {

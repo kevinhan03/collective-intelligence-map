@@ -2,6 +2,12 @@
 import { useEffect, useRef, useState } from "react";
 import type { MapProps } from "../types";
 let loaded: Promise<void> | undefined;
+const minimalStyle: google.maps.MapTypeStyle[] = [
+  { featureType: "poi", stylers: [{ visibility: "off" }] },
+  { featureType: "transit", stylers: [{ visibility: "off" }] },
+  { featureType: "road", elementType: "labels", stylers: [{ visibility: "off" }] },
+  { featureType: "landscape", elementType: "labels", stylers: [{ visibility: "off" }] },
+];
 function load(key: string) {
   if (window.google?.maps) return Promise.resolve();
   if (!loaded)
@@ -35,6 +41,8 @@ export default function GoogleMap({
   onSelect,
   bounds,
   onBoundsChange,
+  mapId,
+  compact = false,
 }: MapProps) {
   const el = useRef<HTMLDivElement>(null),
     map = useRef<google.maps.Map | null>(null);
@@ -61,6 +69,9 @@ export default function GoogleMap({
           streetViewControl: false,
           fullscreenControl: false,
           clickableIcons: false,
+          ...(mapId
+            ? { mapId }
+            : { renderingType: google.maps.RenderingType.RASTER, styles: minimalStyle }),
         });
         listener = map.current.addListener("idle", () => {
           const b = map.current?.getBounds();
@@ -87,7 +98,7 @@ export default function GoogleMap({
       listener?.remove();
       markers.current.forEach((m) => m.setMap(null));
     };
-  }, [apiKey, bounds.north, bounds.south, bounds.east, bounds.west]);
+  }, [apiKey, mapId, bounds.north, bounds.south, bounds.east, bounds.west]);
   useEffect(() => {
     if (!ready || !map.current) return;
     markers.current.forEach((m) => m.setMap(null));
@@ -98,12 +109,12 @@ export default function GoogleMap({
         title: p.name,
         label: {
           text: String(i + 1),
-          color: selected === p.id ? "#283e20" : "white",
+          color: selected === p.id ? "#171b08" : "#171b08",
         },
         icon: {
           path: google.maps.SymbolPath.CIRCLE,
           scale: selected === p.id ? 19 : 15,
-          fillColor: selected === p.id ? "#dceb9e" : "#3c5036",
+          fillColor: selected === p.id ? "#ffffff" : "#edff70",
           fillOpacity: 1,
           strokeColor: "white",
           strokeWeight: 3,
@@ -114,7 +125,7 @@ export default function GoogleMap({
     });
   }, [ready, places, selected]);
   return (
-    <div className="relative h-full min-h-[420px]">
+    <div className={`relative h-full ${compact ? "min-h-[240px]" : "min-h-[420px]"}`}>
       <div ref={el} className="absolute inset-0" />
       {error && (
         <p

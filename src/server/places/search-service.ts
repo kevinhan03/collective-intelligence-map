@@ -1,7 +1,7 @@
 import { productEvent } from "@/server/events";
 import "server-only";
 import { db } from "@/lib/supabase/server";
-import { serviceDb } from "@/lib/supabase/admin";
+import { resolveExistingPlace } from "./canonical-resolver";
 import { getMaps } from "@/server/queries";
 import { HttpError } from "@/server/http";
 import { routeProvider } from "./provider-router";
@@ -22,7 +22,7 @@ export async function searchPlaces(
   if (error) throw new HttpError("내부 장소를 검색하지 못했습니다.", 503);
   productEvent("place_search_internal", {
     mapId: map.id,
-    count: internal?.length ?? 0,
+    count: Array.isArray(internal) ? internal.length : 0,
   });
   if (!input.external) return { internal: internal ?? [], candidates: [] };
   if (viewer.role === "member")
@@ -53,6 +53,14 @@ export async function searchPlaces(
         session,
         expires: Date.now() + 15 * 60 * 1000,
         selected: name === "kakao",
+        ...(name === "kakao"
+          ? {
+              name: c.label,
+              address: c.address,
+              lat: c.lat,
+              lng: c.lng,
+            }
+          : {}),
       }),
     })),
   };
@@ -89,15 +97,18 @@ export async function selectCandidate(
           () => adapter.details(candidate, { map, session: claims.session }),
         )
       : candidate;
-  const { data: placeId, error } = await serviceDb().rpc("resolve_provider", {
-    p: name,
-    external_id_value: claims.externalId,
-  });
-  if (error) throw new HttpError("장소 연결을 확인하지 못했습니다.", 503);
+  const placeId = await resolveExistingPlace(name, claims.externalId);
   return {
     candidate: {
       ...selected,
-      token: signCandidate({ ...claims, selected: true }),
+      token: signCandidate({
+        ...claims,
+        selected: true,
+        name: selected.label,
+        address: selected.address,
+        lat: selected.lat,
+        lng: selected.lng,
+      }),
     },
     placeId,
   };

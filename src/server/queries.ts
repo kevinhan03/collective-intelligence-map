@@ -1,4 +1,5 @@
 import "server-only";
+import { z } from "zod";
 import { cache } from "react";
 import { configured, db } from "@/lib/supabase/server";
 import type {
@@ -29,7 +30,7 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
   if (error) throw new Error("프로필을 불러올 수 없습니다.");
   return { id: user.id, ...profile, role: role ?? "member" } as Viewer;
 });
-export async function getMaps(): Promise<ThemeMap[]> {
+export const getMaps = cache(async (): Promise<ThemeMap[]> => {
   if (!configured()) return [demoMap];
   const client = await db();
   const { data, error } = await client
@@ -44,10 +45,21 @@ export async function getMaps(): Promise<ThemeMap[]> {
         m: row.id,
       });
       if (error) throw new Error("커뮤니티 집계를 불러올 수 없습니다.");
-      return { ...row, ...stats } as ThemeMap;
+      const counts = z
+        .object({
+          place_count: z.number(),
+          follower_count: z.number(),
+          contributor_count: z.number(),
+        })
+        .parse(stats);
+      return {
+        ...row,
+        ...counts,
+        bounds: row.bounds as unknown as Bounds,
+      } as ThemeMap;
     }),
   );
-}
+});
 export async function getMap(slug: string) {
   return (await getMaps()).find((m) => m.slug === slug) ?? null;
 }
@@ -118,5 +130,10 @@ export function rendererFor(map: ThemeMap): RendererConfig {
     provider === "kakao"
       ? process.env.NEXT_PUBLIC_KAKAO_MAPS_KEY
       : process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY;
-  return { provider, key: key ?? "" };
+  return {
+    provider,
+    key: key ?? "",
+    mapId:
+      provider === "google" ? process.env.NEXT_PUBLIC_GOOGLE_MAP_ID : undefined,
+  };
 }

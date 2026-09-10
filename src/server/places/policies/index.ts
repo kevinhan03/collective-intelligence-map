@@ -15,3 +15,12 @@ export const providerPolicies = {
     requiredRenderer: "kakao",
   },
 } as const;
+
+export function mayPersistReference(provider: "google" | "kakao") {
+  return (
+    providerPolicies[provider].persistedFields.some(
+      (field) => field === "externalId",
+    ) ||
+    (provider === "kakao" && process.env.KAKAO_REF_STORAGE_ALLOWED === "true")
+  );
+}

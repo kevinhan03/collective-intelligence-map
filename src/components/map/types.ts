@@ -6,4 +6,6 @@ export type MapProps = {
   bounds: Bounds;
   onBoundsChange: (bounds: Bounds) => void;
   apiKey: string;
+  mapId?: string;
+  compact?: boolean;
 };

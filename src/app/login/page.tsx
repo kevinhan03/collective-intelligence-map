@@ -36,7 +36,10 @@ export default async function Login({
               주세요.
             </p>
           )}
-          <AuthForm enabled={configured()} />
+          <AuthForm
+            enabled={configured()}
+            googleEnabled={process.env.GOOGLE_AUTH_ENABLED === "true"}
+          />
           <p className="mt-6 text-xs leading-6 text-muted-foreground">
             계속하면{" "}
             <Link href="/terms" className="underline">

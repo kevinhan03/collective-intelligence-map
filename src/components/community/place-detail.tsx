@@ -87,6 +87,9 @@ export function PlaceDetail({
           <Badge variant="secondary" className="mb-2">
             {place.category}
           </Badge>
+          {place.status === "disputed" && (
+            <Badge variant="outline">주제 적합성 재검토 중</Badge>
+          )}
           <DialogTitle className="text-2xl">{place.name}</DialogTitle>
           <DialogDescription>{place.address}</DialogDescription>
         </DialogHeader>

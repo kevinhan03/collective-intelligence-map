@@ -5,7 +5,7 @@ import { getViewer } from "@/server/queries";
 export async function SiteHeader() {
   const viewer = await getViewer();
   return (
-    <header className="sticky top-0 z-30 border-b bg-background/95 backdrop-blur">
+    <header className="glass-panel glass-header sticky top-3 z-30">
       <div className="mx-auto flex h-18 max-w-[1440px] items-center justify-between gap-4 px-5 md:px-9">
         <Link
           href="/"
@@ -57,7 +57,7 @@ export async function SiteHeader() {
           ) : (
             <Button asChild size="sm">
               <Link href="/login">
-                참여하기
+                로그인
                 <ArrowUpRight size={14} />
               </Link>
             </Button>

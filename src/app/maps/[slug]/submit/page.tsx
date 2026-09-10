@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getMap, getViewer } from "@/server/queries";
+import { getMap, getViewer, rendererFor } from "@/server/queries";
 import { ProposalForm } from "@/components/community/proposal-form";
 export default async function Submit({
   params,
@@ -23,6 +23,7 @@ export default async function Submit({
       <ProposalForm
         map={map}
         enabled={Boolean(viewer && viewer.role !== "member")}
+        config={rendererFor(map)}
       />
     </main>
   );

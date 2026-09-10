@@ -119,7 +119,7 @@ create policy saves_read on public.saves for select using(user_id=(select auth.u
 create policy follows_read on public.map_follows for select using(user_id=(select auth.uid()));
 create policy reports_read on public.reports for select using(reporter_id=(select auth.uid()) or private.is_admin());
 -- No direct mutation grants: all writes go through authenticated, rate-limited transactions.
-revoke all on all tables in schema public from anon,authenticated;
+revoke all on public.profiles,public.theme_maps,public.places,public.map_places,public.map_place_votes,public.comments,public.saves,public.map_follows,public.reports from anon,authenticated;
 grant select on public.profiles,public.theme_maps,public.places,public.map_places,public.comments to anon,authenticated;
 grant select on public.map_place_votes,public.saves,public.map_follows,public.reports to authenticated;
 revoke all on all tables in schema private from anon,authenticated;
@@ -148,7 +148,7 @@ $$;
 create function public.search_internal_places(q text,m uuid) returns jsonb language sql stable security invoker set search_path='' as $$
  select coalesce(jsonb_agg(r),'[]'::jsonb) from(select p.id,p.name,p.address,p.category,extensions.st_y(p.location) lat,extensions.st_x(p.location) lng from public.places p join public.theme_maps t on t.id=m where p.status='active' and p.country=t.country and p.city=t.city and length(q) between 2 and 100 and p.name ilike '%'||replace(replace(replace(q,'\','\\'),'%','\%'),'_','\_')||'%' order by p.name,p.id limit 20)r
 $$;
-revoke execute on all functions in schema public from public;
+revoke execute on function public.map_stats(uuid),public.viewer_role(),public.map_places_in_bounds(uuid,double precision,double precision,double precision,double precision),public.search_internal_places(text,uuid) from public;
 revoke execute on function private.map_stats(uuid),private.place_stats(uuid),private.viewer_role() from public;
 grant execute on function private.map_stats(uuid),private.place_stats(uuid) to anon,authenticated;
 grant execute on function private.viewer_role(),public.viewer_role() to authenticated;

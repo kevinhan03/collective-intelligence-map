@@ -1,20 +1,23 @@
 "use client";
 import Link from "next/link";
 import { useRef, useState } from "react";
-import { Check, Search, ArrowLeft, Info } from "lucide-react";
+import { Check, Search, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import type { Candidate, ThemeMap } from "@/domain/types";
+import { MapCanvas } from "@/components/map/map-canvas";
+import type { Candidate, RendererConfig, ThemeMap } from "@/domain/types";
 import { post } from "./api";
 type Internal = { id: string; name: string; address: string };
 export function ProposalForm({
   map,
   enabled,
+  config,
 }: {
   map: ThemeMap;
   enabled: boolean;
+  config: RendererConfig;
 }) {
   const [query, setQuery] = useState(""),
     [internal, setInternal] = useState<Internal[]>([]),
@@ -23,16 +26,17 @@ export function ProposalForm({
       placeId?: string;
       token?: string;
       label: string;
+      lat?: number;
+      lng?: number;
     } | null>(null),
     [searched, setSearched] = useState(false),
-    [manual, setManual] = useState(false),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [success, setSuccess] = useState(false);
   const session = useRef(""),
     requestId = useRef(0),
     lastSearch = useRef(0);
-  async function search(external = false) {
+  async function search() {
     if (Date.now() - lastSearch.current < 350) return;
     lastSearch.current = Date.now();
     const id = ++requestId.current;
@@ -41,15 +45,26 @@ export function ProposalForm({
     setError("");
     setSelection(null);
     try {
-      const result = await post<{
+      const internalResult = await post<{
         internal: Internal[];
         candidates: Candidate[];
       }>("/api/places/search", {
         mapId: map.id,
         query,
-        external,
         session: session.current,
       });
+      const result =
+        internalResult.internal.length > 0
+          ? internalResult
+          : await post<{
+              internal: Internal[];
+              candidates: Candidate[];
+            }>("/api/places/search", {
+              mapId: map.id,
+              query,
+              external: true,
+              session: session.current,
+            });
       if (requestId.current === id) {
         setInternal(result.internal);
         setCandidates(result.candidates);
@@ -72,7 +87,9 @@ export function ProposalForm({
       setSelection({
         placeId: result.placeId ?? undefined,
         token: result.candidate.token,
-        label: candidate.label,
+        label: result.candidate.label,
+        lat: result.candidate.lat,
+        lng: result.candidate.lng,
       });
       session.current = "";
       setCandidates([]);
@@ -145,7 +162,6 @@ export function ProposalForm({
                 key={p.id}
                 onClick={() => {
                   setSelection({ placeId: p.id, label: p.name });
-                  setManual(false);
                 }}
                 className="block w-full rounded-lg border p-3 text-left hover:bg-secondary"
               >
@@ -155,19 +171,11 @@ export function ProposalForm({
                 </span>
               </button>
             ))}
-            {internal.length === 0 && (
+            {internal.length === 0 && candidates.length === 0 && !busy && (
               <p className="py-2 text-sm text-muted-foreground">
-                내부 지도에 일치하는 장소가 없습니다.
+                검색 결과가 없습니다. 다른 장소 이름으로 다시 검색해 주세요.
               </p>
             )}
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={busy}
-              onClick={() => search(true)}
-            >
-              찾는 장소가 없나요? 외부 장소 검색
-            </Button>
           </div>
         )}
         {candidates.length > 0 && (
@@ -194,24 +202,51 @@ export function ProposalForm({
           </div>
         )}
         {selection && (
-          <div className="mt-4 flex items-center gap-2 rounded-lg bg-secondary p-3 text-sm">
-            <Check size={15} />
-            {selection.label}
+          <div className="mt-4 overflow-hidden rounded-lg border">
+            <div className="flex items-center gap-2 bg-secondary p-3 text-sm">
+              <Check size={15} />
+              {selection.label}
+            </div>
+            {selection.lat !== undefined && selection.lng !== undefined && (
+              <MapCanvas
+                config={config}
+                compact
+                places={[
+                  {
+                    id: "selected-place",
+                    place_id: "selected-place",
+                    map_id: map.id,
+                    name: selection.label,
+                    address: "",
+                    category: "",
+                    lat: selection.lat,
+                    lng: selection.lng,
+                    rationale: "",
+                    status: "selected",
+                    added_by: null,
+                    handle: "",
+                    positive: 0,
+                    negative: 0,
+                    saved_count: 0,
+                    created_at: "",
+                    last_verified_at: null,
+                  },
+                ]}
+                selected="selected-place"
+                onSelect={() => undefined}
+                bounds={{
+                  south: selection.lat - 0.006,
+                  north: selection.lat + 0.006,
+                  west: selection.lng - 0.008,
+                  east: selection.lng + 0.008,
+                }}
+                onBoundsChange={() => undefined}
+              />
+            )}
           </div>
         )}
-        <Button
-          variant="link"
-          className="mt-3 px-0 text-xs"
-          disabled={!enabled}
-          onClick={() => {
-            setManual(true);
-            setSelection(null);
-          }}
-        >
-          직접 알고 있는 장소 입력하기
-        </Button>
       </section>
-      {(selection || manual) && (
+      {selection && (
         <form
           className="space-y-6"
           onSubmit={async (e) => {
@@ -225,7 +260,7 @@ export function ProposalForm({
                 placeId: selection?.placeId,
                 candidateToken: selection?.token,
                 rationale: f.get("rationale"),
-                ...(!selection?.placeId
+                ...(!selection?.placeId && !selection?.token
                   ? {
                       name: f.get("name"),
                       address: f.get("address"),
@@ -244,81 +279,8 @@ export function ProposalForm({
             }
           }}
         >
-          {!selection?.placeId && (
-            <section className="space-y-4 rounded-xl border bg-card p-6">
-              <h2 className="text-sm font-semibold">02. 장소 정보와 출처</h2>
-              <p className="flex gap-2 rounded-lg bg-secondary/60 p-3 text-xs leading-6 text-muted-foreground">
-                <Info className="mt-1 shrink-0" size={14} />
-                외부 검색 결과를 복사하지 말고, 직접 조사했거나 사용 권한이 있는
-                장소 정보를 입력해 주세요. 운영자가 출처를 확인합니다.
-              </p>
-              <div className="space-y-2">
-                <Label htmlFor="name">장소 이름</Label>
-                <Input name="name" id="name" required maxLength={120} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="address">주소</Label>
-                <Input name="address" id="address" required maxLength={250} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="category">분류</Label>
-                <select
-                  name="category"
-                  id="category"
-                  className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-                >
-                  {map.tags
-                    .filter((t) => t !== "전체")
-                    .map((t) => (
-                      <option key={t}>{t}</option>
-                    ))}
-                </select>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="lat">위도</Label>
-                  <Input
-                    name="lat"
-                    id="lat"
-                    type="number"
-                    step="any"
-                    min={map.bounds.south}
-                    max={map.bounds.north}
-                    placeholder="35.66"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="lng">경도</Label>
-                  <Input
-                    name="lng"
-                    id="lng"
-                    type="number"
-                    step="any"
-                    min={map.bounds.west}
-                    max={map.bounds.east}
-                    placeholder="139.70"
-                    required
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="sourceNote">이름·주소·좌표의 출처</Label>
-                <Textarea
-                  name="sourceNote"
-                  id="sourceNote"
-                  required
-                  minLength={15}
-                  maxLength={1000}
-                  placeholder="직접 현장 조사한 날짜와 방식 또는 사용 허가를 받은 출처를 적어 주세요."
-                />
-              </div>
-            </section>
-          )}
           <section className="space-y-4 rounded-xl border bg-card p-6">
-            <h2 className="text-sm font-semibold">
-              {selection?.placeId ? "02" : "03"}. 왜 이 주제에 맞나요?
-            </h2>
+            <h2 className="text-sm font-semibold">02. 왜 이 주제에 맞나요?</h2>
             <Label htmlFor="rationale">추천 근거</Label>
             <Textarea
               name="rationale"

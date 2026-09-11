@@ -39,7 +39,6 @@ test("discover community, filter venues, open context and protect participation"
   ).toBeVisible();
   await page.getByRole("textbox", { name: "이 맵의 장소 검색" }).fill("");
   if (isMobile) {
-    await page.getByRole("button", { name: "지도", exact: true }).click();
     await expect(
       page.getByRole("button", { name: "Archive Room 지도에서 선택" }),
     ).toBeVisible();
@@ -47,7 +46,7 @@ test("discover community, filter venues, open context and protect participation"
   expect(external).toEqual([]);
   expect(errors).toEqual([]);
 });
-test("proposal and login honestly report unavailable connections", async ({
+test("proposal and Google login honestly report unavailable connections", async ({
   page,
 }) => {
   await page.goto("/maps/tokyo-fashion/submit");
@@ -60,7 +59,7 @@ test("proposal and login honestly report unavailable connections", async ({
   await page.goto("/saved");
   await expect(page).toHaveURL(/login/);
   await expect(
-    page.getByRole("button", { name: "이메일로 로그인 링크 받기" }),
+    page.getByRole("button", { name: "Google로 계속하기" }),
   ).toBeDisabled();
 });
 test("server rejects unauthenticated mutations and unknown maps", async ({

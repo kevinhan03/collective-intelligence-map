@@ -132,9 +132,9 @@
 /* Black glass / lemon theme */
 :root {
   color-scheme: dark;
-  --glass-fill: rgb(31 34 32 / 62%);
-  --glass-fill-strong: rgb(27 30 28 / 78%);
-  --glass-stroke: rgb(255 255 255 / 18%);
+  --glass-fill: rgb(95 104 119 / 20%);
+  --glass-fill-strong: rgb(33 39 48 / 88%);
+  --glass-stroke: rgb(231 239 255 / 24%);
   --glass-highlight: rgb(255 255 255 / 26%);
   --glass-shadow: rgb(0 0 0 / 52%);
   --background: #080909;
@@ -148,7 +148,7 @@
   --secondary: #2c3025;
   --secondary-foreground: #edff9c;
   --muted: #202323;
-  --muted-foreground: #a9b0a9;
+  --muted-foreground: #c0c5cc;
   --accent: #303625;
   --accent-foreground: #efffa0;
   --border: #383d38;
@@ -159,18 +159,14 @@
 }
 body {
   min-height: 100dvh;
-  background:
-    radial-gradient(70rem 42rem at 50% -15%, rgb(237 255 112 / 9%), transparent 56%),
-    radial-gradient(45rem 36rem at 110% 75%, rgb(141 172 246 / 6%), transparent 60%),
-    var(--background);
+  background: #535967 url('/glass-neighborhood.png') center / cover fixed;
+  background-blend-mode: multiply;
 }
 .glass-panel,
 .glass-surface,
 [data-slot="card"],
 [data-slot="dialog-content"] {
-  background:
-    linear-gradient(145deg, rgb(255 255 255 / 12%), transparent 42%),
-    var(--glass-fill-strong);
+  background: var(--glass-fill-strong);
   border: 1px solid var(--glass-stroke);
   box-shadow:
     inset 0 1px 0 var(--glass-highlight),
@@ -182,11 +178,9 @@ body {
   .glass-surface,
   [data-slot="card"],
   [data-slot="dialog-content"] {
-    background:
-      linear-gradient(145deg, rgb(255 255 255 / 14%), transparent 42%),
-      var(--glass-fill);
-    backdrop-filter: blur(30px) saturate(145%);
-    -webkit-backdrop-filter: blur(30px) saturate(145%);
+    background: var(--glass-fill);
+    backdrop-filter: blur(32px) saturate(125%);
+    -webkit-backdrop-filter: blur(32px) saturate(125%);
   }
 }
 .glass-header {
@@ -215,18 +209,46 @@ body {
   border-radius: 24px;
   overflow: hidden;
   border: 1px solid var(--glass-stroke);
-  background: var(--glass-fill-strong);
+  background: rgb(126 139 157 / 12%);
   box-shadow: 0 22px 54px var(--glass-shadow), inset 0 1px 0 var(--glass-highlight);
 }
 .glass-toolbar {
-  background: rgb(255 255 255 / 5%);
+  margin: 0 18px;
+  border: 1px solid var(--glass-stroke);
+  border-radius: 22px;
+  background: rgb(196 210 229 / 12%);
   border-block-color: rgb(255 255 255 / 11%);
   backdrop-filter: blur(18px);
 }
 .map-hero { border-color: rgb(255 255 255 / 10%); }
+.place-list {
+  background: rgb(36 44 55 / 28%);
+  backdrop-filter: blur(28px);
+  padding: 8px;
+}
+.place-list-heading {
+  background: rgb(35 42 51 / 94%);
+  border-radius: 16px;
+  margin-bottom: 10px;
+}
+.place-glass-card {
+  margin-bottom: 10px;
+  border: 1px solid rgb(255 255 255 / 17%);
+  border-radius: 20px;
+  background: rgb(210 223 239 / 9%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 18%);
+}
+.place-glass-card:hover { background: rgb(210 223 239 / 16%); }
+[data-slot="dialog-content"] { background-color: rgb(27 33 42 / 92%); }
+[data-slot="card"], .glass-panel { border-radius: 28px; }
+@media (prefers-reduced-transparency: reduce) {
+  .glass-panel, .glass-surface, .glass-toolbar, .place-list,
+  [data-slot="card"] { background: #252c35; backdrop-filter: none; }
+}
 @media (max-width: 640px) {
   .glass-header { width: calc(100% - 16px); margin-block: 8px; }
   .glass-map-shell { margin: 10px; border-radius: 20px; }
+  .glass-toolbar { margin-inline: 10px; }
 }
 
 body {

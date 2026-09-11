@@ -231,10 +231,10 @@ export function CommunityExplorer({
       )}
       <div className="glass-map-shell lg:grid lg:grid-cols-[20%_80%]">
         <section
-          className="glass-surface lg:h-[calc(100dvh-250px)] lg:min-h-[480px] lg:overflow-y-auto lg:border-r"
+          className="place-list lg:h-[calc(100dvh-250px)] lg:min-h-[480px] lg:overflow-y-auto lg:border-r"
           aria-label="장소 목록"
         >
-          <div className="glass-surface sticky top-0 z-10 flex items-center justify-between border-b px-4 py-3">
+          <div className="place-list-heading sticky top-0 z-10 flex items-center justify-between border-b px-3 py-3">
             <span className="text-xs font-medium">
               {filtered.length}개의 발견 {truncated && "· 일부 결과"}
             </span>
@@ -257,7 +257,7 @@ export function CommunityExplorer({
             return (
               <article
                 key={p.id}
-                className={`group border-b p-5 transition-colors hover:bg-secondary/30 ${selected === p.id ? "bg-secondary/40" : ""}`}
+                className={`place-glass-card group p-4 transition-colors ${selected === p.id ? "ring-1 ring-primary/60" : ""}`}
               >
                 <div className="mb-3 flex items-start gap-3">
                   <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-secondary text-[11px] font-semibold text-primary">

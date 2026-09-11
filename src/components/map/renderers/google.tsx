@@ -9,15 +9,43 @@ const minimalStyle: google.maps.MapTypeStyle[] = [
   { elementType: "geometry", stylers: [{ color: "#151713" }] },
   { elementType: "labels.text.fill", stylers: [{ color: "#8d9384" }] },
   { elementType: "labels.text.stroke", stylers: [{ color: "#151713" }] },
-  { featureType: "administrative", elementType: "geometry", stylers: [{ color: "#2a2e27" }] },
-  { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: "#b9c1ae" }] },
+  {
+    featureType: "administrative",
+    elementType: "geometry",
+    stylers: [{ color: "#2a2e27" }],
+  },
+  {
+    featureType: "administrative.locality",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#b9c1ae" }],
+  },
   { featureType: "landscape", stylers: [{ color: "#171a15" }] },
-  { featureType: "landscape", elementType: "labels", stylers: [{ visibility: "off" }] },
+  {
+    featureType: "landscape",
+    elementType: "labels",
+    stylers: [{ visibility: "off" }],
+  },
   { featureType: "poi", stylers: [{ visibility: "off" }] },
-  { featureType: "road", elementType: "geometry", stylers: [{ color: "#30352d" }] },
-  { featureType: "road.arterial", elementType: "geometry", stylers: [{ color: "#3a4034" }] },
-  { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#464d3d" }] },
-  { featureType: "road", elementType: "labels", stylers: [{ visibility: "off" }] },
+  {
+    featureType: "road",
+    elementType: "geometry",
+    stylers: [{ color: "#30352d" }],
+  },
+  {
+    featureType: "road.arterial",
+    elementType: "geometry",
+    stylers: [{ color: "#3a4034" }],
+  },
+  {
+    featureType: "road.highway",
+    elementType: "geometry",
+    stylers: [{ color: "#464d3d" }],
+  },
+  {
+    featureType: "road",
+    elementType: "labels",
+    stylers: [{ visibility: "off" }],
+  },
   { featureType: "transit", stylers: [{ visibility: "off" }] },
   { featureType: "water", stylers: [{ color: "#111d1e" }] },
 ];
@@ -52,6 +80,7 @@ export default function GoogleMap({
   places,
   selected,
   onSelect,
+  onFocusComplete,
   bounds,
   onBoundsChange,
   mapId,
@@ -62,10 +91,10 @@ export default function GoogleMap({
   const markers = useRef<google.maps.Marker[]>([]);
   const [ready, setReady] = useState(false),
     [error, setError] = useState("");
-  const handlers = useRef({ onSelect, onBoundsChange });
+  const handlers = useRef({ onSelect, onBoundsChange, onFocusComplete });
   useEffect(() => {
-    handlers.current = { onSelect, onBoundsChange };
-  }, [onSelect, onBoundsChange]);
+    handlers.current = { onSelect, onBoundsChange, onFocusComplete };
+  }, [onSelect, onBoundsChange, onFocusComplete]);
   useEffect(() => {
     let active = true;
     let listener: google.maps.MapsEventListener | undefined;
@@ -84,7 +113,10 @@ export default function GoogleMap({
           clickableIcons: false,
           ...(mapId
             ? { mapId }
-            : { renderingType: google.maps.RenderingType.RASTER, styles: minimalStyle }),
+            : {
+                renderingType: google.maps.RenderingType.RASTER,
+                styles: minimalStyle,
+              }),
         });
         listener = map.current.addListener("idle", () => {
           const b = map.current?.getBounds();
@@ -137,8 +169,32 @@ export default function GoogleMap({
       return marker;
     });
   }, [ready, places, selected]);
+  useEffect(() => {
+    if (!ready || !map.current || !selected) return;
+    const place = places.find((item) => item.id === selected);
+    if (!place) return;
+    map.current.panTo({ lat: place.lat, lng: place.lng });
+    map.current.setZoom(Math.max(map.current.getZoom() ?? 12, 16));
+    let timeout: number | undefined;
+    const listener = google.maps.event.addListenerOnce(
+      map.current,
+      "idle",
+      () => {
+        timeout = window.setTimeout(
+          () => handlers.current.onFocusComplete?.(place.id),
+          120,
+        );
+      },
+    );
+    return () => {
+      listener.remove();
+      if (timeout) window.clearTimeout(timeout);
+    };
+  }, [ready, places, selected]);
   return (
-    <div className={`relative h-full ${compact ? "min-h-[240px]" : "min-h-[420px]"}`}>
+    <div
+      className={`relative h-full ${compact ? "min-h-[240px]" : "min-h-[420px]"}`}
+    >
       <div ref={el} className="absolute inset-0" />
       {error && (
         <p

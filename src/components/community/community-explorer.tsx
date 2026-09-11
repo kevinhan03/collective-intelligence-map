@@ -64,6 +64,7 @@ export function CommunityExplorer({
     [tag, setTag] = useState("전체"),
     [sort, setSort] = useState<Sort>("relevance"),
     [selected, setSelected] = useState<string | null>(null),
+    [detailId, setDetailId] = useState<string | null>(null),
     [viewport, setViewport] = useState<Bounds | null>(null),
     [loaded, setLoaded] = useState<MapPlace[] | null>(null),
     [error, setError] = useState(""),
@@ -109,7 +110,18 @@ export function CommunityExplorer({
       if (requestId === latest.current) setBusy(false);
     }
   }
-  const selectedPlace = places.find((p) => p.id === selected) ?? null;
+  const selectedPlace = places.find((p) => p.id === detailId) ?? null;
+  const focusPlace = useCallback(
+    (id: string) => {
+      if (selected === id) {
+        setDetailId(id);
+        return;
+      }
+      setSelected(id);
+      setDetailId(config.provider === "preview" ? id : null);
+    },
+    [config.provider, selected],
+  );
   return (
     <main id="main" className="mx-auto max-w-[1440px]">
       <div className="map-hero border-b px-5 py-3 md:px-9">
@@ -270,7 +282,7 @@ export function CommunityExplorer({
                   </span>
                   <div className="min-w-0 flex-1">
                     <button
-                      onClick={() => setSelected(p.id)}
+                      onClick={() => focusPlace(p.id)}
                       className="text-left text-base font-semibold tracking-tight hover:underline"
                     >
                       {p.name}
@@ -281,7 +293,7 @@ export function CommunityExplorer({
                   </div>
                   <button
                     aria-label={`${p.name} 상세 보기`}
-                    onClick={() => setSelected(p.id)}
+                    onClick={() => focusPlace(p.id)}
                     className="p-1 text-muted-foreground"
                   >
                     <ArrowUpRight size={16} />
@@ -304,7 +316,7 @@ export function CommunityExplorer({
                   </div>
                   <button
                     aria-label={`${p.name} 저장`}
-                    onClick={() => setSelected(p.id)}
+                    onClick={() => focusPlace(p.id)}
                     className="p-1 text-muted-foreground"
                   >
                     <Bookmark
@@ -348,7 +360,8 @@ export function CommunityExplorer({
           <MapCanvas
             places={filtered}
             selected={selected}
-            onSelect={setSelected}
+            onSelect={focusPlace}
+            onFocusComplete={(id) => setDetailId(id)}
             bounds={map.bounds}
             onBoundsChange={onBoundsChange}
             config={config}
@@ -369,12 +382,12 @@ export function CommunityExplorer({
         </section>
       </div>
       <PlaceDetail
-        key={selected ?? "closed"}
+        key={detailId ?? "closed"}
         place={selectedPlace}
-        onClose={() => setSelected(null)}
+        onClose={() => setDetailId(null)}
         viewer={viewer}
-        vote={myState.votes[selected ?? ""] ?? 0}
-        saved={myState.saves.includes(selected ?? "")}
+        vote={myState.votes[detailId ?? ""] ?? 0}
+        saved={myState.saves.includes(detailId ?? "")}
         demo={demo}
         onChange={() => {
           setLoaded(null);

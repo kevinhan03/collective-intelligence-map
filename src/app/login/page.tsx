@@ -18,7 +18,10 @@ export default async function Login({
   if (await getViewer()) redirect("/settings/profile");
   const { error } = await searchParams;
   return (
-    <main id="main" className="page-wrap flex justify-center py-16">
+    <main
+      id="main"
+      className="page-wrap flex min-h-[calc(100dvh-96px)] items-center justify-center py-16"
+    >
       <Card className="w-full max-w-md">
         <CardHeader className="pb-6">
           <p className="kicker mb-3">Your perspective matters</p>

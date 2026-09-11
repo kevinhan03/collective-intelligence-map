@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { getMaps } from "@/server/queries";
 import { configured } from "@/lib/supabase/server";
+import { formatLocation } from "@/domain/location";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 export default async function Home() {
@@ -104,7 +105,7 @@ export default async function Home() {
           </p>
         )}
         <div className="grid gap-6 lg:grid-cols-[1.55fr_1fr]">
-          {maps.map((map) => (
+          {maps.map((map, i) => (
             <Link
               href={`/maps/${map.slug}`}
               key={map.id}
@@ -118,20 +119,17 @@ export default async function Home() {
                     className="border-white/20 bg-white/10 text-white"
                     variant="outline"
                   >
-                    TOKYO, JAPAN
+                    {formatLocation(map)}
                   </Badge>
                   <ArrowUpRight className="opacity-60 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
                 </div>
                 <div className="relative">
                   <p className="mb-1 text-xs tracking-[.2em] text-[#edff70]">
-                    COMMUNITY 001
+                    {`COMMUNITY ${String(i + 1).padStart(3, "0")}`}
                   </p>
                   <h3 className="text-4xl font-medium tracking-tight">
                     {map.title}
                   </h3>
-                  <p className="mt-2 text-xs text-white/65">
-                    独自の視点で、東京を歩く。
-                  </p>
                 </div>
               </div>
               <div className="p-6">

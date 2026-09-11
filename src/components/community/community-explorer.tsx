@@ -27,6 +27,7 @@ import { MapCanvas } from "@/components/map/map-canvas";
 import { PlaceDetail } from "./place-detail";
 import { post } from "./api";
 import { sortPlaces } from "@/domain/relevance";
+import { formatLocation } from "@/domain/location";
 import type {
   Bounds,
   MapPlace,
@@ -124,9 +125,9 @@ export function CommunityExplorer({
               <Badge variant="secondary" className="text-[10px]">
                 공개 커뮤니티
               </Badge>
-              <span className="kicker">Tokyo, Japan</span>
+              <span className="kicker">{formatLocation(map)}</span>
             </div>
-            <p className="mt-1 line-clamp-1 max-w-2xl text-xs leading-5 text-muted-foreground">
+            <p className="mt-1 line-clamp-2 md:line-clamp-1 max-w-2xl text-xs leading-5 text-muted-foreground">
               {map.description}
             </p>
           </div>
@@ -188,13 +189,13 @@ export function CommunityExplorer({
         )}
       </div>
       <div className="glass-toolbar flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3 md:px-9">
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-nowrap gap-1.5 overflow-x-auto md:flex-wrap md:overflow-visible">
           {["전체", ...map.tags.filter((t) => t !== "전체")].map((t) => (
             <Button
               key={t}
               size="sm"
               variant={tag === t ? "default" : "ghost"}
-              className="h-8 rounded-full px-3 text-xs"
+              className="h-8 shrink-0 rounded-full px-3 text-xs"
               onClick={() => {
                 setTag(t);
                 setPage(1);
@@ -231,7 +232,7 @@ export function CommunityExplorer({
       )}
       <div className="glass-map-shell lg:grid lg:grid-cols-[20%_80%]">
         <section
-          className="place-list lg:h-[calc(100dvh-250px)] lg:min-h-[480px] lg:overflow-y-auto lg:border-r"
+          className="place-list lg:h-fit lg:max-h-[calc(100dvh-250px)] lg:min-h-[480px] lg:self-start lg:overflow-y-auto lg:border-r"
           aria-label="장소 목록"
         >
           <div className="place-list-heading sticky top-0 z-10 flex items-center justify-between border-b px-3 py-3">

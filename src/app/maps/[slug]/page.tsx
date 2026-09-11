@@ -28,12 +28,14 @@ export default async function MapPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  const map = await getMap((await params).slug);
+  const [map, viewer] = await Promise.all([
+    getMap((await params).slug),
+    getViewer(),
+  ]);
   if (!map) notFound();
   if (configured()) productEvent("map_view", { mapId: map.id });
-  const [places, viewer, myState] = await Promise.all([
+  const [places, myState] = await Promise.all([
     getPlaces(map),
-    getViewer(),
     getMyState(map.id),
   ]);
   return (

@@ -60,9 +60,34 @@ export const getMaps = cache(async (): Promise<ThemeMap[]> => {
     }),
   );
 });
-export async function getMap(slug: string) {
-  return (await getMaps()).find((m) => m.slug === slug) ?? null;
-}
+export const getMap = cache(async (slug: string): Promise<ThemeMap | null> => {
+  if (!configured()) return demoMap.slug === slug ? demoMap : null;
+  const client = await db();
+  const { data: row, error } = await client
+    .from("theme_maps")
+    .select("*")
+    .eq("slug", slug)
+    .eq("status", "published")
+    .maybeSingle();
+  if (error) throw new Error("커뮤니티를 불러올 수 없습니다.");
+  if (!row) return null;
+  const { data: stats, error: statsError } = await client.rpc("map_stats", {
+    m: row.id,
+  });
+  if (statsError) throw new Error("커뮤니티 집계를 불러올 수 없습니다.");
+  const counts = z
+    .object({
+      place_count: z.number(),
+      follower_count: z.number(),
+      contributor_count: z.number(),
+    })
+    .parse(stats);
+  return {
+    ...row,
+    ...counts,
+    bounds: row.bounds as unknown as Bounds,
+  } as ThemeMap;
+});
 export async function getPlaces(
   map: ThemeMap,
   b: Bounds = map.bounds,

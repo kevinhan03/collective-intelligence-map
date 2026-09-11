@@ -4,6 +4,7 @@ export type MapProps = {
   selected: string | null;
   onSelect: (id: string) => void;
   onFocusComplete?: (id: string) => void;
+  focusRequest?: number;
   bounds: Bounds;
   onBoundsChange: (bounds: Bounds) => void;
   apiKey: string;

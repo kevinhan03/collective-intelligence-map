@@ -65,6 +65,7 @@ export function CommunityExplorer({
     [sort, setSort] = useState<Sort>("relevance"),
     [selected, setSelected] = useState<string | null>(null),
     [detailId, setDetailId] = useState<string | null>(null),
+    [focusRequest, setFocusRequest] = useState(0),
     [viewport, setViewport] = useState<Bounds | null>(null),
     [loaded, setLoaded] = useState<MapPlace[] | null>(null),
     [error, setError] = useState(""),
@@ -72,7 +73,10 @@ export function CommunityExplorer({
     [truncated, setTruncated] = useState(initialPlaces.length > 500),
     [page, setPage] = useState(1);
   const latest = useRef(0);
-  const places = loaded ?? initialPlaces.slice(0, 500);
+  const places = useMemo(
+    () => loaded ?? initialPlaces.slice(0, 500),
+    [initialPlaces, loaded],
+  );
   const filtered = useMemo(
     () =>
       sortPlaces(
@@ -113,14 +117,15 @@ export function CommunityExplorer({
   const selectedPlace = places.find((p) => p.id === detailId) ?? null;
   const focusPlace = useCallback(
     (id: string) => {
-      if (selected === id) {
+      setSelected(id);
+      if (config.provider === "preview") {
         setDetailId(id);
         return;
       }
-      setSelected(id);
-      setDetailId(config.provider === "preview" ? id : null);
+      setDetailId(null);
+      setFocusRequest((request) => request + 1);
     },
-    [config.provider, selected],
+    [config.provider],
   );
   return (
     <main id="main" className="mx-auto max-w-[1440px]">
@@ -362,6 +367,7 @@ export function CommunityExplorer({
             selected={selected}
             onSelect={focusPlace}
             onFocusComplete={(id) => setDetailId(id)}
+            focusRequest={focusRequest}
             bounds={map.bounds}
             onBoundsChange={onBoundsChange}
             config={config}

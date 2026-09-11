@@ -81,6 +81,7 @@ export default function GoogleMap({
   selected,
   onSelect,
   onFocusComplete,
+  focusRequest = 0,
   bounds,
   onBoundsChange,
   mapId,
@@ -170,27 +171,46 @@ export default function GoogleMap({
     });
   }, [ready, places, selected]);
   useEffect(() => {
-    if (!ready || !map.current || !selected) return;
+    if (!ready || !map.current || !selected || focusRequest === 0) return;
     const place = places.find((item) => item.id === selected);
     if (!place) return;
-    map.current.panTo({ lat: place.lat, lng: place.lng });
-    map.current.setZoom(Math.max(map.current.getZoom() ?? 12, 16));
-    let timeout: number | undefined;
-    const listener = google.maps.event.addListenerOnce(
-      map.current,
-      "idle",
-      () => {
-        timeout = window.setTimeout(
-          () => handlers.current.onFocusComplete?.(place.id),
-          120,
-        );
-      },
-    );
-    return () => {
-      listener.remove();
-      if (timeout) window.clearTimeout(timeout);
+    const start = map.current.getCenter();
+    const startLat = start?.lat() ?? place.lat;
+    const startLng = start?.lng() ?? place.lng;
+    const startZoom = map.current.getZoom() ?? 12;
+    const targetZoom = Math.max(startZoom, 16);
+    const startedAt = performance.now();
+    const duration = 420;
+    let frame = 0;
+    let zoomTimer: number | undefined;
+    const animatePan = (now: number) => {
+      const progress = Math.min((now - startedAt) / duration, 1);
+      const eased = 1 - (1 - progress) ** 3;
+      map.current?.setCenter({
+        lat: startLat + (place.lat - startLat) * eased,
+        lng: startLng + (place.lng - startLng) * eased,
+      });
+      if (progress < 1) {
+        frame = window.requestAnimationFrame(animatePan);
+        return;
+      }
+      const zoomByOneStep = () => {
+        const current = map.current?.getZoom() ?? targetZoom;
+        if (current >= targetZoom) {
+          handlers.current.onFocusComplete?.(place.id);
+          return;
+        }
+        map.current?.setZoom(current + 1);
+        zoomTimer = window.setTimeout(zoomByOneStep, 90);
+      };
+      zoomTimer = window.setTimeout(zoomByOneStep, 80);
     };
-  }, [ready, places, selected]);
+    frame = window.requestAnimationFrame(animatePan);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      if (zoomTimer) window.clearTimeout(zoomTimer);
+    };
+  }, [ready, places, selected, focusRequest]);
   return (
     <div
       className={`relative h-full ${compact ? "min-h-[240px]" : "min-h-[420px]"}`}

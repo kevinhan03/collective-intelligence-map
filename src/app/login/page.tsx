@@ -22,11 +22,13 @@ export default async function Login({
       id="main"
       className="page-wrap flex min-h-[calc(100dvh-96px)] items-center justify-center py-16"
     >
-      <Card className="w-full max-w-md">
-        <CardHeader className="pb-6">
-          <p className="kicker mb-3">Your perspective matters</p>
-          <CardTitle className="text-2xl">나의 발견을, 함께.</CardTitle>
-          <CardDescription className="leading-6">
+      <Card className="w-full max-w-md [--card-spacing:--spacing(12)]">
+        <CardHeader className="gap-6 pb-12">
+          <p className="kicker mb-2">Your perspective matters</p>
+          <CardTitle className="text-5xl leading-tight">
+            나의 발견을, 함께.
+          </CardTitle>
+          <CardDescription className="text-base leading-8">
             좋아하는 지도를 팔로우하고 장소를 저장하세요.
             <br />
             초기 장소 제안과 검증은 초대 기여자와 함께합니다.
@@ -41,7 +43,7 @@ export default async function Login({
           <AuthForm
             enabled={configured() && process.env.GOOGLE_AUTH_ENABLED === "true"}
           />
-          <p className="mt-6 text-xs leading-6 text-muted-foreground">
+          <p className="mt-16 text-xs leading-6 text-muted-foreground">
             계속하면{" "}
             <Link href="/terms" className="underline">
               이용약관

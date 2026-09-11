@@ -25,7 +25,7 @@ export function AuthForm({ enabled }: { enabled: boolean }) {
     }
   }
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {!enabled && (
         <p className="rounded-lg bg-secondary p-4 text-sm leading-6">
           현재는 미리보기입니다. Supabase 연결 후 Google 로그인을 사용할 수
@@ -34,7 +34,7 @@ export function AuthForm({ enabled }: { enabled: boolean }) {
       )}
       <Button
         variant="outline"
-        className="w-full"
+        className="h-14 w-full text-base"
         disabled={!enabled || busy}
         onClick={loginWithGoogle}
       >

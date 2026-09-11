@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Fragment, useRef, useState } from "react";
 import { Check, Search, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +11,29 @@ import { MapCanvas } from "@/components/map/map-canvas";
 import type { Candidate, RendererConfig, ThemeMap } from "@/domain/types";
 import { post } from "./api";
 type Internal = { id: string; name: string; address: string };
+
+function highlightMatch(text: string, query: string) {
+  const term = query.trim();
+  if (!term) return text;
+  const lowerText = text.toLocaleLowerCase("ko-KR");
+  const lowerTerm = term.toLocaleLowerCase("ko-KR");
+  const parts: React.ReactNode[] = [];
+  let start = 0;
+  let index = lowerText.indexOf(lowerTerm, start);
+  while (index !== -1) {
+    parts.push(text.slice(start, index));
+    parts.push(
+      <strong key={`${index}-${start}`} className="font-bold text-foreground">
+        {text.slice(index, index + term.length)}
+      </strong>,
+    );
+    start = index + term.length;
+    index = lowerText.indexOf(lowerTerm, start);
+  }
+  parts.push(text.slice(start));
+  return parts.map((part, index) => <Fragment key={index}>{part}</Fragment>);
+}
+
 export function ProposalForm({
   map,
   enabled,
@@ -19,6 +43,7 @@ export function ProposalForm({
   enabled: boolean;
   config: RendererConfig;
 }) {
+  const router = useRouter();
   const [query, setQuery] = useState(""),
     [internal, setInternal] = useState<Internal[]>([]),
     [candidates, setCandidates] = useState<Candidate[]>([]),
@@ -171,7 +196,9 @@ export function ProposalForm({
                 }}
                 className="block w-full rounded-lg border p-3 text-left hover:bg-secondary"
               >
-                <span className="text-sm font-medium">{p.name}</span>
+                <span className="text-sm font-medium">
+                  {highlightMatch(p.name, query)}
+                </span>
                 <span className="mt-1 block text-xs text-muted-foreground">
                   {p.address} · 커뮤니티에 있는 장소
                 </span>
@@ -197,7 +224,9 @@ export function ProposalForm({
                 disabled={busy}
                 className="block w-full rounded-lg border p-3 text-left hover:bg-secondary"
               >
-                <span className="text-sm font-medium">{c.label}</span>
+                <span className="text-sm font-medium">
+                  {highlightMatch(c.label, query)}
+                </span>
                 {c.address && (
                   <span className="mt-1 block text-xs text-muted-foreground">
                     {c.address}
@@ -281,6 +310,8 @@ export function ProposalForm({
                 },
               );
               setSuccess(result.status);
+              router.push(`/maps/${map.slug}`);
+              router.refresh();
             } catch (e) {
               setError((e as Error).message);
             } finally {

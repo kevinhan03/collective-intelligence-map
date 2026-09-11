@@ -23,7 +23,7 @@ export default async function Home() {
         <p className="kicker">A place for shared discoveries</p>
         <span className="flex items-center gap-2 text-xs text-muted-foreground">
           <span className="size-1.5 rounded-full bg-primary" />
-          도쿄에서 시작합니다
+          모두의 발견이 하나의 지도로
         </span>
       </div>
       <section className="grid gap-8 pb-12 pt-4 md:grid-cols-[1.5fr_1fr]">

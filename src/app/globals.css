@@ -254,6 +254,11 @@ body {
 body {
   letter-spacing: -0.02em;
 }
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
 button,
 a,
 input,

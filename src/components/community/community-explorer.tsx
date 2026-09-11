@@ -262,7 +262,7 @@ export function CommunityExplorer({
             return (
               <article
                 key={p.id}
-                className={`place-glass-card group p-4 transition-colors ${selected === p.id ? "ring-1 ring-primary/60" : ""}`}
+                className={`place-glass-card group p-3.5 transition-colors ${selected === p.id ? "ring-1 ring-primary/60" : ""}`}
               >
                 <div className="mb-3 flex items-start gap-3">
                   <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-secondary text-[11px] font-semibold text-primary">
@@ -276,7 +276,7 @@ export function CommunityExplorer({
                       {p.name}
                     </button>
                     <p className="mt-1 text-[11px] text-muted-foreground">
-                      {p.category} · {demo ? "Tokyo / 가상 예시" : p.address}
+                      {demo ? "가상 예시" : p.category}
                     </p>
                   </div>
                   <button
@@ -290,7 +290,7 @@ export function CommunityExplorer({
                 <p className="ml-9 line-clamp-2 text-[13px] leading-6 text-muted-foreground">
                   {p.rationale}
                 </p>
-                <div className="mt-4 ml-9 flex items-center justify-between">
+                <div className="mt-3 ml-9 flex items-center justify-between">
                   <div className="flex items-center gap-2 text-[11px]">
                     <span className="flex items-center gap-1 rounded bg-secondary px-2 py-1 font-medium text-primary">
                       <Check size={11} />

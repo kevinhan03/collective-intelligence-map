@@ -12,6 +12,7 @@ import {
 import { getMaps } from "@/server/queries";
 import { configured } from "@/lib/supabase/server";
 import { formatLocation } from "@/domain/location";
+import { SmoothScrollLink } from "@/components/smooth-scroll-link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 export default async function Home() {
@@ -45,10 +46,10 @@ export default async function Home() {
             발견하세요.
           </p>
           <Button asChild className="mt-7 h-11 px-5">
-            <a href="#communities">
+            <SmoothScrollLink href="#communities">
               Theme Map 둘러보기
               <ArrowRight size={16} />
-            </a>
+            </SmoothScrollLink>
           </Button>
         </div>
         <div

@@ -107,7 +107,7 @@ export function CommunityExplorer({
   const selectedPlace = places.find((p) => p.id === selected) ?? null;
   return (
     <main id="main" className="mx-auto max-w-[1440px]">
-      <div className="border-b px-5 py-3 md:px-9">
+      <div className="map-hero border-b px-5 py-3 md:px-9">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
             <Link
@@ -187,7 +187,7 @@ export function CommunityExplorer({
           </p>
         )}
       </div>
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-card px-5 py-4 md:px-9">
+      <div className="glass-toolbar flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3 md:px-9">
         <div className="flex flex-wrap gap-1.5">
           {["전체", ...map.tags.filter((t) => t !== "전체")].map((t) => (
             <Button
@@ -231,10 +231,10 @@ export function CommunityExplorer({
       )}
       <div className="glass-map-shell lg:grid lg:grid-cols-[20%_80%]">
         <section
-          className="lg:h-[calc(100dvh-290px)] lg:min-h-[480px] lg:overflow-y-auto lg:border-r bg-card"
+          className="glass-surface lg:h-[calc(100dvh-250px)] lg:min-h-[480px] lg:overflow-y-auto lg:border-r"
           aria-label="장소 목록"
         >
-          <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-card px-5 py-3">
+          <div className="glass-surface sticky top-0 z-10 flex items-center justify-between border-b px-4 py-3">
             <span className="text-xs font-medium">
               {filtered.length}개의 발견 {truncated && "· 일부 결과"}
             </span>
@@ -338,7 +338,7 @@ export function CommunityExplorer({
         </section>
         <section
           aria-label="장소 지도"
-          className="relative min-h-[420px] lg:h-[calc(100dvh-290px)]"
+          className="relative min-h-[420px] lg:h-[calc(100dvh-250px)]"
         >
           <MapCanvas
             places={filtered}

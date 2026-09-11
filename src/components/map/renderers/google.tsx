@@ -2,11 +2,24 @@
 import { useEffect, useRef, useState } from "react";
 import type { MapProps } from "../types";
 let loaded: Promise<void> | undefined;
+// This is the local fallback while a Cloud Map Style / Map ID is not configured.
+// Keep its contrast intentionally low so place pins and the map's surrounding
+// glass surfaces carry the visual hierarchy.
 const minimalStyle: google.maps.MapTypeStyle[] = [
-  { featureType: "poi", stylers: [{ visibility: "off" }] },
-  { featureType: "transit", stylers: [{ visibility: "off" }] },
-  { featureType: "road", elementType: "labels", stylers: [{ visibility: "off" }] },
+  { elementType: "geometry", stylers: [{ color: "#151713" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#8d9384" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#151713" }] },
+  { featureType: "administrative", elementType: "geometry", stylers: [{ color: "#2a2e27" }] },
+  { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: "#b9c1ae" }] },
+  { featureType: "landscape", stylers: [{ color: "#171a15" }] },
   { featureType: "landscape", elementType: "labels", stylers: [{ visibility: "off" }] },
+  { featureType: "poi", stylers: [{ visibility: "off" }] },
+  { featureType: "road", elementType: "geometry", stylers: [{ color: "#30352d" }] },
+  { featureType: "road.arterial", elementType: "geometry", stylers: [{ color: "#3a4034" }] },
+  { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#464d3d" }] },
+  { featureType: "road", elementType: "labels", stylers: [{ visibility: "off" }] },
+  { featureType: "transit", stylers: [{ visibility: "off" }] },
+  { featureType: "water", stylers: [{ color: "#111d1e" }] },
 ];
 function load(key: string) {
   if (window.google?.maps) return Promise.resolve();

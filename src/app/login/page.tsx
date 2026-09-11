@@ -32,14 +32,10 @@ export default async function Login({
         <CardContent>
           {error && (
             <p role="alert" className="mb-4 text-sm text-destructive">
-              로그인 링크가 만료되었거나 올바르지 않습니다. 새 링크를 요청해
-              주세요.
+              Google 로그인을 완료하지 못했습니다. 다시 시도해 주세요.
             </p>
           )}
-          <AuthForm
-            enabled={configured()}
-            googleEnabled={process.env.GOOGLE_AUTH_ENABLED === "true"}
-          />
+          <AuthForm enabled={configured()} />
           <p className="mt-6 text-xs leading-6 text-muted-foreground">
             계속하면{" "}
             <Link href="/terms" className="underline">

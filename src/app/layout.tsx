@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import { SiteHeader } from "@/components/site-header";
 import { Telemetry } from "@/components/telemetry";
@@ -40,9 +41,15 @@ export default function RootLayout({
         <a href="#main" className="sr-only focus:not-sr-only">
           본문으로 건너뛰기
         </a>
-        <SiteHeader />
+        <Suspense
+          fallback={<div className="h-20" aria-label="메뉴 불러오는 중" />}
+        >
+          <SiteHeader />
+        </Suspense>
         {children}
-        <Telemetry />
+        <Suspense fallback={null}>
+          <Telemetry />
+        </Suspense>
       </body>
     </html>
   );

@@ -1,8 +1,9 @@
 import "server-only";
 import { serviceDb } from "@/lib/supabase/admin";
 import { HttpError } from "@/server/http";
-// Conservative reservation estimates, NOT a billing promise. Operator sets hard request caps.
-const estimates = { autocomplete: 4000, details: 10000, keyword: 1000 };
+// USD micros at the current Google list price, before the monthly free cap and
+// volume discounts. This is a safety reservation, not an invoice estimate.
+const estimates = { autocomplete: 2830, details: 5000, keyword: 0 };
 export async function metered<T>(
   args: {
     provider: string;

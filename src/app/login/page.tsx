@@ -59,3 +59,5 @@ export default async function Login({
     </main>
   );
 }
+// Keep authenticated flows blocking during the incremental cache migration.
+export const instant = false;

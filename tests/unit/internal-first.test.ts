@@ -1,5 +1,6 @@
 import { expect, it, vi } from "vitest";
 import { demoMap } from "@/server/demo";
+import { searchSchema } from "@/domain/validation";
 const mocks = vi.hoisted(() => ({ rpc: vi.fn(), route: vi.fn() }));
 vi.mock("@/lib/supabase/server", () => ({
   db: async () => ({ rpc: mocks.rpc }),
@@ -23,4 +24,17 @@ it("internal search never touches an external provider, including zero hits", as
   );
   expect(result).toEqual({ internal: [], candidates: [] });
   expect(mocks.route).not.toHaveBeenCalled();
+});
+
+it("requires three characters before an external Places lookup", () => {
+  expect(() =>
+    searchSchema.parse({
+      mapId: demoMap.id,
+      query: "ab",
+      external: true,
+    }),
+  ).toThrow("외부 장소 검색은 세 글자 이상 입력해 주세요.");
+  expect(
+    searchSchema.parse({ mapId: demoMap.id, query: "ab", external: false }),
+  ).toMatchObject({ query: "ab", external: false });
 });

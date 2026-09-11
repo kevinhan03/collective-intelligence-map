@@ -35,37 +35,43 @@ export function ProposalForm({
     [success, setSuccess] = useState<"approved" | "pending" | null>(null);
   const session = useRef(""),
     requestId = useRef(0),
-    lastSearch = useRef(0);
+    lastSearch = useRef(0),
+    resultCache = useRef(
+      new Map<string, { internal: Internal[]; candidates: Candidate[] }>(),
+    );
   async function search() {
-    if (Date.now() - lastSearch.current < 350) return;
+    const normalizedQuery = query.trim();
+    if (normalizedQuery.length < 3) {
+      setError("장소 이름을 세 글자 이상 입력해 주세요.");
+      return;
+    }
+    if (Date.now() - lastSearch.current < 400) return;
     lastSearch.current = Date.now();
     const id = ++requestId.current;
     if (!session.current) session.current = crypto.randomUUID();
+    const cacheKey = `${session.current}:${normalizedQuery.toLocaleLowerCase("ko-KR")}`;
+    const cached = resultCache.current.get(cacheKey);
+    if (cached) {
+      setInternal(cached.internal);
+      setCandidates(cached.candidates);
+      setSearched(true);
+      return;
+    }
     setBusy(true);
     setError("");
     setSelection(null);
     try {
-      const internalResult = await post<{
+      const result = await post<{
         internal: Internal[];
         candidates: Candidate[];
       }>("/api/places/search", {
         mapId: map.id,
-        query,
+        query: normalizedQuery,
+        external: true,
         session: session.current,
       });
-      const result =
-        internalResult.internal.length > 0
-          ? internalResult
-          : await post<{
-              internal: Internal[];
-              candidates: Candidate[];
-            }>("/api/places/search", {
-              mapId: map.id,
-              query,
-              external: true,
-              session: session.current,
-            });
       if (requestId.current === id) {
+        resultCache.current.set(cacheKey, result);
         setInternal(result.internal);
         setCandidates(result.candidates);
         setSearched(true);
@@ -138,7 +144,7 @@ export function ProposalForm({
             aria-label="제안할 장소 검색"
             placeholder="장소 이름을 입력하세요"
             value={query}
-            minLength={2}
+            minLength={3}
             maxLength={100}
             disabled={!enabled}
             onChange={(e) => {
@@ -150,7 +156,7 @@ export function ProposalForm({
               setSelection(null);
             }}
           />
-          <Button disabled={!enabled || busy || query.trim().length < 2}>
+          <Button disabled={!enabled || busy || query.trim().length < 3}>
             <Search size={15} />
             검색
           </Button>

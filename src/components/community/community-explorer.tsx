@@ -1,4 +1,5 @@
 "use client";
+import { useViewerState } from "./viewer-state";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useRef, useState } from "react";
@@ -39,9 +40,9 @@ import type {
 export function CommunityExplorer({
   map,
   initialPlaces,
-  viewer,
+  viewer: initialViewer,
   config,
-  myState,
+  myState: initialMyState,
   demo,
 }: {
   map: ThemeMap;
@@ -55,6 +56,9 @@ export function CommunityExplorer({
   };
   demo: boolean;
 }) {
+  const personalized = useViewerState();
+  const viewer = personalized.viewer ?? initialViewer;
+  const myState = personalized.viewer ? personalized.myState : initialMyState;
   const router = useRouter();
   const [query, setQuery] = useState(""),
     [tag, setTag] = useState("전체"),

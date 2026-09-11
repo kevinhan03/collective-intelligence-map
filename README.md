@@ -17,7 +17,7 @@ http://localhost:3000 에서 확인합니다. Supabase 키가 없으면 **명시
 
 - 공개 Theme Map 목록·규칙·장소 지도/목록·분류/검색/정렬
 - Supabase 이메일·Google OAuth 로그인, 프로필·아바타
-- 내부 DB 우선 장소 검색, Kakao/Google 서버 adapter, 독립 출처를 가진 장소 제안
+- 내부 DB 우선 장소 검색, Google Places 서버 adapter, 독립 출처를 가진 장소 제안
 - 맵 내 장소별 적합/부적합 검증, 댓글, 저장, 팔로우, 신고
 - 승인·거절·검토 필요·보관, 신고 처리, 트랜잭션 중복 병합
 - PostGIS bbox, RLS, 외부 API 예산 예약/한도/사용량 로그
@@ -41,7 +41,7 @@ DB 테스트 기본 URL은 현재 OS 사용자로 `127.0.0.1:55432/cim_test`입�
 ```text
 src/app/                    App Router 화면과 HTTP endpoints
 src/components/community/   공개 커뮤니티·참여·관리자 UI
-src/components/map/         독립적인 Google/Kakao renderer adapter
+src/components/map/         Google renderer adapter
 src/domain/                 DTO, 입력 검증, 적합도 정렬
 src/server/places/          검색 서비스 → provider router → adapter
 src/server/places/policies/ 외부 데이터 저장·표시 경계

@@ -33,3 +33,5 @@ export default async function Usage() {
     </main>
   );
 }
+// Keep authenticated flows blocking during the incremental cache migration.
+export const instant = false;

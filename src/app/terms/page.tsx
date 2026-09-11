@@ -22,13 +22,6 @@ export default function Terms() {
         >
           Google Maps 이용약관
         </a>
-        , Kakao 지도에는{" "}
-        <a
-          className="underline"
-          href="https://developers.kakao.com/terms/ko/site-terms"
-        >
-          Kakao 약관
-        </a>
         이 적용됩니다.
       </p>
       <p className="rounded border p-4 text-sm text-muted-foreground">

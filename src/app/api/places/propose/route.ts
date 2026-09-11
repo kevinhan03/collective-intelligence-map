@@ -1,3 +1,4 @@
+import { revalidateTag } from "next/cache";
 import { mayPersistReference } from "@/server/places/policies";
 import { proposalSchema } from "@/domain/validation";
 import {
@@ -36,7 +37,7 @@ export async function POST(request: Request) {
             address: claims.address ?? "",
             lat: claims.lat,
             lng: claims.lng,
-            sourceNote: `${claims.provider === "google" ? "Google Places" : "Kakao Maps"}에서 사용자가 선택한 장소입니다.`,
+            sourceNote: "Google Places에서 사용자가 선택한 장소입니다.",
           },
           u: viewer.id,
           p: claims.provider,
@@ -67,6 +68,7 @@ export async function POST(request: Request) {
         .eq("id", id);
       dbError(approvalError);
     }
+    revalidateTag("public-community", { expire: 0 });
     return json(
       { id, status: viewer.role === "admin" ? "approved" : "pending" },
       201,

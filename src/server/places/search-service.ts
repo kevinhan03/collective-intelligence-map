@@ -52,15 +52,7 @@ export async function searchPlaces(
         mapId: map.id,
         session,
         expires: Date.now() + 15 * 60 * 1000,
-        selected: name === "kakao",
-        ...(name === "kakao"
-          ? {
-              name: c.label,
-              address: c.address,
-              lat: c.lat,
-              lng: c.lng,
-            }
-          : {}),
+        selected: false,
       }),
     })),
   };
@@ -79,27 +71,21 @@ export async function selectCandidate(
   if (name !== claims.provider)
     throw new HttpError("올바른 도시의 장소를 선택해 주세요.");
   const candidate: Candidate = {
-    provider: name,
+    provider: "google",
     externalId: claims.externalId,
-    label: claims.name ?? "",
-    address: claims.address,
-    lat: claims.lat,
-    lng: claims.lng,
-    attribution: name === "google" ? "Google Maps" : "Kakao Maps",
+    label: "",
+    attribution: "Google Maps",
   };
-  const selected =
-    name === "google"
-      ? await metered(
-          {
-            provider: name,
-            operation: "details",
-            userId: viewer.id,
-            mapId,
-            session: claims.session,
-          },
-          () => adapter.details(candidate, { map, session: claims.session }),
-        )
-      : candidate;
+  const selected = await metered(
+    {
+      provider: name,
+      operation: "details",
+      userId: viewer.id,
+      mapId,
+      session: claims.session,
+    },
+    () => adapter.details(candidate, { map, session: claims.session }),
+  );
   const placeId = await resolveExistingPlace(name, claims.externalId);
   return {
     candidate: {

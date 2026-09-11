@@ -1,6 +1,8 @@
 import "server-only";
 import { z } from "zod";
 import { cache } from "react";
+import { cacheLife, cacheTag } from "next/cache";
+import { publicDb } from "@/lib/supabase/public";
 import { configured, db } from "@/lib/supabase/server";
 import type {
   Bounds,
@@ -31,8 +33,14 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
   return { id: user.id, ...profile, role: role ?? "member" } as Viewer;
 });
 export const getMaps = cache(async (): Promise<ThemeMap[]> => {
+  "use cache";
+  // Public community data changes only through mutations that invalidate this
+  // tag. A longer lifetime keeps read-heavy traffic off Postgres and Vercel
+  // functions while preserving immediate updates after a mutation.
+  cacheLife({ stale: 300, revalidate: 300, expire: 3600 });
+  cacheTag("public-community");
   if (!configured()) return [demoMap];
-  const client = await db();
+  const client = publicDb();
   const [{ data, error }, { data: statsRows, error: statsError }] =
     await Promise.all([
       client
@@ -43,7 +51,10 @@ export const getMaps = cache(async (): Promise<ThemeMap[]> => {
       client.rpc("map_stats_all"),
     ]);
   if (error) throw new Error("커뮤니티 목록을 불러올 수 없습니다.");
-  if (statsError) throw new Error("커뮤니티 집계를 불러올 수 없습니다.");
+  // Statistics are an enhancement to the public map shell. A deployment must
+  // still be able to prerender the map list while an RPC migration is rolling
+  // out, so render zero counts and retry on the next cache revalidation.
+  if (statsError) console.error("map_stats_all_unavailable");
   const statsById = new Map(
     (statsRows ?? []).map((s) => [
       s.map_id,
@@ -68,8 +79,11 @@ export const getMaps = cache(async (): Promise<ThemeMap[]> => {
   });
 });
 export const getMap = cache(async (slug: string): Promise<ThemeMap | null> => {
+  "use cache";
+  cacheLife({ stale: 300, revalidate: 300, expire: 3600 });
+  cacheTag("public-community");
   if (!configured()) return demoMap.slug === slug ? demoMap : null;
-  const client = await db();
+  const client = publicDb();
   const { data: row, error } = await client
     .from("theme_maps")
     .select("*")
@@ -81,12 +95,17 @@ export const getMap = cache(async (slug: string): Promise<ThemeMap | null> => {
   const { data: stats, error: statsError } = await client.rpc("map_stats", {
     m: row.id,
   });
-  if (statsError) throw new Error("커뮤니티 집계를 불러올 수 없습니다.");
+  if (statsError) console.error("map_stats_unavailable");
   const counts = z
     .object({
       place_count: z.number(),
       follower_count: z.number(),
       contributor_count: z.number(),
+    })
+    .catch({
+      place_count: 0,
+      follower_count: 0,
+      contributor_count: 0,
     })
     .parse(stats);
   return {
@@ -99,8 +118,11 @@ export async function getPlaces(
   map: ThemeMap,
   b: Bounds = map.bounds,
 ): Promise<MapPlace[]> {
+  "use cache";
+  cacheLife({ stale: 300, revalidate: 300, expire: 3600 });
+  cacheTag("public-community");
   if (!configured()) return demoPlaces.filter((p) => inBounds(p.lat, p.lng, b));
-  const client = await db();
+  const client = publicDb();
   const { data, error } = await client.rpc("map_places_in_bounds", {
     m: map.id,
     w: b.west,
@@ -112,8 +134,11 @@ export async function getPlaces(
   return data as MapPlace[];
 }
 export async function getComments(id: string): Promise<Comment[]> {
+  "use cache";
+  cacheLife({ stale: 60, revalidate: 120, expire: 600 });
+  cacheTag("public-community");
   if (!configured()) return [];
-  const client = await db();
+  const client = publicDb();
   const { data, error } = await client
     .from("comments")
     .select("id,map_place_id,author_id,body,created_at,profiles(handle)")
@@ -156,16 +181,11 @@ export async function getMyState(mapId: string) {
   };
 }
 export function rendererFor(map: ThemeMap): RendererConfig {
+  void map;
   if (!configured()) return { provider: "preview", key: "" };
-  const provider = map.country === "KR" ? "kakao" : "google";
-  const key =
-    provider === "kakao"
-      ? process.env.NEXT_PUBLIC_KAKAO_MAPS_KEY
-      : process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY;
   return {
-    provider,
-    key: key ?? "",
-    mapId:
-      provider === "google" ? process.env.NEXT_PUBLIC_GOOGLE_MAP_ID : undefined,
+    provider: "google",
+    key: process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY ?? "",
+    mapId: process.env.NEXT_PUBLIC_GOOGLE_MAP_ID,
   };
 }

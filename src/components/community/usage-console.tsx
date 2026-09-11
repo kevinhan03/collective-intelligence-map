@@ -28,6 +28,10 @@ export function UsageConsole({ data }: { data: UsageSnapshot }) {
   const [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false);
   const router = useRouter();
+  // Kakao rows can remain in the database as historical usage, but this MVP
+  // now sends every live lookup to Google Places.
+  const googleSettings = data.settings.filter((s) => s.provider === "google");
+  const googleEvents = data.events.filter((event) => event.provider === "google");
   return (
     <div className="space-y-8">
       <p className="rounded-lg bg-secondary p-4 text-sm leading-6">
@@ -36,7 +40,7 @@ export function UsageConsole({ data }: { data: UsageSnapshot }) {
         주세요.
       </p>
       <div className="grid gap-5 md:grid-cols-2">
-        {data.settings.map((s) => (
+        {googleSettings.map((s) => (
           <form
             key={s.provider}
             className="space-y-4 rounded-xl border bg-card p-6"
@@ -65,14 +69,14 @@ export function UsageConsole({ data }: { data: UsageSnapshot }) {
               }
             }}
           >
-            <h2 className="text-xl font-semibold capitalize">{s.provider}</h2>
+              <h2 className="text-xl font-semibold">Google Places API</h2>
             <p className="text-xs text-muted-foreground">
               이번 달{" "}
-              {data.totals.find((t) => t.provider === s.provider)?.requests ??
+              {data.totals.find((t) => t.provider === "google")?.requests ??
                 0}
               회 · 추정 $
               {(
-                (data.totals.find((t) => t.provider === s.provider)
+                (data.totals.find((t) => t.provider === "google")
                   ?.estimated_micros ?? 0) / 1000000
               ).toFixed(3)}
             </p>
@@ -146,7 +150,7 @@ export function UsageConsole({ data }: { data: UsageSnapshot }) {
               </tr>
             </thead>
             <tbody>
-              {data.events.map((e) => (
+              {googleEvents.map((e) => (
                 <tr key={e.id} className="border-b">
                   <td className="p-3">
                     {e.provider} / {e.operation}
@@ -161,7 +165,7 @@ export function UsageConsole({ data }: { data: UsageSnapshot }) {
               ))}
             </tbody>
           </table>
-          {!data.events.length && (
+          {!googleEvents.length && (
             <p className="p-6 text-sm text-muted-foreground">
               아직 외부 API 호출이 없습니다.
             </p>

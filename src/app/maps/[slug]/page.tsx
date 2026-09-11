@@ -1,7 +1,12 @@
-import { productEvent } from "@/server/events";
+import { Suspense } from "react";
+import {
+  HydrateViewer,
+  ViewerStateProvider,
+} from "@/components/community/viewer-state";
 import { notFound } from "next/navigation";
 import {
   getMap,
+  getMaps,
   getMyState,
   getPlaces,
   getViewer,
@@ -9,6 +14,13 @@ import {
 } from "@/server/queries";
 import { configured } from "@/lib/supabase/server";
 import { CommunityExplorer } from "@/components/community/community-explorer";
+export async function generateStaticParams() {
+  return (await getMaps()).map((map) => ({ slug: map.slug }));
+}
+async function Personalization({ mapId }: { mapId: string }) {
+  const [viewer, myState] = await Promise.all([getViewer(), getMyState(mapId)]);
+  return <HydrateViewer state={{ viewer, myState }} />;
+}
 export async function generateMetadata({
   params,
 }: {
@@ -28,24 +40,22 @@ export default async function MapPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  const [map, viewer] = await Promise.all([
-    getMap((await params).slug),
-    getViewer(),
-  ]);
+  const map = await getMap((await params).slug);
   if (!map) notFound();
-  if (configured()) productEvent("map_view", { mapId: map.id });
-  const [places, myState] = await Promise.all([
-    getPlaces(map),
-    getMyState(map.id),
-  ]);
+  const places = await getPlaces(map);
   return (
-    <CommunityExplorer
-      map={map}
-      initialPlaces={places}
-      viewer={viewer}
-      myState={myState}
-      config={rendererFor(map)}
-      demo={!configured()}
-    />
+    <ViewerStateProvider key={map.id}>
+      <Suspense fallback={null}>
+        <Personalization mapId={map.id} />
+      </Suspense>
+      <CommunityExplorer
+        map={map}
+        initialPlaces={places}
+        viewer={null}
+        myState={{ votes: {}, saves: [], followed: false }}
+        config={rendererFor(map)}
+        demo={!configured()}
+      />
+    </ViewerStateProvider>
   );
 }

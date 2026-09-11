@@ -1,6 +1,15 @@
 import { expect, it, vi } from "vitest";
 import { demoMap } from "@/server/demo";
-const mocks = vi.hoisted(() => ({ resolve: vi.fn().mockResolvedValue(null) }));
+const mocks = vi.hoisted(() => ({
+  resolve: vi.fn().mockResolvedValue(null),
+  details: vi.fn(async (candidate: { externalId: string }) => ({
+    ...candidate,
+    label: "빈티지 숍",
+    address: "부산",
+    lat: 35.16,
+    lng: 129.06,
+  })),
+}));
 vi.mock("@/server/queries", () => ({
   getMaps: async () => [{ ...demoMap, country: "KR" }],
 }));
@@ -8,7 +17,13 @@ vi.mock("@/server/places/canonical-resolver", () => ({
   resolveExistingPlace: mocks.resolve,
 }));
 vi.mock("@/server/places/provider-router", () => ({
-  routeProvider: () => ({ name: "kakao", adapter: {} }),
+  routeProvider: () => ({
+    name: "google",
+    adapter: { details: mocks.details },
+  }),
+}));
+vi.mock("@/server/places/usage", () => ({
+  metered: async (_args: unknown, run: () => unknown) => run(),
 }));
 import { selectCandidate } from "@/server/places/search-service";
 import {
@@ -16,22 +31,18 @@ import {
   verifyCandidate,
 } from "@/server/places/candidate-token";
 
-it("preserves Kakao search coordinates and name through selection and signed submission", async () => {
+it("keeps a Google selection intact through signed submission", async () => {
   vi.stubEnv("PROVIDER_SIGNING_SECRET", "x".repeat(32));
   try {
     const user = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
     const token = signCandidate({
-      provider: "kakao",
+      provider: "google",
       externalId: "123",
       userId: user,
       mapId: demoMap.id,
       session: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
       expires: Date.now() + 60000,
-      selected: true,
-      name: "빈티지 숍",
-      address: "부산",
-      lat: 35.16,
-      lng: 129.06,
+      selected: false,
     });
     const result = await selectCandidate(token, demoMap.id, {
       id: user,

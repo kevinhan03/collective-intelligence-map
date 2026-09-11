@@ -33,32 +33,39 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
 export const getMaps = cache(async (): Promise<ThemeMap[]> => {
   if (!configured()) return [demoMap];
   const client = await db();
-  const { data, error } = await client
-    .from("theme_maps")
-    .select("*")
-    .eq("status", "published")
-    .order("created_at");
+  const [{ data, error }, { data: statsRows, error: statsError }] =
+    await Promise.all([
+      client
+        .from("theme_maps")
+        .select("*")
+        .eq("status", "published")
+        .order("created_at"),
+      client.rpc("map_stats_all"),
+    ]);
   if (error) throw new Error("커뮤니티 목록을 불러올 수 없습니다.");
-  return Promise.all(
-    (data ?? []).map(async (row) => {
-      const { data: stats, error } = await client.rpc("map_stats", {
-        m: row.id,
-      });
-      if (error) throw new Error("커뮤니티 집계를 불러올 수 없습니다.");
-      const counts = z
-        .object({
-          place_count: z.number(),
-          follower_count: z.number(),
-          contributor_count: z.number(),
-        })
-        .parse(stats);
-      return {
-        ...row,
-        ...counts,
-        bounds: row.bounds as unknown as Bounds,
-      } as ThemeMap;
-    }),
+  if (statsError) throw new Error("커뮤니티 집계를 불러올 수 없습니다.");
+  const statsById = new Map(
+    (statsRows ?? []).map((s) => [
+      s.map_id,
+      {
+        place_count: s.place_count,
+        follower_count: s.follower_count,
+        contributor_count: s.contributor_count,
+      },
+    ]),
   );
+  return (data ?? []).map((row) => {
+    const counts = statsById.get(row.id) ?? {
+      place_count: 0,
+      follower_count: 0,
+      contributor_count: 0,
+    };
+    return {
+      ...row,
+      ...counts,
+      bounds: row.bounds as unknown as Bounds,
+    } as ThemeMap;
+  });
 });
 export const getMap = cache(async (slug: string): Promise<ThemeMap | null> => {
   if (!configured()) return demoMap.slug === slug ? demoMap : null;

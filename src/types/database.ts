@@ -496,6 +496,15 @@ export type Database = {
         Returns: Json;
       };
       map_stats: { Args: { m: string }; Returns: Json };
+      map_stats_all: {
+        Args: never;
+        Returns: {
+          map_id: string;
+          place_count: number;
+          follower_count: number;
+          contributor_count: number;
+        }[];
+      };
       reserve_provider: {
         Args: {
           cost: number;

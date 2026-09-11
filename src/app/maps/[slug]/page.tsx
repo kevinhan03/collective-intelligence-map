@@ -15,7 +15,13 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }) {
   const map = await getMap((await params).slug);
-  return { title: map?.title ?? "Theme Map" };
+  if (!map) return { title: "Theme Map" };
+  return {
+    title: map.title,
+    description: map.description,
+    openGraph: { title: map.title, description: map.description },
+    twitter: { title: map.title, description: map.description },
+  };
 }
 export default async function MapPage({
   params,

@@ -54,7 +54,8 @@ export async function POST(request: Request) {
         .eq("id", id)
         .single();
       dbError(proposalError);
-      if (!proposal) throw new HttpError("저장된 장소를 찾을 수 없습니다.", 503);
+      if (!proposal)
+        throw new HttpError("저장된 장소를 찾을 수 없습니다.", 503);
       const { error: placeError } = await admin
         .from("places")
         .update({ status: "active" })
@@ -66,7 +67,10 @@ export async function POST(request: Request) {
         .eq("id", id);
       dbError(approvalError);
     }
-    return json({ id }, 201);
+    return json(
+      { id, status: viewer.role === "admin" ? "approved" : "pending" },
+      201,
+    );
   } catch (e) {
     return failure(e);
   }

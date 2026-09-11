@@ -35,7 +35,9 @@ export default async function Login({
               Google 로그인을 완료하지 못했습니다. 다시 시도해 주세요.
             </p>
           )}
-          <AuthForm enabled={configured()} />
+          <AuthForm
+            enabled={configured() && process.env.GOOGLE_AUTH_ENABLED === "true"}
+          />
           <p className="mt-6 text-xs leading-6 text-muted-foreground">
             계속하면{" "}
             <Link href="/terms" className="underline">

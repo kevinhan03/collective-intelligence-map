@@ -2,12 +2,17 @@
 import { useEffect, useRef, useState } from "react";
 import type { MapProps } from "../types";
 type LatLng = { getLat(): number; getLng(): number };
-type KMap = { getBounds(): { getNorthEast(): LatLng; getSouthWest(): LatLng } };
+type LatLngBounds = object;
+type KMap = {
+  getBounds(): { getNorthEast(): LatLng; getSouthWest(): LatLng };
+  setBounds(bounds: LatLngBounds): void;
+};
 type Overlay = { setMap(map: KMap | null): void };
 type KakaoMaps = {
   load(fn: () => void): void;
   Map: new (el: HTMLElement, options: object) => KMap;
   LatLng: new (lat: number, lng: number) => LatLng;
+  LatLngBounds: new (southWest: LatLng, northEast: LatLng) => LatLngBounds;
   CustomOverlay: new (options: object) => Overlay;
   event: {
     addListener(target: KMap, name: string, fn: () => void): void;
@@ -71,6 +76,12 @@ export default function KakaoMap({
           ),
           level: 7,
         });
+        instance.setBounds(
+          new k.LatLngBounds(
+            new k.LatLng(bounds.south, bounds.west),
+            new k.LatLng(bounds.north, bounds.east),
+          ),
+        );
         map.current = instance;
         listener = () => {
           const b = instance.getBounds(),

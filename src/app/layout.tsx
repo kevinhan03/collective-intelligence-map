@@ -1,16 +1,33 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { SiteHeader } from "@/components/site-header";
+import { Telemetry } from "@/components/telemetry";
 import "./globals.css";
 const sans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const mono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
+const title = "Collective Map — 취향이 모이는 지도";
+const description =
+  "장소를 넘어, 맥락을 발견하세요. 함께 추천하고 검증하는 공개 주제 커뮤니티.";
 export const metadata: Metadata = {
-  title: {
-    default: "Collective Map — 취향이 모이는 지도",
-    template: "%s · Collective Map",
+  metadataBase: process.env.NEXT_PUBLIC_SITE_URL
+    ? new URL(process.env.NEXT_PUBLIC_SITE_URL)
+    : undefined,
+  title: { default: title, template: "%s · Collective Map" },
+  description,
+  openGraph: {
+    title,
+    description,
+    siteName: "Collective Map",
+    images: ["/glass-neighborhood.png"],
+    locale: "ko_KR",
+    type: "website",
   },
-  description:
-    "장소를 넘어, 맥락을 발견하세요. 함께 추천하고 검증하는 공개 주제 커뮤니티.",
+  twitter: {
+    card: "summary_large_image",
+    title,
+    description,
+    images: ["/glass-neighborhood.png"],
+  },
 };
 export default function RootLayout({
   children,
@@ -25,6 +42,7 @@ export default function RootLayout({
         </a>
         <SiteHeader />
         {children}
+        <Telemetry />
       </body>
     </html>
   );

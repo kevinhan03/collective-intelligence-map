@@ -32,7 +32,7 @@ export function ProposalForm({
     [searched, setSearched] = useState(false),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
-    [success, setSuccess] = useState(false);
+    [success, setSuccess] = useState<"approved" | "pending" | null>(null);
   const session = useRef(""),
     requestId = useRef(0),
     lastSearch = useRef(0);
@@ -106,9 +106,9 @@ export function ProposalForm({
         <Check className="mx-auto mb-5 text-primary" size={32} />
         <h2 className="text-2xl font-semibold">새로운 발견을 남겼어요.</h2>
         <p className="mt-4 text-sm leading-7 text-muted-foreground">
-          운영자가 출처와 주제 적합성을 확인한 뒤 공개합니다.
-          <br />
-          검토 중인 장소는 지도에 바로 표시되지 않습니다.
+          {success === "approved"
+            ? "지도에 바로 추가했습니다. 커뮤니티로 돌아가 확인해 보세요."
+            : "검토 요청을 보냈습니다. 운영자가 승인하면 지도에 표시됩니다."}
         </p>
         <Button asChild className="mt-6">
           <Link href={`/maps/${map.slug}`}>커뮤니티로 돌아가기</Link>
@@ -255,23 +255,26 @@ export function ProposalForm({
             setError("");
             const f = new FormData(e.currentTarget);
             try {
-              await post("/api/places/propose", {
-                mapId: map.id,
-                placeId: selection?.placeId,
-                candidateToken: selection?.token,
-                rationale: f.get("rationale"),
-                ...(!selection?.placeId && !selection?.token
-                  ? {
-                      name: f.get("name"),
-                      address: f.get("address"),
-                      category: f.get("category"),
-                      lat: Number(f.get("lat")),
-                      lng: Number(f.get("lng")),
-                      sourceNote: f.get("sourceNote"),
-                    }
-                  : {}),
-              });
-              setSuccess(true);
+              const result = await post<{ status: "approved" | "pending" }>(
+                "/api/places/propose",
+                {
+                  mapId: map.id,
+                  placeId: selection?.placeId,
+                  candidateToken: selection?.token,
+                  rationale: f.get("rationale"),
+                  ...(!selection?.placeId && !selection?.token
+                    ? {
+                        name: f.get("name"),
+                        address: f.get("address"),
+                        category: f.get("category"),
+                        lat: Number(f.get("lat")),
+                        lng: Number(f.get("lng")),
+                        sourceNote: f.get("sourceNote"),
+                      }
+                    : {}),
+                },
+              );
+              setSuccess(result.status);
             } catch (e) {
               setError((e as Error).message);
             } finally {
@@ -289,7 +292,7 @@ export function ProposalForm({
               required
               minLength={15}
               maxLength={1000}
-              placeholder="어떤 경험 때문에 Tokyo Fashion에 추천하나요? 구체적인 이유를 15자 이상 남겨 주세요."
+              placeholder={`어떤 경험 때문에 ${map.title}에 추천하나요? 구체적인 이유를 15자 이상 남겨 주세요.`}
             />
             <p className="text-xs leading-6 text-muted-foreground">
               {map.rules}

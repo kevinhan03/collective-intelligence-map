@@ -81,7 +81,10 @@ export async function selectCandidate(
   const candidate: Candidate = {
     provider: name,
     externalId: claims.externalId,
-    label: "",
+    label: claims.name ?? "",
+    address: claims.address,
+    lat: claims.lat,
+    lng: claims.lng,
     attribution: name === "google" ? "Google Maps" : "Kakao Maps",
   };
   const selected =

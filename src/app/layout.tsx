@@ -36,7 +36,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko" className={`${sans.variable} ${mono.variable}`}>
-      <body className="min-h-screen antialiased">
+      <body className="min-h-screen antialiased" suppressHydrationWarning>
         <a href="#main" className="sr-only focus:not-sr-only">
           본문으로 건너뛰기
         </a>

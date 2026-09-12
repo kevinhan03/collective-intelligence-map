@@ -67,7 +67,7 @@ export function ProposalForm({
     externalCache = useRef(new Map<string, Candidate[]>());
   // Community places are free to search. External providers cost money per
   // request, so that search only runs when the member explicitly asks for it
-  // (see "외부 지도에서 더 찾기" below) instead of on every keystroke's search.
+  // (see "Google Maps에서 더 찾기" below) instead of on every keystroke's search.
   async function search() {
     const normalizedQuery = query.trim();
     if (normalizedQuery.length < 3) {
@@ -243,17 +243,25 @@ export function ProposalForm({
               </button>
             ))}
             {!externalSearched && !selection && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={busy}
-                onClick={() => void searchExternal()}
-                className="w-full"
-              >
-                <Search size={13} />
-                {busy ? "찾는 중…" : "외부 지도에서 더 찾기"}
-              </Button>
+              <>
+                {internal.length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    커뮤니티에 등록된 장소가 없어요. 아래 버튼으로 Google
+                    Maps에서 찾아보세요.
+                  </p>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => void searchExternal()}
+                  className="w-full"
+                >
+                  <Search size={13} />
+                  {busy ? "찾는 중…" : "Google Maps에서 더 찾기"}
+                </Button>
+              </>
             )}
             {externalSearched && candidates.length > 0 && (
               <>

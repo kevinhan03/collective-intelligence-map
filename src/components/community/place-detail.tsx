@@ -171,7 +171,7 @@ export function PlaceDetail({
             ) : (
               <a href={`/go/${place.id}`} target="_blank" rel="noreferrer">
                 <ExternalLink size={14} />
-                외부 지도 열기
+                Google Maps에서 열기
               </a>
             )}
           </Button>

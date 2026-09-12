@@ -183,6 +183,7 @@ export default function GoogleMap({
     const duration = 420;
     let frame = 0;
     let zoomTimer: number | undefined;
+    let finalIdle: google.maps.MapsEventListener | undefined;
     const animatePan = (now: number) => {
       const progress = Math.min((now - startedAt) / duration, 1);
       const eased = 1 - (1 - progress) ** 3;
@@ -194,21 +195,41 @@ export default function GoogleMap({
         frame = window.requestAnimationFrame(animatePan);
         return;
       }
+      let zoom = startZoom;
       const zoomByOneStep = () => {
-        const current = map.current?.getZoom() ?? targetZoom;
-        if (current >= targetZoom) {
-          handlers.current.onFocusComplete?.(place.id);
+        const activeMap = map.current;
+        if (!activeMap) return;
+        if (zoom >= targetZoom) {
+          zoomTimer = window.setTimeout(
+            () => handlers.current.onFocusComplete?.(place.id),
+            140,
+          );
           return;
         }
-        map.current?.setZoom(current + 1);
-        zoomTimer = window.setTimeout(zoomByOneStep, 90);
+        zoom = Math.min(zoom + 1, targetZoom);
+        if (zoom === targetZoom) {
+          finalIdle = google.maps.event.addListenerOnce(
+            activeMap,
+            "idle",
+            () => {
+              zoomTimer = window.setTimeout(
+                () => handlers.current.onFocusComplete?.(place.id),
+                140,
+              );
+            },
+          );
+        }
+        activeMap.setZoom(zoom);
+        if (zoom < targetZoom)
+          zoomTimer = window.setTimeout(zoomByOneStep, 240);
       };
-      zoomTimer = window.setTimeout(zoomByOneStep, 80);
+      zoomTimer = window.setTimeout(zoomByOneStep, 180);
     };
     frame = window.requestAnimationFrame(animatePan);
     return () => {
       window.cancelAnimationFrame(frame);
       if (zoomTimer) window.clearTimeout(zoomTimer);
+      finalIdle?.remove();
     };
   }, [ready, places, selected, focusRequest]);
   return (

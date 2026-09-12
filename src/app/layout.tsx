@@ -19,7 +19,7 @@ export const metadata: Metadata = {
     title,
     description,
     siteName: "Collective Map",
-    images: ["/glass-neighborhood.png"],
+    images: ["/glass-neighborhood-og.jpg"],
     locale: "ko_KR",
     type: "website",
   },
@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title,
     description,
-    images: ["/glass-neighborhood.png"],
+    images: ["/glass-neighborhood-og.jpg"],
   },
 };
 export default function RootLayout({

@@ -159,7 +159,7 @@
 }
 body {
   min-height: 100dvh;
-  background: #535967 url('/glass-neighborhood.png') center / cover fixed;
+  background: #535967 url('/glass-neighborhood.webp') center / cover fixed;
   background-blend-mode: multiply;
 }
 .glass-panel,

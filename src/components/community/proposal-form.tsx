@@ -55,15 +55,18 @@ export function ProposalForm({
       lng?: number;
     } | null>(null),
     [searched, setSearched] = useState(false),
+    [externalSearched, setExternalSearched] = useState(false),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [success, setSuccess] = useState<"approved" | "pending" | null>(null);
   const session = useRef(""),
     requestId = useRef(0),
     lastSearch = useRef(0),
-    resultCache = useRef(
-      new Map<string, { internal: Internal[]; candidates: Candidate[] }>(),
-    );
+    internalCache = useRef(new Map<string, Internal[]>()),
+    externalCache = useRef(new Map<string, Candidate[]>());
+  // Community places are free to search. External providers cost money per
+  // request, so that search only runs when the member explicitly asks for it
+  // (see "외부 지도에서 더 찾기" below) instead of on every keystroke's search.
   async function search() {
     const normalizedQuery = query.trim();
     if (normalizedQuery.length < 3) {
@@ -73,12 +76,12 @@ export function ProposalForm({
     if (Date.now() - lastSearch.current < 400) return;
     lastSearch.current = Date.now();
     const id = ++requestId.current;
-    if (!session.current) session.current = crypto.randomUUID();
-    const cacheKey = `${session.current}:${normalizedQuery.toLocaleLowerCase("ko-KR")}`;
-    const cached = resultCache.current.get(cacheKey);
+    setExternalSearched(false);
+    setCandidates([]);
+    const cacheKey = normalizedQuery.toLocaleLowerCase("ko-KR");
+    const cached = internalCache.current.get(cacheKey);
     if (cached) {
-      setInternal(cached.internal);
-      setCandidates(cached.candidates);
+      setInternal(cached);
       setSearched(true);
       return;
     }
@@ -86,20 +89,48 @@ export function ProposalForm({
     setError("");
     setSelection(null);
     try {
-      const result = await post<{
-        internal: Internal[];
-        candidates: Candidate[];
-      }>("/api/places/search", {
-        mapId: map.id,
-        query: normalizedQuery,
-        external: true,
-        session: session.current,
-      });
+      const result = await post<{ internal: Internal[] }>(
+        "/api/places/search",
+        { mapId: map.id, query: normalizedQuery, external: false },
+      );
       if (requestId.current === id) {
-        resultCache.current.set(cacheKey, result);
+        internalCache.current.set(cacheKey, result.internal);
         setInternal(result.internal);
-        setCandidates(result.candidates);
         setSearched(true);
+      }
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function searchExternal() {
+    const normalizedQuery = query.trim();
+    const id = ++requestId.current;
+    const cacheKey = normalizedQuery.toLocaleLowerCase("ko-KR");
+    const cached = externalCache.current.get(cacheKey);
+    if (cached) {
+      setCandidates(cached);
+      setExternalSearched(true);
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      if (!session.current) session.current = crypto.randomUUID();
+      const result = await post<{ candidates: Candidate[] }>(
+        "/api/places/search",
+        {
+          mapId: map.id,
+          query: normalizedQuery,
+          external: true,
+          session: session.current,
+        },
+      );
+      if (requestId.current === id) {
+        externalCache.current.set(cacheKey, result.candidates);
+        setCandidates(result.candidates);
+        setExternalSearched(true);
       }
     } catch (e) {
       setError((e as Error).message);
@@ -124,6 +155,7 @@ export function ProposalForm({
       });
       session.current = "";
       setCandidates([]);
+      setExternalSearched(false);
     } catch (e) {
       setError((e as Error).message);
       session.current = "";
@@ -176,6 +208,7 @@ export function ProposalForm({
               requestId.current++;
               setQuery(e.target.value);
               setSearched(false);
+              setExternalSearched(false);
               setCandidates([]);
               setInternal([]);
               setSelection(null);
@@ -204,36 +237,55 @@ export function ProposalForm({
                 </span>
               </button>
             ))}
-            {internal.length === 0 && candidates.length === 0 && !busy && (
-              <p className="py-2 text-sm text-muted-foreground">
-                검색 결과가 없습니다. 다른 장소 이름으로 다시 검색해 주세요.
-              </p>
-            )}
-          </div>
-        )}
-        {candidates.length > 0 && (
-          <div className="mt-4 space-y-2">
-            <p className="text-xs text-muted-foreground">
-              검색 결과 제공:{" "}
-              <span className="font-semibold">{candidates[0].attribution}</span>
-            </p>
-            {candidates.map((c) => (
-              <button
-                key={c.externalId}
-                onClick={() => choose(c)}
+            {!externalSearched && !selection && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
                 disabled={busy}
-                className="block w-full rounded-lg border p-3 text-left hover:bg-secondary"
+                onClick={() => void searchExternal()}
+                className="w-full"
               >
-                <span className="text-sm font-medium">
-                  {highlightMatch(c.label, query)}
-                </span>
-                {c.address && (
-                  <span className="mt-1 block text-xs text-muted-foreground">
-                    {c.address}
+                <Search size={13} />
+                {busy ? "찾는 중…" : "외부 지도에서 더 찾기"}
+              </Button>
+            )}
+            {externalSearched && candidates.length > 0 && (
+              <>
+                <p className="pt-2 text-xs text-muted-foreground">
+                  검색 결과 제공:{" "}
+                  <span className="font-semibold">
+                    {candidates[0].attribution}
                   </span>
-                )}
-              </button>
-            ))}
+                </p>
+                {candidates.map((c) => (
+                  <button
+                    key={c.externalId}
+                    onClick={() => choose(c)}
+                    disabled={busy}
+                    className="block w-full rounded-lg border p-3 text-left hover:bg-secondary"
+                  >
+                    <span className="text-sm font-medium">
+                      {highlightMatch(c.label, query)}
+                    </span>
+                    {c.address && (
+                      <span className="mt-1 block text-xs text-muted-foreground">
+                        {c.address}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </>
+            )}
+            {internal.length === 0 &&
+              externalSearched &&
+              candidates.length === 0 &&
+              !busy &&
+              !selection && (
+                <p className="py-2 text-sm text-muted-foreground">
+                  검색 결과가 없습니다. 다른 장소 이름으로 다시 검색해 주세요.
+                </p>
+              )}
           </div>
         )}
         {selection && (

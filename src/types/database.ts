@@ -522,6 +522,10 @@ export type Database = {
         Args: { external_id_value: string; p: string };
         Returns: string;
       };
+      resolve_provider_place: {
+        Args: { external_id_value: string; p: string };
+        Returns: Json;
+      };
       saved_place_cards: { Args: never; Returns: Json };
       search_internal_places: { Args: { m: string; q: string }; Returns: Json };
       submit_proposal: { Args: { payload: Json }; Returns: string };

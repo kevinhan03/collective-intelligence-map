@@ -1,7 +1,7 @@
 import { productEvent } from "@/server/events";
 import "server-only";
 import { db } from "@/lib/supabase/server";
-import { resolveExistingPlace } from "./canonical-resolver";
+import { resolveExistingPlaceDetails } from "./canonical-resolver";
 import { getMaps } from "@/server/queries";
 import { HttpError } from "@/server/http";
 import { routeProvider } from "./provider-router";
@@ -66,23 +66,39 @@ export async function selectCandidate(
   const { name, adapter } = routeProvider(map.country);
   if (name !== claims.provider)
     throw new HttpError("올바른 도시의 장소를 선택해 주세요.");
-  const candidate: Candidate = {
-    provider: "google",
-    externalId: claims.externalId,
-    label: "",
-    attribution: "Google Maps",
-  };
-  const selected = await metered(
-    {
-      provider: name,
-      operation: "details",
-      userId: viewer.id,
-      mapId,
-      session: claims.session,
-    },
-    () => adapter.details(candidate, { map, session: claims.session }),
-  );
-  const placeId = await resolveExistingPlace(name, claims.externalId);
+  // A place proposed once before already paid for and stored these fields;
+  // reuse them instead of paying the provider again for the same place.
+  const existing = await resolveExistingPlaceDetails(name, claims.externalId);
+  const selected: Candidate = existing
+    ? {
+        provider: name,
+        externalId: claims.externalId,
+        label: existing.name,
+        address: existing.address,
+        lat: existing.lat,
+        lng: existing.lng,
+        attribution: name === "google" ? "Google Maps" : "Kakao Maps",
+      }
+    : await metered(
+        {
+          provider: name,
+          operation: "details",
+          userId: viewer.id,
+          mapId,
+          session: claims.session,
+        },
+        () =>
+          adapter.details(
+            {
+              provider: "google",
+              externalId: claims.externalId,
+              label: "",
+              attribution: "Google Maps",
+            },
+            { map, session: claims.session },
+          ),
+      );
+  const placeId = existing?.placeId ?? null;
   return {
     candidate: {
       ...selected,

@@ -201,6 +201,34 @@ create function storage.foldername(text) returns text[] language sql immutable a
   console.log(
     "PASS: pending privacy, approval authorization, votes, private saves, comments, follows, reports, bbox",
   );
+  const pidPlaceId = (
+    await c.query("select place_id from public.map_places where id=$1", [pid])
+  ).rows[0].place_id;
+  const noRef = await as(
+    null,
+    () =>
+      c.query(
+        "select public.resolve_provider_place('google','ext-test-nonexistent') data",
+      ),
+    "service_role",
+  );
+  assert.equal(noRef.rows[0].data, null);
+  await c.query(
+    "insert into private.place_provider_refs(place_id,provider,external_id) values($1,'google','ext-test-1')",
+    [pidPlaceId],
+  );
+  const ref = await as(
+    null,
+    () =>
+      c.query("select public.resolve_provider_place('google','ext-test-1') data"),
+    "service_role",
+  );
+  assert.equal(ref.rows[0].data.placeId, pidPlaceId);
+  assert.equal(ref.rows[0].data.name, "Test independent boutique");
+  assert.equal(typeof ref.rows[0].data.lat, "number");
+  console.log(
+    "PASS: resolve_provider_place returns canonical fields once linked, null otherwise",
+  );
   const pid2 = (
     await as(a, () =>
       c.query("select public.submit_proposal($1::jsonb) id", [

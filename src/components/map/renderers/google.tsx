@@ -103,11 +103,6 @@ export default function GoogleMap({
       .then(() => {
         if (!active || !el.current) return;
         map.current = new google.maps.Map(el.current, {
-          center: {
-            lat: (bounds.north + bounds.south) / 2,
-            lng: (bounds.east + bounds.west) / 2,
-          },
-          zoom: 12,
           mapTypeControl: false,
           streetViewControl: false,
           fullscreenControl: false,
@@ -118,6 +113,15 @@ export default function GoogleMap({
                 renderingType: google.maps.RenderingType.RASTER,
                 styles: minimalStyle,
               }),
+        });
+        // Fit to the map's configured region on first load instead of a fixed
+        // zoom, so a city-scoped map (Tokyo) and a country-scoped map (Korea)
+        // both open showing their whole area rather than a random midpoint.
+        map.current.fitBounds({
+          north: bounds.north,
+          south: bounds.south,
+          east: bounds.east,
+          west: bounds.west,
         });
         listener = map.current.addListener("idle", () => {
           const b = map.current?.getBounds();

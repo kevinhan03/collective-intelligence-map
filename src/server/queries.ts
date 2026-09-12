@@ -133,6 +133,23 @@ export async function getPlaces(
   if (error) throw new Error("장소를 불러올 수 없습니다.");
   return data as MapPlace[];
 }
+export async function getPendingPlaces(map: ThemeMap): Promise<MapPlace[]> {
+  "use cache";
+  cacheLife({ stale: 300, revalidate: 300, expire: 3600 });
+  cacheTag("public-community");
+  if (!configured()) return [];
+  const client = publicDb();
+  const { data, error } = await client.rpc("map_pending_places", {
+    m: map.id,
+  });
+  // Enhancement over the core place list: render without the pending panel
+  // rather than failing the whole page while a migration is rolling out.
+  if (error) {
+    console.error("map_pending_places_unavailable");
+    return [];
+  }
+  return data as MapPlace[];
+}
 export async function getComments(id: string): Promise<Comment[]> {
   "use cache";
   cacheLife({ stale: 60, revalidate: 120, expire: 600 });

@@ -496,6 +496,7 @@ export type Database = {
         Args: { e: number; m: string; n: number; s: number; w: number };
         Returns: Json;
       };
+      map_pending_places: { Args: { m: string }; Returns: Json };
       map_stats: { Args: { m: string }; Returns: Json };
       map_stats_all: {
         Args: never;

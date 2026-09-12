@@ -8,6 +8,7 @@ import {
   ArrowUpRight,
   Bookmark,
   Check,
+  Clock,
   Info,
   MapPin,
   Plus,
@@ -26,6 +27,7 @@ import {
 } from "@/components/ui/select";
 import { MapCanvas } from "@/components/map/map-canvas";
 import { PlaceDetail } from "./place-detail";
+import { PendingReview } from "./pending-review";
 import { post } from "./api";
 import { sortPlaces } from "@/domain/relevance";
 import { formatLocation } from "@/domain/location";
@@ -40,6 +42,7 @@ import type {
 export function CommunityExplorer({
   map,
   initialPlaces,
+  pendingPlaces,
   viewer: initialViewer,
   config,
   myState: initialMyState,
@@ -47,6 +50,7 @@ export function CommunityExplorer({
 }: {
   map: ThemeMap;
   initialPlaces: MapPlace[];
+  pendingPlaces: MapPlace[];
   viewer: Viewer | null;
   config: RendererConfig;
   myState: {
@@ -71,7 +75,8 @@ export function CommunityExplorer({
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [truncated, setTruncated] = useState(initialPlaces.length > 500),
-    [page, setPage] = useState(1);
+    [page, setPage] = useState(1),
+    [showPending, setShowPending] = useState(false);
   const latest = useRef(0);
   const places = useMemo(
     () => loaded ?? initialPlaces.slice(0, 500),
@@ -210,7 +215,7 @@ export function CommunityExplorer({
         )}
       </div>
       <div className="glass-toolbar flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3 md:px-9">
-        <div className="flex flex-nowrap gap-1.5 overflow-x-auto md:flex-wrap md:overflow-visible">
+        <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto md:flex-wrap md:overflow-visible">
           {["전체", ...map.tags.filter((t) => t !== "전체")].map((t) => (
             <Button
               key={t}
@@ -225,6 +230,17 @@ export function CommunityExplorer({
               {t}
             </Button>
           ))}
+          {pendingPlaces.length > 0 && (
+            <Button
+              size="sm"
+              variant={showPending ? "default" : "outline"}
+              className="h-8 shrink-0 rounded-full px-3 text-xs"
+              onClick={() => setShowPending((v) => !v)}
+            >
+              <Clock size={12} />
+              승인대기 {pendingPlaces.length}
+            </Button>
+          )}
         </div>
         <div className="relative w-full sm:w-60">
           <Search
@@ -250,6 +266,15 @@ export function CommunityExplorer({
         >
           {error}
         </p>
+      )}
+      {showPending && pendingPlaces.length > 0 && (
+        <PendingReview
+          places={pendingPlaces}
+          viewer={viewer}
+          votes={myState.votes}
+          demo={demo}
+          onChange={() => router.refresh()}
+        />
       )}
       <div className="glass-map-shell lg:grid lg:grid-cols-[20%_80%]">
         <section

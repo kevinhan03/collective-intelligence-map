@@ -74,10 +74,48 @@ create function storage.foldername(text) returns text[] language sql immutable a
       ]),
     )
   ).rows[0].id;
+  const pendingRows = (
+    await as(null, () => c.query("select * from public.map_places"), "anon")
+  ).rows;
+  assert.equal(pendingRows.length, 1);
+  assert.equal(pendingRows[0].status, "pending");
   assert.equal(
-    (await as(null, () => c.query("select * from public.map_places"), "anon"))
-      .rowCount,
+    (
+      await as(
+        null,
+        () =>
+          c.query(
+            "select public.map_places_in_bounds($1,139.6,35.6,139.8,35.8) items",
+            [map],
+          ),
+        "anon",
+      )
+    ).rows[0].items.length,
     0,
+  );
+  assert.equal(
+    (
+      await as(
+        null,
+        () => c.query("select public.map_pending_places($1) items", [map]),
+        "anon",
+      )
+    ).rows[0].items.length,
+    1,
+  );
+  await command(b, { action: "vote", id: pid, value: 1 });
+  assert.equal(
+    (
+      await c.query(
+        "select count(*)::int n from public.map_place_votes where map_place_id=$1",
+        [pid],
+      )
+    ).rows[0].n,
+    1,
+  );
+  await command(b, { action: "vote", id: pid, value: 0 });
+  console.log(
+    "PASS: pending proposals are readable and votable on the theme map, but hidden from the public bbox query",
   );
   await assert.rejects(
     as(b, () =>
@@ -343,6 +381,42 @@ create function storage.foldername(text) returns text[] language sql immutable a
   console.log(
     "PASS: member proposal stays pending; approval/map creation denied; verification upsert and member search allowed",
   );
+
+  const adminPid = (
+    await as(admin, () =>
+      c.query("select public.submit_proposal($1::jsonb) id", [
+        JSON.stringify({
+          ...proposal,
+          name: "Admin curated shop",
+          lat: 35.661,
+          lng: 139.701,
+        }),
+      ]),
+    )
+  ).rows[0].id;
+  assert.equal(
+    (
+      await c.query("select status from public.map_places where id=$1", [
+        adminPid,
+      ])
+    ).rows[0].status,
+    "approved",
+  );
+  assert.equal(
+    (
+      await as(
+        null,
+        () =>
+          c.query(
+            "select public.map_places_in_bounds($1,139.6,35.6,139.8,35.8) items",
+            [map],
+          ),
+        "anon",
+      )
+    ).rows[0].items.some((item) => item.id === adminPid),
+    true,
+  );
+  console.log("PASS: admin proposals publish immediately, no approval step");
 
   const functions = (
     await c.query(

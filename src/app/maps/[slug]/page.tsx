@@ -9,6 +9,7 @@ import {
   getMap,
   getMaps,
   getMyState,
+  getPendingPlaces,
   getPlaces,
   getViewer,
   rendererFor,
@@ -43,7 +44,10 @@ export default async function MapPage({
 }) {
   const map = await getMap((await params).slug);
   if (!map) notFound();
-  const places = await getPlaces(map);
+  const [places, pendingPlaces] = await Promise.all([
+    getPlaces(map),
+    getPendingPlaces(map),
+  ]);
   return (
     <ViewerStateProvider key={map.id}>
       <Suspense fallback={null}>
@@ -55,6 +59,7 @@ export default async function MapPage({
       <CommunityExplorer
         map={map}
         initialPlaces={places}
+        pendingPlaces={pendingPlaces}
         viewer={null}
         myState={{ votes: {}, saves: [], followed: false }}
         config={rendererFor(map)}

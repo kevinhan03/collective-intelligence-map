@@ -56,6 +56,7 @@ export function ProposalForm({
     } | null>(null),
     [searched, setSearched] = useState(false),
     [externalSearched, setExternalSearched] = useState(false),
+    [manualAddress, setManualAddress] = useState(""),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [success, setSuccess] = useState<"approved" | "pending" | null>(null);
@@ -104,8 +105,11 @@ export function ProposalForm({
       setBusy(false);
     }
   }
-  async function searchExternal() {
-    const normalizedQuery = query.trim();
+  // Also used for the "paste an address" fallback below: Google/Kakao search
+  // matches addresses just as well as names, so it reuses this same paid
+  // autocomplete+details flow instead of a separate geocoding API/endpoint.
+  async function searchExternal(text?: string) {
+    const normalizedQuery = (text ?? query).trim();
     const id = ++requestId.current;
     const cacheKey = normalizedQuery.toLocaleLowerCase("ko-KR");
     const cached = externalCache.current.get(cacheKey);
@@ -212,6 +216,7 @@ export function ProposalForm({
               setCandidates([]);
               setInternal([]);
               setSelection(null);
+              setManualAddress("");
             }}
           />
           <Button disabled={!enabled || busy || query.trim().length < 3}>
@@ -280,11 +285,32 @@ export function ProposalForm({
             {internal.length === 0 &&
               externalSearched &&
               candidates.length === 0 &&
-              !busy &&
               !selection && (
-                <p className="py-2 text-sm text-muted-foreground">
-                  검색 결과가 없습니다. 다른 장소 이름으로 다시 검색해 주세요.
-                </p>
+                <div className="space-y-2 rounded-lg border border-dashed p-4">
+                  <p className="text-sm text-muted-foreground">
+                    검색 결과가 없습니다. 등록된 언어가 달라 안 뜨는 경우가
+                    있어요 — 다른 지도 서비스에서 확인한 주소를 붙여넣어
+                    찾아볼 수 있습니다.
+                  </p>
+                  <Input
+                    aria-label="주소"
+                    placeholder="다른 지도 앱에서 복사한 주소를 붙여넣으세요"
+                    value={manualAddress}
+                    maxLength={250}
+                    onChange={(e) => setManualAddress(e.target.value)}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={busy || manualAddress.trim().length < 5}
+                    onClick={() => void searchExternal(manualAddress)}
+                    className="w-full"
+                  >
+                    <Search size={13} />
+                    {busy ? "찾는 중…" : "이 주소로 찾기"}
+                  </Button>
+                </div>
               )}
           </div>
         )}

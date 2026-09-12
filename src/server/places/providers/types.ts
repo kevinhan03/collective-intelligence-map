@@ -1,5 +1,10 @@
 import type { Candidate, ThemeMap } from "@/domain/types";
-export type SearchContext = { map: ThemeMap; session: string };
+export type SearchContext = {
+  map: ThemeMap;
+  session: string;
+  /** Hints which script/language to match names in (Google only). */
+  languageCode?: string;
+};
 export interface PlaceProvider {
   search(query: string, context: SearchContext): Promise<Candidate[]>;
   details(candidate: Candidate, context: SearchContext): Promise<Candidate>;

@@ -8,6 +8,7 @@ import { routeProvider } from "./provider-router";
 import { signCandidate, verifyCandidate } from "./candidate-token";
 import { metered } from "./usage";
 import type { Viewer, Candidate } from "@/domain/types";
+const hangul = /[가-힣]/;
 export async function searchPlaces(
   input: { mapId: string; query: string; external: boolean; session?: string },
   viewer: Viewer,
@@ -28,16 +29,28 @@ export async function searchPlaces(
   const { name, adapter } = routeProvider(map.country);
   const session = input.session ?? crypto.randomUUID();
   productEvent("place_search_external", { mapId: map.id });
-  const candidates = await metered(
-    {
-      provider: name,
-      operation: name === "google" ? "autocomplete" : "keyword",
-      userId: viewer.id,
-      mapId: map.id,
-      session,
-    },
-    () => adapter.search(input.query, { map, session }),
+  const operation = name === "google" ? "autocomplete" : "keyword";
+  const primaryLanguage = hangul.test(input.query) ? "ko" : "en";
+  let candidates = await metered(
+    { provider: name, operation, userId: viewer.id, mapId: map.id, session },
+    () =>
+      adapter.search(input.query, { map, session, languageCode: primaryLanguage }),
   );
+  // A place may only be indexed in the other script (e.g. an English-only
+  // listing searched for in Korean). Retry once in that case rather than
+  // showing "no results" for a place that does exist on the map.
+  if (candidates.length === 0 && name === "google") {
+    const fallbackLanguage = primaryLanguage === "ko" ? "en" : "ko";
+    candidates = await metered(
+      { provider: name, operation, userId: viewer.id, mapId: map.id, session },
+      () =>
+        adapter.search(input.query, {
+          map,
+          session,
+          languageCode: fallbackLanguage,
+        }),
+    );
+  }
   return {
     internal: internal ?? [],
     session,

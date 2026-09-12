@@ -16,7 +16,7 @@ const predictions = z.object({
 export const GOOGLE_DETAILS_MASK = "id,displayName,formattedAddress,location";
 export function googleProvider(key: string): PlaceProvider {
   return {
-    async search(query, { map, session }) {
+    async search(query, { map, session, languageCode }) {
       const result = predictions.parse(
         await providerFetch(
           "https://places.googleapis.com/v1/places:autocomplete",
@@ -31,7 +31,7 @@ export function googleProvider(key: string): PlaceProvider {
             body: JSON.stringify({
               input: query,
               sessionToken: session,
-              languageCode: "ko",
+              languageCode: languageCode ?? "ko",
               includedRegionCodes: [map.country.toLowerCase()],
               locationRestriction: {
                 rectangle: {

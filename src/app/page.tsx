@@ -5,9 +5,7 @@ import {
   MapPin,
   Users,
   Globe2,
-  Sparkles,
   Check,
-  MessageCircle,
 } from "lucide-react";
 import { getMaps } from "@/server/queries";
 import { configured } from "@/lib/supabase/server";
@@ -16,7 +14,12 @@ import { SmoothScrollLink } from "@/components/smooth-scroll-link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 export default async function Home() {
-  const maps = await getMaps();
+  const maps = [...(await getMaps())].sort(
+    (a, b) =>
+      b.follower_count - a.follower_count ||
+      b.place_count - a.place_count ||
+      a.slug.localeCompare(b.slug),
+  );
   return (
     <main id="main" className="page-wrap">
       <div className="mb-8 flex items-center justify-between border-b pb-5">
@@ -105,100 +108,80 @@ export default async function Home() {
             추천·검증 데이터가 아닙니다.
           </p>
         )}
-        <div className="grid gap-6 lg:grid-cols-[1.55fr_1fr]">
+        <p className="mb-4 text-xs text-muted-foreground">
+          팔로워 많은 순 · 동률이면 등록 장소 수 기준
+        </p>
+        <ol className="divide-y divide-white/10 rounded-3xl border border-white/15 bg-black/20 p-2 backdrop-blur-xl sm:p-3">
           {maps.map((map, i) => (
-            <Link
-              href={`/maps/${map.slug}`}
-              key={map.id}
-              className="group overflow-hidden rounded-2xl border bg-card transition-shadow hover:shadow-md"
-            >
-              <div className="relative flex h-56 flex-col justify-between overflow-hidden bg-[#24291b] p-7 text-white">
-                <div className="absolute -top-24 right-[-70px] size-96 rounded-full border-[45px] border-[#b7cfa0]/10" />
-                <div className="absolute -top-13 right-[-30px] size-72 rounded-full border border-[#b7cfa0]/30" />
-                <div className="relative flex justify-between">
-                  <Badge
-                    className="border-white/20 bg-white/10 text-white"
-                    variant="outline"
-                  >
-                    {formatLocation(map)}
-                  </Badge>
-                  <ArrowUpRight className="opacity-60 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
-                </div>
-                <div className="relative">
-                  <p className="mb-1 text-xs tracking-[.2em] text-[#edff70]">
-                    {`COMMUNITY ${String(i + 1).padStart(3, "0")}`}
-                  </p>
-                  <h3 className="text-4xl font-medium tracking-tight">
-                    {map.title}
+            <li key={map.id}>
+              <Link
+                href={`/maps/${map.slug}`}
+                className="group grid grid-cols-[44px_minmax(0,1fr)] items-start gap-3 rounded-2xl px-3 py-5 transition-colors hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-primary sm:grid-cols-[64px_minmax(0,1fr)_auto] sm:items-center sm:gap-5 sm:px-5 sm:py-6"
+              >
+                <span
+                  aria-hidden="true"
+                  className="grid size-11 place-items-center rounded-2xl border border-primary/20 bg-primary/10 text-primary sm:size-16"
+                >
+                  <MapPin className="size-6 sm:size-7" />
+                </span>
+                <div className="min-w-0">
+                  <h3 className="flex items-center gap-2 text-lg font-semibold tracking-tight group-hover:text-primary sm:text-xl">
+                    <span className="tabular-nums">{i + 1}.</span>
+                    <span className="truncate">{map.title}</span>
+                    <ArrowUpRight
+                      aria-hidden="true"
+                      className="size-4 shrink-0 opacity-0 transition-opacity group-hover:opacity-70 group-focus-visible:opacity-70"
+                    />
                   </h3>
-                </div>
-              </div>
-              <div className="p-6">
-                <p className="max-w-xl text-sm leading-6 text-muted-foreground">
-                  {map.description}
-                </p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {map.tags
-                    .filter((t) => t !== "전체")
-                    .map((t) => (
-                      <Badge
-                        key={t}
-                        variant="secondary"
-                        className="font-normal"
-                      >
-                        {t}
-                      </Badge>
-                    ))}
-                </div>
-                <div className="mt-6 flex items-center gap-5 border-t pt-4 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1.5">
-                    <MapPin size={14} />
-                    {map.place_count} 장소
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <Users size={14} />
-                    {map.follower_count} 팔로워
-                  </span>
-                  <span className="ml-auto font-medium text-primary">
-                    지도 탐색하기 →
-                  </span>
-                </div>
-              </div>
-            </Link>
-          ))}
-          <aside className="flex flex-col justify-between rounded-2xl border border-dashed bg-secondary/30 p-7">
-            <div>
-              <span className="mb-5 grid size-10 place-items-center rounded-full bg-secondary">
-                <Sparkles size={19} />
-              </span>
-              <p className="kicker">Built together</p>
-              <h3 className="mt-3 text-xl leading-8 font-medium">
-                추천은 시작이고,
-                <br />
-                검증이 지도를 만듭니다.
-              </h3>
-              <p className="mt-4 text-sm leading-7 text-muted-foreground">
-                누군가 발견한 장소에 방문 경험을 더해 주세요. 구체적인 이유와
-                작은 대화가 더 믿을 수 있는 지도를 만듭니다.
-              </p>
-            </div>
-            <div className="mt-7 space-y-4 border-t pt-6 text-sm">
-              {[
-                [MapPin, "주제에 맞는 장소를 제안하고"],
-                [Check, "방문 경험으로 적합도를 검증하고"],
-                [MessageCircle, "서로의 관점을 나눠요"],
-              ].map(([Icon, text], i) => {
-                const I = Icon as typeof MapPin;
-                return (
-                  <div key={i} className="flex items-center gap-3">
-                    <I size={16} className="text-primary" />
-                    {text as string}
+                  <p
+                    className="mt-1.5 truncate text-sm text-muted-foreground sm:text-base"
+                    title={map.description}
+                  >
+                    {map.description}
+                  </p>
+                  <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                    <span>{formatLocation(map)}</span>
+                    {map.tags
+                      .filter((tag) => tag !== "전체")
+                      .map((tag) => (
+                        <span key={tag} className="text-primary/80">
+                          #{tag}
+                        </span>
+                      ))}
                   </div>
-                );
-              })}
-            </div>
-          </aside>
-        </div>
+                </div>
+                <div className="col-start-2 flex gap-2 sm:col-start-auto sm:gap-3">
+                  <div className="flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 py-2 sm:min-w-20 sm:flex-col sm:gap-1">
+                    <MapPin
+                      aria-hidden="true"
+                      size={15}
+                      className="text-muted-foreground"
+                    />
+                    <span className="font-semibold tabular-nums">
+                      {map.place_count.toLocaleString("ko-KR")}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">
+                      장소
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 py-2 sm:min-w-20 sm:flex-col sm:gap-1">
+                    <Users
+                      aria-hidden="true"
+                      size={15}
+                      className="text-muted-foreground"
+                    />
+                    <span className="font-semibold tabular-nums">
+                      {map.follower_count.toLocaleString("ko-KR")}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">
+                      팔로워
+                    </span>
+                  </div>
+                </div>
+              </Link>
+            </li>
+          ))}
+        </ol>
       </section>
       <footer className="mt-14 flex justify-between border-t pt-5 text-xs text-muted-foreground">
         <span>작은 발견이 모여, 더 나은 선택으로.</span>

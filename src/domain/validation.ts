@@ -37,7 +37,7 @@ export const proposalSchema = z
     rationale: z
       .string()
       .trim()
-      .min(15, "추천 근거를 15자 이상 작성해 주세요.")
+      .min(5, "추천하는 점을 짧게 남겨 주세요. (5자 이상)")
       .max(1000),
     sourceNote: z.string().trim().max(1000).default(""),
     candidateToken: z.string().max(3000).optional(),
@@ -57,6 +57,11 @@ export const proposalSchema = z
       });
   });
 export const commandSchema = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("verify_place"),
+    id: z.uuid(),
+    kind: z.enum(["visited", "open", "needs_review"]),
+  }),
   z.object({
     action: z.literal("vote"),
     id: z.uuid(),

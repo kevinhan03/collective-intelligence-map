@@ -150,7 +150,7 @@ export function ProposalForm({
     <div className="space-y-7">
       {!enabled && (
         <div className="rounded-lg border bg-secondary/50 p-4 text-sm leading-6">
-          장소 제안은 로그인한 초대 기여자에게 열려 있습니다.{" "}
+          로그인하면 누구나 장소를 제안할 수 있어요.{" "}
           <Link href="/login" className="font-medium underline">
             로그인하기
           </Link>
@@ -310,7 +310,7 @@ export function ProposalForm({
                 },
               );
               setSuccess(result.status);
-              router.push(`/maps/${map.slug}`);
+              router.push(`/maps/${map.slug}?submitted=1`);
               router.refresh();
             } catch (e) {
               setError((e as Error).message);
@@ -320,23 +320,23 @@ export function ProposalForm({
           }}
         >
           <section className="space-y-4 rounded-xl border bg-card p-6">
-            <h2 className="text-sm font-semibold">02. 왜 이 주제에 맞나요?</h2>
-            <Label htmlFor="rationale">추천 근거</Label>
+            <h2 className="text-sm font-semibold">02. 어떤 점을 추천하나요?</h2>
+            <Label htmlFor="rationale">추천하는 점 한 줄</Label>
             <Textarea
               name="rationale"
               id="rationale"
-              className="min-h-32"
+              className="min-h-20"
               required
-              minLength={15}
+              minLength={5}
               maxLength={1000}
-              placeholder={`어떤 경험 때문에 ${map.title}에 추천하나요? 구체적인 이유를 15자 이상 남겨 주세요.`}
+              placeholder="예: 90년대 일본 빈티지를 찾기 좋아요"
             />
             <p className="text-xs leading-6 text-muted-foreground">
-              {map.rules}
+              짧아도 괜찮아요. 이 테마에 어울리는 점 하나만 알려 주세요.
             </p>
           </section>
           <Button disabled={busy || !enabled} className="w-full h-11">
-            {busy ? "제출 중" : "운영자에게 검토 요청"}
+            {busy ? "보내는 중…" : "장소 제안하기"}
           </Button>
         </form>
       )}

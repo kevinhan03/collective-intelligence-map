@@ -25,8 +25,6 @@ export async function searchPlaces(
     count: Array.isArray(internal) ? internal.length : 0,
   });
   if (!input.external) return { internal: internal ?? [], candidates: [] };
-  if (viewer.role === "member")
-    throw new HttpError("외부 검색은 초대 기여자에게 열려 있습니다.", 403);
   const { name, adapter } = routeProvider(map.country);
   const session = input.session ?? crypto.randomUUID();
   productEvent("place_search_external", { mapId: map.id });
@@ -62,8 +60,6 @@ export async function selectCandidate(
   mapId: string,
   viewer: Viewer,
 ) {
-  if (viewer.role === "member")
-    throw new HttpError("초대 기여자 권한이 필요합니다.", 403);
   const claims = verifyCandidate(token, viewer.id, mapId);
   const map = (await getMaps()).find((m) => m.id === mapId);
   if (!map) throw new HttpError("맵이 없습니다.", 404);

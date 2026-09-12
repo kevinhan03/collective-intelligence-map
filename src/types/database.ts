@@ -481,6 +481,7 @@ export type Database = {
       };
     };
     Functions: {
+      place_check_summary: { Args: { m: string }; Returns: Json };
       admin_snapshot: { Args: never; Returns: Json };
       community_command: { Args: { payload: Json }; Returns: Json };
       finish_provider: {

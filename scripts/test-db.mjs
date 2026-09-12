@@ -278,6 +278,72 @@ create function storage.foldername(text) returns text[] language sql immutable a
   assert.equal(attempts.filter((r) => r.status === "fulfilled").length, 1);
   console.log("PASS: concurrent provider reservations cannot exceed hard cap");
 
+  const member = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+  await c.query("insert into auth.users(id) values($1)", [member]);
+  const pending = (
+    await as(member, () =>
+      c.query("select public.submit_proposal($1::jsonb) id", [
+        JSON.stringify({
+          ...proposal,
+          name: "Member shop",
+          rationale: "빈티지 추천",
+        }),
+      ]),
+    )
+  ).rows[0].id;
+  assert.equal(
+    (
+      await c.query("select status from public.map_places where id=$1", [
+        pending,
+      ])
+    ).rows[0].status,
+    "pending",
+  );
+  await assert.rejects(
+    command(member, {
+      action: "moderate",
+      id: pending,
+      status: "approved",
+      reason: "unauthorized",
+    }),
+  );
+  await assert.rejects(
+    as(member, () =>
+      c.query(
+        "insert into public.theme_maps select * from public.theme_maps limit 1",
+      ),
+    ),
+  );
+  await command(member, { action: "verify_place", id: pid, kind: "visited" });
+  await command(member, { action: "verify_place", id: pid, kind: "open" });
+  const checks = (
+    await as(
+      null,
+      () => c.query("select public.place_check_summary($1) data", [pid]),
+      "anon",
+    )
+  ).rows[0].data;
+  assert.equal(checks.visited, 0);
+  assert.equal(checks.open, 1);
+  await assert.rejects(
+    command(member, { action: "verify_place", id: pending, kind: "visited" }),
+  );
+  await c.query(
+    "update private.provider_settings set enabled=true,daily_limit=100,monthly_limit=1000 where provider='google'",
+  );
+  await as(
+    member,
+    () =>
+      c.query(
+        "select public.reserve_provider('google','autocomplete',$1,$2,$3,2830)",
+        [member, map, "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee"],
+      ),
+    "service_role",
+  );
+  console.log(
+    "PASS: member proposal stays pending; approval/map creation denied; verification upsert and member search allowed",
+  );
+
   const functions = (
     await c.query(
       "select n.nspname,p.proname from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.prosecdef",

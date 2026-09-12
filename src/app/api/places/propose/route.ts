@@ -47,32 +47,8 @@ export async function POST(request: Request) {
       : await client.rpc("submit_proposal", { payload });
     dbError(error);
     if (!id) throw new HttpError("장소 제안을 저장하지 못했습니다.", 503);
-    if (viewer.role === "admin") {
-      const admin = serviceDb();
-      const { data: proposal, error: proposalError } = await admin
-        .from("map_places")
-        .select("place_id")
-        .eq("id", id)
-        .single();
-      dbError(proposalError);
-      if (!proposal)
-        throw new HttpError("저장된 장소를 찾을 수 없습니다.", 503);
-      const { error: placeError } = await admin
-        .from("places")
-        .update({ status: "active" })
-        .eq("id", proposal.place_id);
-      dbError(placeError);
-      const { error: approvalError } = await admin
-        .from("map_places")
-        .update({ status: "approved" })
-        .eq("id", id);
-      dbError(approvalError);
-    }
     revalidateTag("public-community", { expire: 0 });
-    return json(
-      { id, status: viewer.role === "admin" ? "approved" : "pending" },
-      201,
-    );
+    return json({ id, status: "pending" }, 201);
   } catch (e) {
     return failure(e);
   }

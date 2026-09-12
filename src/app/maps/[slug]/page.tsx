@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { ProposalNotice } from "@/components/community/proposal-notice";
 import {
   HydrateViewer,
   ViewerStateProvider,
@@ -45,6 +46,9 @@ export default async function MapPage({
   const places = await getPlaces(map);
   return (
     <ViewerStateProvider key={map.id}>
+      <Suspense fallback={null}>
+        <ProposalNotice />
+      </Suspense>
       <Suspense fallback={null}>
         <Personalization mapId={map.id} />
       </Suspense>

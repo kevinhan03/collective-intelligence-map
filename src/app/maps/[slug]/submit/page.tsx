@@ -16,13 +16,13 @@ export default async function Submit({
       <p className="kicker mb-3">Contribute to {map.title}</p>
       <h1 className="text-3xl font-semibold">나만 알기 아까운 곳이 있나요?</h1>
       <p className="mt-4 mb-8 text-sm leading-7 text-muted-foreground">
-        장소와 함께, 이 주제에 어울리는 이유를 남겨 주세요.
+        장소를 고르고, 추천하는 점을 한 줄만 남겨 주세요.
         <br />
-        함께 검토하고 믿을 수 있는 지도를 만듭니다.
+        운영자가 확인한 뒤 지도에 공개됩니다.
       </p>
       <ProposalForm
         map={map}
-        enabled={Boolean(viewer && viewer.role !== "member")}
+        enabled={Boolean(viewer)}
         config={rendererFor(map)}
       />
     </main>

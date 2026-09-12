@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { PlaceChecks } from "./place-checks";
 import { useEffect, useState } from "react";
 import {
   Bookmark,
@@ -159,6 +160,7 @@ export function PlaceDetail({
             )}
           </p>
         )}
+        <PlaceChecks id={place.id} enabled={enabled} demo={demo} />
         <div className="flex justify-between border-y py-3">
           <Button asChild variant="ghost" size="sm" disabled={demo}>
             {demo ? (

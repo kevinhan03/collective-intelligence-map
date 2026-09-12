@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +27,10 @@ type Proposal = {
   status: string;
   map_title: string;
   handle: string;
+  created_at: string;
+  last_verified_at: string | null;
+  review_count?: number;
+  negative_count?: number;
 };
 type Report = {
   id: string;
@@ -57,6 +62,23 @@ export type AdminSnapshot = {
 };
 export function AdminConsole({ snapshot }: { snapshot: AdminSnapshot }) {
   const router = useRouter();
+  const [now] = useState(() => Date.now());
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState("pending");
+  const proposals = snapshot.proposals
+    .filter(
+      (p) =>
+        (filter === "all" || p.status === filter) &&
+        `${p.name} ${p.map_title} ${p.handle}`
+          .toLowerCase()
+          .includes(query.toLowerCase()),
+    )
+    .sort(
+      (a, b) =>
+        (b.review_count ?? 0) +
+        (b.negative_count ?? 0) -
+        ((a.review_count ?? 0) + (a.negative_count ?? 0)),
+    );
   const [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [reason, setReason] = useState(""),
@@ -93,13 +115,36 @@ export function AdminConsole({ snapshot }: { snapshot: AdminSnapshot }) {
             {snapshot.proposals.filter((p) => p.status === "pending").length}
           </span>
         </h2>
-        {snapshot.proposals.length === 0 && (
+        <div className="flex flex-wrap gap-2 mb-4">
+          {Object.entries({
+            pending: "승인 대기",
+            disputed: "재검토",
+            approved: "공개 중",
+            all: "전체",
+          }).map(([value, label]) => (
+            <Button
+              key={value}
+              size="sm"
+              variant={filter === value ? "default" : "outline"}
+              onClick={() => setFilter(value)}
+            >
+              {label}
+            </Button>
+          ))}
+          <Input
+            aria-label="검토할 장소 검색"
+            placeholder="장소·테마·기여자 검색"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
+        {proposals.length === 0 && (
           <p className="rounded-lg border bg-card p-6 text-sm text-muted-foreground">
             검토할 장소가 없습니다.
           </p>
         )}
         <div className="space-y-4">
-          {snapshot.proposals.map((p) => (
+          {proposals.map((p) => (
             <article key={p.id} className="rounded-xl border bg-card p-5">
               <div className="flex justify-between gap-3">
                 <h3 className="font-semibold">{p.name}</h3>
@@ -110,6 +155,13 @@ export function AdminConsole({ snapshot }: { snapshot: AdminSnapshot }) {
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
                 위치: {p.lat}, {p.lng}
+              </p>
+              <p className="mt-3 text-xs text-muted-foreground">
+                확인 필요 {p.review_count ?? 0}건 · 부적합{" "}
+                {p.negative_count ?? 0}표
+                {(!p.last_verified_at ||
+                  now - Date.parse(p.last_verified_at) > 90 * 86400000) &&
+                  " · 최근 90일 검증 없음"}
               </p>
               <p className="mt-4 text-sm leading-7">{p.rationale}</p>
               <div className="my-4 rounded-lg bg-secondary/50 p-3 text-xs leading-6">
@@ -303,6 +355,23 @@ export function AdminConsole({ snapshot }: { snapshot: AdminSnapshot }) {
               {error}
             </p>
           )}
+          <div className="flex flex-wrap gap-2">
+            {[
+              "주제 적합성과 장소 정보를 확인했습니다.",
+              "주제에 맞는 추천 근거가 부족합니다.",
+              "중복 장소로 확인했습니다.",
+              "폐업 또는 이전 여부를 확인했습니다.",
+            ].map((text) => (
+              <Button
+                key={text}
+                size="sm"
+                variant="outline"
+                onClick={() => setReason(text)}
+              >
+                {text}
+              </Button>
+            ))}
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={busy}>취소</AlertDialogCancel>
             <Button

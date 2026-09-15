@@ -1,8 +1,12 @@
 import { expect, it, vi } from "vitest";
 import { demoMap } from "@/server/demo";
 const mocks = vi.hoisted(() => ({ route: vi.fn() }));
-vi.mock("@/server/queries", () => ({ getMaps: async () => [demoMap] }));
-vi.mock("@/server/places/provider-router", () => ({ routeProvider: mocks.route }));
+vi.mock("@/server/places/search-map", () => ({
+  getSearchMap: async () => demoMap,
+}));
+vi.mock("@/server/places/provider-router", () => ({
+  routeProvider: mocks.route,
+}));
 vi.mock("@/server/places/usage", () => ({
   metered: async (_args: unknown, run: () => unknown) => run(),
 }));
@@ -19,29 +23,24 @@ const viewer = {
   avatar_path: null,
 };
 
-it("retries a zero-result Google search once in the other script", async () => {
+it("searches Overture once and signs the candidate without promoting it", async () => {
   vi.stubEnv("PROVIDER_SIGNING_SECRET", "x".repeat(32));
   try {
-    const search = vi
-      .fn()
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([
-        {
-          provider: "google",
-          externalId: "p1",
-          label: "Found Shop",
-          attribution: "Google Maps",
-        },
-      ]);
-    mocks.route.mockReturnValue({ name: "google", adapter: { search } });
+    const search = vi.fn().mockResolvedValue([
+      {
+        provider: "overture",
+        externalId: "p1",
+        label: "Found Shop",
+        attribution: "Overture Maps",
+      },
+    ]);
+    mocks.route.mockReturnValue({ name: "overture", adapter: { search } });
     const result = await searchPlaces(
-      { mapId: demoMap.id, query: "존재하는샵", external: true },
+      { mapId: demoMap.id, query: "Found", external: true },
       viewer,
     );
-    expect(search).toHaveBeenCalledTimes(2);
-    expect(search.mock.calls[0][1]).toMatchObject({ languageCode: "ko" });
-    expect(search.mock.calls[1][1]).toMatchObject({ languageCode: "en" });
-    expect(result.candidates).toHaveLength(1);
+    expect(search).toHaveBeenCalledTimes(1);
+    expect(result.candidates[0].token).toBeTruthy();
   } finally {
     vi.unstubAllEnvs();
   }

@@ -5,7 +5,9 @@ const mocks = vi.hoisted(() => ({ rpc: vi.fn(), route: vi.fn() }));
 vi.mock("@/lib/supabase/server", () => ({
   db: async () => ({ rpc: mocks.rpc }),
 }));
-vi.mock("@/server/queries", () => ({ getMaps: async () => [demoMap] }));
+vi.mock("@/server/places/search-map", () => ({
+  getSearchMap: async () => demoMap,
+}));
 vi.mock("@/server/places/provider-router", () => ({
   routeProvider: mocks.route,
 }));
@@ -37,4 +39,24 @@ it("requires three characters before an external Places lookup", () => {
   expect(
     searchSchema.parse({ mapId: demoMap.id, query: "ab", external: false }),
   ).toMatchObject({ query: "ab", external: false });
+});
+
+it("never searches external inventory when an internal match exists", async () => {
+  mocks.route.mockClear();
+  mocks.rpc.mockResolvedValue({
+    data: [{ id: "internal", name: "Shop" }],
+    error: null,
+  });
+  const result = await searchPlaces(
+    { mapId: demoMap.id, query: "Shop", external: true },
+    {
+      id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      handle: "tester",
+      role: "member",
+      bio: "",
+      avatar_path: null,
+    },
+  );
+  expect(result.internal).toHaveLength(1);
+  expect(mocks.route).not.toHaveBeenCalled();
 });

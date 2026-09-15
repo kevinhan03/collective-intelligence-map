@@ -1,19 +1,18 @@
-import { productEvent } from "@/server/events";
 import "server-only";
+import { productEvent } from "@/server/events";
 import { db } from "@/lib/supabase/server";
 import { resolveExistingPlaceDetails } from "./canonical-resolver";
-import { getMaps } from "@/server/queries";
+import { getSearchMap } from "./search-map";
 import { HttpError } from "@/server/http";
 import { routeProvider } from "./provider-router";
 import { signCandidate, verifyCandidate } from "./candidate-token";
 import { metered } from "./usage";
 import type { Viewer, Candidate } from "@/domain/types";
-const hangul = /[가-힣]/;
 export async function searchPlaces(
   input: { mapId: string; query: string; external: boolean; session?: string },
   viewer: Viewer,
 ) {
-  const map = (await getMaps()).find((m) => m.id === input.mapId);
+  const map = await getSearchMap(input.mapId);
   if (!map) throw new HttpError("맵이 없습니다.", 404);
   const client = await db();
   const { data: internal, error } = await client.rpc("search_internal_places", {
@@ -25,32 +24,24 @@ export async function searchPlaces(
     mapId: map.id,
     count: Array.isArray(internal) ? internal.length : 0,
   });
-  if (!input.external) return { internal: internal ?? [], candidates: [] };
+  if (!input.external || (Array.isArray(internal) && internal.length > 0))
+    return { internal: internal ?? [], candidates: [] };
   const { name, adapter } = routeProvider(map.country);
   const session = input.session ?? crypto.randomUUID();
   productEvent("place_search_external", { mapId: map.id });
-  const operation = name === "google" ? "autocomplete" : "keyword";
-  const primaryLanguage = hangul.test(input.query) ? "ko" : "en";
-  let candidates = await metered(
-    { provider: name, operation, userId: viewer.id, mapId: map.id, session },
-    () =>
-      adapter.search(input.query, { map, session, languageCode: primaryLanguage }),
-  );
-  // A place may only be indexed in the other script (e.g. an English-only
-  // listing searched for in Korean). Retry once in that case rather than
-  // showing "no results" for a place that does exist on the map.
-  if (candidates.length === 0 && name === "google") {
-    const fallbackLanguage = primaryLanguage === "ko" ? "en" : "ko";
-    candidates = await metered(
-      { provider: name, operation, userId: viewer.id, mapId: map.id, session },
-      () =>
-        adapter.search(input.query, {
-          map,
-          session,
-          languageCode: fallbackLanguage,
-        }),
-    );
-  }
+  const candidates =
+    name === "overture"
+      ? await adapter.search(input.query, { map, session })
+      : await metered(
+          {
+            provider: name,
+            operation: "keyword",
+            userId: viewer.id,
+            mapId: map.id,
+            session,
+          },
+          () => adapter.search(input.query, { map, session }),
+        );
   return {
     internal: internal ?? [],
     session,
@@ -64,6 +55,19 @@ export async function searchPlaces(
         session,
         expires: Date.now() + 15 * 60 * 1000,
         selected: false,
+        // Kakao has no ID-details endpoint. Carry only signed transient fields;
+        // neither the search index nor the database stores this result.
+        ...(name === "kakao"
+          ? {
+              name: c.label,
+              address: c.address,
+              lat: c.lat,
+              lng: c.lng,
+              category: c.category,
+              locality: c.locality,
+              countryCode: c.countryCode,
+            }
+          : {}),
       }),
     })),
   };
@@ -74,45 +78,46 @@ export async function selectCandidate(
   viewer: Viewer,
 ) {
   const claims = verifyCandidate(token, viewer.id, mapId);
-  const map = (await getMaps()).find((m) => m.id === mapId);
+  const map = await getSearchMap(mapId);
   if (!map) throw new HttpError("맵이 없습니다.", 404);
   const { name, adapter } = routeProvider(map.country);
   if (name !== claims.provider)
     throw new HttpError("올바른 도시의 장소를 선택해 주세요.");
-  // A place proposed once before already paid for and stored these fields;
-  // reuse them instead of paying the provider again for the same place.
   const existing = await resolveExistingPlaceDetails(name, claims.externalId);
+  const candidate: Candidate = {
+    provider: name,
+    externalId: claims.externalId,
+    label: claims.name ?? "",
+    address: claims.address,
+    lat: claims.lat,
+    lng: claims.lng,
+    category: claims.category,
+    locality: claims.locality,
+    countryCode: claims.countryCode,
+    attribution: name === "overture" ? "Overture Maps" : "Kakao Maps",
+  };
   const selected: Candidate = existing
     ? {
-        provider: name,
-        externalId: claims.externalId,
+        ...candidate,
         label: existing.name,
         address: existing.address,
+        category: existing.category,
         lat: existing.lat,
         lng: existing.lng,
-        attribution: name === "google" ? "Google Maps" : "Kakao Maps",
       }
-    : await metered(
-        {
-          provider: name,
-          operation: "details",
-          userId: viewer.id,
-          mapId,
-          session: claims.session,
-        },
-        () =>
-          adapter.details(
-            {
-              provider: "google",
-              externalId: claims.externalId,
-              label: "",
-              attribution: "Google Maps",
-            },
-            { map, session: claims.session },
-          ),
-      );
-  const placeId = existing?.placeId ?? null;
+    : await adapter.details(candidate, { map, session: claims.session });
+  if (
+    selected.lat === undefined ||
+    selected.lng === undefined ||
+    !selected.label ||
+    selected.lat < map.bounds.south ||
+    selected.lat > map.bounds.north ||
+    selected.lng < map.bounds.west ||
+    selected.lng > map.bounds.east
+  )
+    throw new HttpError("지도 범위 안의 장소를 다시 선택해 주세요.");
   return {
+    placeId: existing?.placeId ?? null,
     candidate: {
       ...selected,
       token: signCandidate({
@@ -122,8 +127,10 @@ export async function selectCandidate(
         address: selected.address,
         lat: selected.lat,
         lng: selected.lng,
+        category: selected.category,
+        locality: selected.locality,
+        countryCode: selected.countryCode,
       }),
     },
-    placeId,
   };
 }

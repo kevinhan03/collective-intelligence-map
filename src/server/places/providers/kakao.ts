@@ -6,6 +6,7 @@ const response = z.object({
   documents: z.array(
     z.object({
       id: z.string(),
+      category_name: z.string().optional(),
       place_name: z.string(),
       address_name: z.string(),
       x: z.string(),
@@ -34,6 +35,9 @@ export function kakaoProvider(key: string): PlaceProvider {
         address: d.address_name,
         lng: Number(d.x),
         lat: Number(d.y),
+        category: d.category_name?.split(" > ").at(-1)?.slice(0, 40),
+        locality: map.city,
+        countryCode: "KR",
         attribution: "Kakao Maps",
       }));
     },

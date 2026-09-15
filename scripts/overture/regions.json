@@ -1,0 +1,17 @@
+{
+  "tokyo": {
+    "country": "JP",
+    "city": "Tokyo",
+    "bounds": { "west": 139.55, "south": 35.55, "east": 139.9, "north": 35.85 }
+  },
+  "paris": {
+    "country": "FR",
+    "city": "Paris",
+    "bounds": { "west": 2.22, "south": 48.8, "east": 2.43, "north": 48.92 }
+  },
+  "new-york": {
+    "country": "US",
+    "city": "New York",
+    "bounds": { "west": -74.26, "south": 40.49, "east": -73.7, "north": 40.92 }
+  }
+}

@@ -1,4 +1,8 @@
 import pg from "pg";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import fs from "node:fs/promises";
 import assert from "node:assert/strict";
 const url =
@@ -220,7 +224,9 @@ create function storage.foldername(text) returns text[] language sql immutable a
   const ref = await as(
     null,
     () =>
-      c.query("select public.resolve_provider_place('google','ext-test-1') data"),
+      c.query(
+        "select public.resolve_provider_place('google','ext-test-1') data",
+      ),
     "service_role",
   );
   assert.equal(ref.rows[0].data.placeId, pidPlaceId);
@@ -445,6 +451,208 @@ create function storage.foldername(text) returns text[] language sql immutable a
     true,
   );
   console.log("PASS: admin proposals publish immediately, no approval step");
+
+  // Vertical slice inventory is synthetic test data, never production POIs.
+  const beforeCount = Number(
+    (await c.query("select count(*) from public.places")).rows[0].count,
+  );
+  await c.query(`insert into public.our_search_places(source,source_id,primary_name,country_code,locality,address,latitude,longitude,category,search_text,release) values
+    ('overture','test-poi-1','Synthetic Overture Shop','JP','Tokyo','Test address',35.665,139.705,'vintage','Synthetic Overture Shop 別名','test'),
+    ('overture','test-poi-outside','Synthetic Overture Shop','FR','Paris','Test address',48.85,2.35,'vintage','Synthetic Overture Shop','test')`);
+  assert.equal(
+    Number((await c.query("select count(*) from public.places")).rows[0].count),
+    beforeCount,
+  );
+  await assert.rejects(() =>
+    as(a, () => c.query("select * from public.our_search_places")),
+  );
+  await assert.rejects(() =>
+    as(a, () =>
+      c.query("select public.search_overture_places('Synthetic',$1)", [map]),
+    ),
+  );
+  const hits = (
+    await as(
+      null,
+      () =>
+        c.query("select public.search_overture_places('別名',$1) items", [map]),
+      "service_role",
+    )
+  ).rows[0].items;
+  assert.equal(hits.length, 1);
+  assert.equal(hits[0].externalId, "test-poi-1");
+  const outside = (
+    await as(
+      null,
+      () =>
+        c.query(
+          "select public.overture_place_details('test-poi-outside',$1) item",
+          [map],
+        ),
+      "service_role",
+    )
+  ).rows[0].item;
+  assert.equal(outside, null);
+  const map2 = "22222222-2222-4222-8222-222222222229";
+  await c.query(
+    `insert into public.theme_maps(id,slug,title,description,rules,country,city,bounds,status) select $1,'test-second-theme','Second theme',description,rules,country,city,bounds,status from public.theme_maps where id=$2`,
+    [map2, map],
+  );
+  const actor1 = "abcdef01-dddd-4ddd-8ddd-dddddddddddd",
+    actor2 = "abcdef02-eeee-4eee-8eee-eeeeeeeeeeee";
+  await c.query("insert into auth.users(id) values($1),($2)", [actor1, actor2]);
+  const selected = {
+    ...proposal,
+    name: "Synthetic Overture Shop",
+    address: "Test address",
+    lat: 35.665,
+    lng: 139.705,
+  };
+  async function resolved(connection, user, mapId) {
+    return connection.query(
+      "select public.submit_resolved_proposal($1,$2,'overture','test-poi-1',true) id",
+      [JSON.stringify({ ...selected, mapId }), user],
+    );
+  }
+  // Two separate database sessions submit the same provider ID simultaneously.
+  const concurrent = new pg.Client({ connectionString: url });
+  await concurrent.connect();
+  let first, second;
+  try {
+    [first, second] = await Promise.all([
+      resolved(c, actor1, map),
+      resolved(concurrent, actor2, map2),
+    ]);
+  } finally {
+    await concurrent.end();
+  }
+  const links = (
+    await c.query(
+      "select place_id from public.map_places where id=any($1::uuid[])",
+      [[first.rows[0].id, second.rows[0].id]],
+    )
+  ).rows;
+  assert.equal(links.length, 2);
+  assert.equal(links[0].place_id, links[1].place_id);
+  assert.equal(
+    Number((await c.query("select count(*) from public.places")).rows[0].count),
+    beforeCount + 1,
+  );
+  assert.equal((await resolved(c, actor1, map)).rows[0].id, first.rows[0].id);
+  assert.equal(
+    (
+      await c.query("select source_type from public.places where id=$1", [
+        links[0].place_id,
+      ])
+    ).rows[0].source_type,
+    "overture",
+  );
+  const internalHits = (
+    await as(actor2, () =>
+      c.query("select public.search_internal_places('Synthetic',$1) items", [
+        map,
+      ]),
+    )
+  ).rows[0].items;
+  assert.equal(internalHits[0].id, links[0].place_id);
+  const pins = (
+    await as(
+      null,
+      () => c.query("select public.map_pending_places($1) items", [map]),
+      "anon",
+    )
+  ).rows[0].items;
+  assert(pins.some((p) => p.id === first.rows[0].id && p.lat === 35.665));
+  await assert.rejects(() =>
+    as(actor1, () =>
+      c.query(
+        "select public.submit_resolved_proposal($1,$2,'overture','fake',true)",
+        [JSON.stringify(selected), actor1],
+      ),
+    ),
+  );
+  // Conservative resolution reuses an exact nearby independently added place.
+  const manual = (
+    await as(actor2, () =>
+      c.query("select public.submit_proposal($1) id", [
+        JSON.stringify({ ...selected, mapId: map2 }),
+      ]),
+    )
+  ).rows[0].id;
+  assert.equal(manual, second.rows[0].id);
+  const separate = (
+    await as(actor2, () =>
+      c.query("select public.submit_proposal($1) id", [
+        JSON.stringify({
+          ...selected,
+          name: "Synthetic Overture Shop Annex",
+          mapId: map2,
+        }),
+      ]),
+    )
+  ).rows[0].id;
+  assert.notEqual(separate, manual);
+  console.log(
+    "PASS: search inventory isolation, scoped alias search, concurrent promotion, same/cross-map reuse, pending pins, conservative resolution and RPC permissions",
+  );
+
+  const etlDir = await fs.mkdtemp(path.join(tmpdir(), "cim-etl-test-"));
+  try {
+    const fixture = path.join(etlDir, "extract.ndjson");
+    const row = {
+      id: "etl-fixture",
+      names: { primary: "ETL Fixture", common: { ja: "テスト" } },
+      addresses: [{ country: "JP", locality: "Tokyo" }],
+      categories: { primary: "vintage" },
+      longitude: 139.71,
+      latitude: 35.67,
+    };
+    await fs.writeFile(fixture, JSON.stringify(row) + "\n");
+    const run = () =>
+      promisify(execFile)(
+        process.execPath,
+        ["scripts/overture/ingest.mjs", "tokyo", "2026-08-19.0", fixture],
+        { env: { ...process.env, OVERTURE_DATABASE_URL: url } },
+      );
+    const placeCount = Number(
+      (await c.query("select count(*) from public.places")).rows[0].count,
+    );
+    await run();
+    await run();
+    assert.equal(
+      Number(
+        (
+          await c.query(
+            "select count(*) from public.our_search_places where source_id='etl-fixture'",
+          )
+        ).rows[0].count,
+      ),
+      1,
+    );
+    assert.equal(
+      Number(
+        (await c.query("select count(*) from public.places")).rows[0].count,
+      ),
+      placeCount,
+    );
+    await fs.writeFile(fixture, "");
+    await assert.rejects(run);
+    assert.equal(
+      Number(
+        (
+          await c.query(
+            "select count(*) from public.our_search_places where source_id='etl-fixture'",
+          )
+        ).rows[0].count,
+      ),
+      1,
+    );
+    console.log(
+      "PASS: regional ETL normalization, idempotent refresh, no Place promotion and empty-extract rollback",
+    );
+  } finally {
+    await fs.rm(etlDir, { recursive: true, force: true });
+  }
 
   const functions = (
     await c.query(

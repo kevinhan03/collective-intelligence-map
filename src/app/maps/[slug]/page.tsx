@@ -23,6 +23,34 @@ async function Personalization({ mapId }: { mapId: string }) {
   const [viewer, myState] = await Promise.all([getViewer(), getMyState(mapId)]);
   return <HydrateViewer state={{ viewer, myState }} />;
 }
+async function MapContent({ map }: { map: Awaited<ReturnType<typeof getMap>> }) {
+  if (!map) return null;
+  const [places, pendingPlaces] = await Promise.all([
+    getPlaces(map),
+    getPendingPlaces(map),
+  ]);
+  return (
+    <CommunityExplorer
+      map={map}
+      initialPlaces={places}
+      pendingPlaces={pendingPlaces}
+      viewer={null}
+      myState={{ votes: {}, saves: [], followed: false }}
+      config={rendererFor()}
+      demo={!configured()}
+    />
+  );
+}
+
+function MapContentFallback() {
+  return (
+    <main id="main" className="page-wrap animate-pulse space-y-6" aria-label="지도 불러오는 중">
+      <div className="h-10 w-64 rounded bg-muted" />
+      <div className="h-80 rounded-xl bg-muted" />
+    </main>
+  );
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -44,10 +72,6 @@ export default async function MapPage({
 }) {
   const map = await getMap((await params).slug);
   if (!map) notFound();
-  const [places, pendingPlaces] = await Promise.all([
-    getPlaces(map),
-    getPendingPlaces(map),
-  ]);
   return (
     <ViewerStateProvider key={map.id}>
       <Suspense fallback={null}>
@@ -56,15 +80,9 @@ export default async function MapPage({
       <Suspense fallback={null}>
         <Personalization mapId={map.id} />
       </Suspense>
-      <CommunityExplorer
-        map={map}
-        initialPlaces={places}
-        pendingPlaces={pendingPlaces}
-        viewer={null}
-        myState={{ votes: {}, saves: [], followed: false }}
-        config={rendererFor(map)}
-        demo={!configured()}
-      />
+      <Suspense fallback={<MapContentFallback />}>
+        <MapContent map={map} />
+      </Suspense>
     </ViewerStateProvider>
   );
 }

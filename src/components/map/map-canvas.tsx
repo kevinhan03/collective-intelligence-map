@@ -4,6 +4,8 @@ import { MapPin } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { RendererConfig } from "@/domain/types";
 import type { MapProps } from "./types";
+const Kakao = dynamic(() => import("./renderers/kakao"), { ssr: false });
+const MapLibre = dynamic(() => import("./renderers/maplibre"), { ssr: false });
 const Google = dynamic(() => import("./renderers/google"), { ssr: false });
 const Preview = dynamic(() => import("./renderers/preview"), { ssr: false });
 export function MapCanvas({
@@ -37,10 +39,16 @@ export function MapCanvas({
         </p>
       </div>
     );
+  const Renderer =
+    config.provider === "maplibre"
+      ? MapLibre
+      : config.provider === "kakao"
+        ? Kakao
+        : Google;
   return (
     <div ref={container} className="h-full min-h-[inherit]">
       {visible ? (
-        <Google
+        <Renderer
           {...props}
           apiKey={config.key}
           mapId={config.mapId}
@@ -51,7 +59,7 @@ export function MapCanvas({
           <MapPin className="text-primary" size={28} />
           <p className="text-sm font-medium">지도를 준비하고 있어요.</p>
           <p className="max-w-xs text-xs leading-5 text-muted-foreground">
-            이 영역이 화면에 표시되면 Google 지도를 불러옵니다.
+            이 영역이 화면에 표시되면 지도를 불러옵니다.
           </p>
         </div>
       )}

@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import type { MapProps } from "../types";
+import MapLibreMap from "./maplibre";
 type LatLng = { getLat(): number; getLng(): number };
 type LatLngBounds = object;
 type KMap = {
@@ -30,34 +31,41 @@ function load(key: string) {
     loaded = new Promise((resolve, reject) => {
       const script = document.createElement("script");
       script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${encodeURIComponent(key)}&autoload=false`;
-      script.onload = () => window.kakao?.maps.load(resolve);
-      script.onerror = () => {
+      const fail = (message: string) => {
+        clearTimeout(timeout);
         loaded = undefined;
-        reject(new Error("지도 로드 실패"));
+        reject(new Error(message));
       };
+      const succeed = () => {
+        clearTimeout(timeout);
+        resolve();
+      };
+      script.onload = () => {
+        try {
+          if (!window.kakao?.maps) throw new Error("Kakao Maps SDK를 찾을 수 없습니다.");
+          window.kakao.maps.load(succeed);
+        } catch (error) {
+          fail(error instanceof Error ? error.message : "지도 로드 실패");
+        }
+      };
+      script.onerror = () => fail("지도 로드 실패");
       document.head.append(script);
-      setTimeout(() => {
+      const timeout = setTimeout(() => {
         if (!window.kakao?.maps) {
-          loaded = undefined;
-          reject(new Error("지도 연결 시간 초과"));
+          fail("지도 연결 시간 초과");
         }
       }, 15000);
     });
   return loaded;
 }
-export default function KakaoMap({
-  apiKey,
-  places,
-  selected,
-  onSelect,
-  bounds,
-  onBoundsChange,
-}: MapProps) {
+export default function KakaoMap(props: MapProps) {
+  const { apiKey, places, selected, onSelect, bounds, onBoundsChange } = props;
   const el = useRef<HTMLDivElement>(null),
     map = useRef<KMap | null>(null),
     pins = useRef<Overlay[]>([]);
   const [ready, setReady] = useState(false),
     [error, setError] = useState("");
+  const fallbackStyle = process.env.NEXT_PUBLIC_MAPLIBRE_STYLE_URL;
   const handlers = useRef({ onSelect, onBoundsChange });
   useEffect(() => {
     handlers.current = { onSelect, onBoundsChange };
@@ -127,6 +135,9 @@ export default function KakaoMap({
       });
     });
   }, [ready, places, selected]);
+  if (error && fallbackStyle) {
+    return <MapLibreMap {...props} apiKey={fallbackStyle} />;
+  }
   return (
     <div className="relative h-full min-h-[420px]">
       <div ref={el} className="absolute inset-0" />

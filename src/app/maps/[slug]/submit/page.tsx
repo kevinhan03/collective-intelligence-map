@@ -18,12 +18,12 @@ export default async function Submit({
       <p className="mt-4 mb-8 text-sm leading-7 text-muted-foreground">
         장소를 고르고, 추천하는 점을 한 줄만 남겨 주세요.
         <br />
-        운영자가 확인한 뒤 지도에 공개됩니다.
+        검토 대기 핀으로 표시되며 운영자 승인 후 일반 목록에 공개됩니다.
       </p>
       <ProposalForm
         map={map}
         enabled={Boolean(viewer)}
-        config={rendererFor(map)}
+        config={rendererFor()}
       />
     </main>
   );

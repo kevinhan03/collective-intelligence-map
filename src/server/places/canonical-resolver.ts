@@ -11,7 +11,7 @@ export type CanonicalPlace = {
 };
 /** Resolve an allowed external reference to our UUID without copying provider content. */
 export async function resolveExistingPlace(
-  provider: "google" | "kakao",
+  provider: "google" | "kakao" | "overture",
   externalId: string,
 ) {
   const { data, error } = await serviceDb().rpc("resolve_provider", {
@@ -27,7 +27,7 @@ export async function resolveExistingPlace(
  * skip a fresh (paid) provider Details request when this resolves.
  */
 export async function resolveExistingPlaceDetails(
-  provider: "google" | "kakao",
+  provider: "google" | "kakao" | "overture",
   externalId: string,
 ): Promise<CanonicalPlace | null> {
   const { data, error } = await serviceDb().rpc("resolve_provider_place", {

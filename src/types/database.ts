@@ -9,6 +9,61 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      our_search_places: {
+        Row: {
+          source: string;
+          source_id: string;
+          primary_name: string;
+          alternate_names: string[];
+          country_code: string;
+          region: string | null;
+          locality: string | null;
+          address: string;
+          latitude: number;
+          longitude: number;
+          category: string | null;
+          location: unknown;
+          search_text: string;
+          release: string;
+          imported_at: string;
+        };
+        Insert: {
+          source: string;
+          source_id: string;
+          primary_name: string;
+          alternate_names?: string[];
+          country_code: string;
+          region?: string | null;
+          locality?: string | null;
+          address?: string;
+          latitude: number;
+          longitude: number;
+          category?: string | null;
+          location?: never;
+          search_text: string;
+          release: string;
+          imported_at?: string;
+        };
+        Update: {
+          source?: string;
+          source_id?: string;
+          primary_name?: string;
+          alternate_names?: string[];
+          country_code?: string;
+          region?: string | null;
+          locality?: string | null;
+          address?: string;
+          latitude?: number;
+          longitude?: number;
+          category?: string | null;
+          location?: never;
+          search_text?: string;
+          release?: string;
+          imported_at?: string;
+        };
+        Relationships: [];
+      };
+
       comments: {
         Row: {
           author_id: string | null;
@@ -208,6 +263,8 @@ export type Database = {
       };
       places: {
         Row: {
+          source_type: string;
+          region: string | null;
           address: string;
           category: string;
           city: string;
@@ -221,6 +278,8 @@ export type Database = {
           status: string;
         };
         Insert: {
+          source_type?: string;
+          region?: string | null;
           address?: string;
           category?: string;
           city: string;
@@ -234,6 +293,8 @@ export type Database = {
           status?: string;
         };
         Update: {
+          source_type?: string;
+          region?: string | null;
           address?: string;
           category?: string;
           city?: string;
@@ -481,6 +542,11 @@ export type Database = {
       };
     };
     Functions: {
+      search_overture_places: { Args: { m: string; q: string }; Returns: Json };
+      overture_place_details: {
+        Args: { m: string; external_id_value: string };
+        Returns: Json;
+      };
       place_check_summary: { Args: { m: string }; Returns: Json };
       admin_snapshot: { Args: never; Returns: Json };
       community_command: { Args: { payload: Json }; Returns: Json };

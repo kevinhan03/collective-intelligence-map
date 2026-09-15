@@ -1,5 +1,8 @@
 import { revalidateTag } from "next/cache";
-import { mayPersistReference } from "@/server/places/policies";
+import {
+  mayPersistReference,
+  mayPersistPlaceFields,
+} from "@/server/places/policies";
 import { proposalSchema } from "@/domain/validation";
 import {
   body,
@@ -26,6 +29,11 @@ export async function POST(request: Request) {
       (!claims.name || claims.lat === undefined || claims.lng === undefined)
     )
       throw new HttpError("장소 정보를 다시 선택해 주세요.");
+    if (claims && !mayPersistPlaceFields(claims.provider))
+      throw new HttpError(
+        "이 검색 공급자의 장소 정보 저장이 활성화되지 않았습니다. 직접 알고 있는 정보로 새 장소를 등록해 주세요.",
+        409,
+      );
     const { candidateToken: _, ...payload } = input;
     void _;
     const client = await db();
@@ -33,11 +41,13 @@ export async function POST(request: Request) {
       ? await serviceDb().rpc("submit_resolved_proposal", {
           payload: {
             ...payload,
+            placeId: undefined,
             name: claims.name,
+            category: claims.category ?? payload.category,
             address: claims.address ?? "",
             lat: claims.lat,
             lng: claims.lng,
-            sourceNote: "Google Places에서 사용자가 선택한 장소입니다.",
+            sourceNote: `${claims.provider} 검색 결과에서 사용자가 선택한 장소입니다.`,
           },
           u: viewer.id,
           p: claims.provider,
@@ -48,7 +58,12 @@ export async function POST(request: Request) {
     dbError(error);
     if (!id) throw new HttpError("장소 제안을 저장하지 못했습니다.", 503);
     revalidateTag("public-community", { expire: 0 });
-    return json({ id, status: "pending" }, 201);
+    const { data: saved } = await client
+      .from("map_places")
+      .select("status")
+      .eq("id", id)
+      .single();
+    return json({ id, status: saved?.status ?? "pending" }, 201);
   } catch (e) {
     return failure(e);
   }

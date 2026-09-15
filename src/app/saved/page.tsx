@@ -16,7 +16,7 @@ export default async function Saved() {
     <SavedPlaces
       initialCards={cards}
       maps={maps}
-      config={rendererFor(maps[0]!)}
+      config={rendererFor()}
     />
   );
 }

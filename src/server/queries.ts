@@ -119,7 +119,13 @@ export async function getPlaces(
   b: Bounds = map.bounds,
 ): Promise<MapPlace[]> {
   "use cache";
-  cacheLife({ stale: 300, revalidate: 300, expire: 3600 });
+  // Local development reads newly added places within seconds. Production keeps
+  // the longer cache and uses the public-community tag after mutations.
+  if (process.env.NODE_ENV === "development") {
+    cacheLife("seconds");
+  } else {
+    cacheLife({ stale: 300, revalidate: 300, expire: 3600 });
+  }
   cacheTag("public-community");
   if (!configured()) return demoPlaces.filter((p) => inBounds(p.lat, p.lng, b));
   const client = publicDb();
@@ -130,7 +136,12 @@ export async function getPlaces(
     e: b.east,
     n: b.north,
   });
-  if (error) throw new Error("장소를 불러올 수 없습니다.");
+  // Keep the map page usable when a public RPC has a transient failure. The
+  // next tagged revalidation retries the query instead of caching an error page.
+  if (error) {
+    console.error("map_places_in_bounds_unavailable", error.code);
+    return [];
+  }
   return data as MapPlace[];
 }
 export async function getPendingPlaces(map: ThemeMap): Promise<MapPlace[]> {
@@ -197,12 +208,9 @@ export async function getMyState(mapId: string) {
     followed: Boolean(follow.data?.length),
   };
 }
-export function rendererFor(map: ThemeMap): RendererConfig {
-  void map;
+export function rendererFor(): RendererConfig {
   if (!configured()) return { provider: "preview", key: "" };
-  return {
-    provider: "google",
-    key: process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY ?? "",
-    mapId: process.env.NEXT_PUBLIC_GOOGLE_MAP_ID,
-  };
+  // Basemap rendering is independent from place search. Korea still uses the
+  // Kakao Local API in provider-router.ts; MapTiler renders every map.
+  return { provider: "maplibre", key: process.env.NEXT_PUBLIC_MAPLIBRE_STYLE_URL ?? "" };
 }

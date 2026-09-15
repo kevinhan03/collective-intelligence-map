@@ -16,7 +16,6 @@ export const onRequestError: Instrumentation.onRequestError = (
         error && typeof error === "object" && "digest" in error
           ? error.digest
           : undefined,
-      at: new Date().toISOString(),
     }),
   );
 };

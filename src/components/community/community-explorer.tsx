@@ -1,8 +1,8 @@
 "use client";
 import { useViewerState } from "./viewer-state";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   ArrowUpRight,
@@ -64,6 +64,7 @@ export function CommunityExplorer({
   const viewer = personalized.viewer ?? initialViewer;
   const myState = personalized.viewer ? personalized.myState : initialMyState;
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [query, setQuery] = useState(""),
     [tag, setTag] = useState("전체"),
     [sort, setSort] = useState<Sort>("relevance"),
@@ -78,6 +79,7 @@ export function CommunityExplorer({
     [page, setPage] = useState(1),
     [showPending, setShowPending] = useState(false);
   const latest = useRef(0);
+  const openedPlaceId = useRef<string | null>(null);
   const places = useMemo(
     () => loaded ?? initialPlaces.slice(0, 500),
     [initialPlaces, loaded],
@@ -96,7 +98,20 @@ export function CommunityExplorer({
       ),
     [places, tag, query, sort],
   );
-  const onBoundsChange = useCallback((b: Bounds) => setViewport(b), []);
+  const onBoundsChange = useCallback((b: Bounds) => {
+    setViewport((current) => {
+      if (
+        current &&
+        Math.abs(current.north - b.north) < 0.000001 &&
+        Math.abs(current.east - b.east) < 0.000001 &&
+        Math.abs(current.south - b.south) < 0.000001 &&
+        Math.abs(current.west - b.west) < 0.000001
+      ) {
+        return current;
+      }
+      return b;
+    });
+  }, []);
   async function searchArea() {
     if (!viewport) return;
     const requestId = ++latest.current;
@@ -119,7 +134,8 @@ export function CommunityExplorer({
       if (requestId === latest.current) setBusy(false);
     }
   }
-  const selectedPlace = places.find((p) => p.id === detailId) ?? null;
+  const selectedPlace =
+    [...places, ...pendingPlaces].find((p) => p.id === detailId) ?? null;
   const focusPlace = useCallback(
     (id: string) => {
       setSelected(id);
@@ -132,6 +148,17 @@ export function CommunityExplorer({
     },
     [config.provider],
   );
+  useEffect(() => {
+    const placeId = searchParams.get("place");
+    if (!placeId || openedPlaceId.current === placeId) return;
+    const mapPlace = [...places, ...pendingPlaces].find(
+      (place) => place.place_id === placeId,
+    );
+    if (!mapPlace) return;
+    openedPlaceId.current = placeId;
+    const timer = window.setTimeout(() => focusPlace(mapPlace.id), 0);
+    return () => window.clearTimeout(timer);
+  }, [focusPlace, pendingPlaces, places, searchParams]);
   return (
     <main id="main" className="mx-auto max-w-[1440px]">
       <div className="map-hero border-b px-5 py-3 md:px-9">
@@ -388,9 +415,14 @@ export function CommunityExplorer({
           className="relative min-h-[420px] lg:h-[calc(100dvh-250px)]"
         >
           <MapCanvas
-            places={filtered}
+            places={[...filtered, ...pendingPlaces]}
             selected={selected}
-            onSelect={focusPlace}
+            onSelect={(id) => {
+              if (pendingPlaces.some((p) => p.id === id)) {
+                setSelected(id);
+                setShowPending(true);
+              } else focusPlace(id);
+            }}
             onFocusComplete={(id) => setDetailId(id)}
             focusRequest={focusRequest}
             bounds={map.bounds}
@@ -415,7 +447,10 @@ export function CommunityExplorer({
       <PlaceDetail
         key={detailId ?? "closed"}
         place={selectedPlace}
-        onClose={() => setDetailId(null)}
+        onClose={() => {
+          setDetailId(null);
+          setSelected(null);
+        }}
         viewer={viewer}
         vote={myState.votes[detailId ?? ""] ?? 0}
         saved={myState.saves.includes(detailId ?? "")}

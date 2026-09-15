@@ -3,13 +3,16 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { HttpError } from "@/server/http";
 const schema = z.object({
-  provider: z.enum(["google", "kakao"]),
+  provider: z.enum(["google", "kakao", "overture"]),
   externalId: z.string().max(300),
   userId: z.uuid(),
   mapId: z.uuid(),
   session: z.uuid(),
   expires: z.number(),
   selected: z.boolean(),
+  category: z.string().max(40).optional(),
+  locality: z.string().max(120).optional(),
+  countryCode: z.string().length(2).optional(),
   name: z.string().max(120).optional(),
   address: z.string().max(250).optional(),
   lat: z.number().min(-90).max(90).optional(),

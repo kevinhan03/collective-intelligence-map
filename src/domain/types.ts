@@ -55,17 +55,35 @@ export type Viewer = {
 };
 export type Sort = "relevance" | "newest" | "verified";
 export type RendererConfig = {
-  provider: "google" | "kakao" | "preview";
+  provider: "google" | "kakao" | "maplibre" | "preview";
   key: string;
   mapId?: string;
 };
 export type Candidate = {
-  provider: "google" | "kakao";
+  provider: "google" | "kakao" | "overture";
   externalId: string;
   label: string;
   address?: string;
   lat?: number;
   lng?: number;
+  category?: string;
+  locality?: string;
+  countryCode?: string;
   attribution: string;
   token?: string;
+};
+
+/** Normalized discovery inventory; never contains Theme Map/community activity. */
+export type SearchPlace = {
+  source: "overture" | "kakao" | "user";
+  sourceId: string;
+  primaryName: string;
+  alternateNames?: string[];
+  countryCode: string;
+  region?: string;
+  locality?: string;
+  address?: string;
+  latitude: number;
+  longitude: number;
+  category?: string;
 };

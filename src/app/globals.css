@@ -206,11 +206,8 @@ body {
 }
 .glass-map-shell {
   margin: 18px;
-  border-radius: 24px;
-  overflow: hidden;
-  border: 1px solid var(--glass-stroke);
-  background: rgb(126 139 157 / 12%);
-  box-shadow: 0 22px 54px var(--glass-shadow), inset 0 1px 0 var(--glass-highlight);
+  overflow: visible;
+  background: transparent;
 }
 .glass-toolbar {
   margin: 0 18px;
@@ -223,6 +220,9 @@ body {
 .map-hero { border-color: rgb(255 255 255 / 10%); }
 .place-list {
   background: rgb(36 44 55 / 28%);
+  border: 1px solid var(--glass-stroke);
+  border-radius: 20px;
+  box-shadow: 0 22px 54px var(--glass-shadow), inset 0 1px 0 var(--glass-highlight);
   backdrop-filter: blur(28px);
   padding: 8px;
 }
@@ -240,6 +240,12 @@ body {
 }
 .place-glass-card:hover { background: rgb(210 223 239 / 16%); }
 .explorer-layout { position: relative; }
+.explorer-map {
+  overflow: hidden;
+  border: 1px solid var(--glass-stroke);
+  border-radius: 20px;
+  box-shadow: 0 22px 54px var(--glass-shadow), inset 0 1px 0 var(--glass-highlight);
+}
 .place-detail-panel {
   position: fixed;
   inset: auto 0 0;
@@ -249,21 +255,25 @@ body {
   overscroll-behavior: contain;
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 24px 24px 0 0;
+  border-radius: 20px 20px 0 0;
   box-shadow: 0 -8px 32px #0003;
 }
 @media (min-width: 1024px) {
   .explorer-layout {
     display: grid;
     grid-template-columns: 280px minmax(0, 1fr);
+    gap: 12px;
   }
-  .explorer-map { grid-column: 2; grid-row: 1; }
+  .explorer-map {
+    grid-column: 2;
+    grid-row: 1;
+  }
   .place-detail-panel {
     position: absolute;
-    inset: 0 auto 0 280px;
+    inset: 0 auto 0 292px;
     width: 360px;
     max-height: none;
-    border-radius: 0;
+    border-radius: 18px;
     box-shadow: 8px 0 24px #0003;
   }
 }
@@ -283,7 +293,8 @@ body {
     min-width: 0;
     height: calc(100dvh - 250px);
     min-height: 480px;
-    box-shadow: none;
+    border-radius: 18px;
+    box-shadow: 0 22px 54px var(--glass-shadow), inset 0 1px 0 var(--glass-highlight);
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -297,7 +308,7 @@ body {
 }
 @media (max-width: 640px) {
   .glass-header { width: calc(100% - 16px); margin-block: 8px; }
-  .glass-map-shell { margin: 10px; border-radius: 20px; }
+  .glass-map-shell { margin: 10px; }
   .glass-toolbar { margin-inline: 10px; }
 }
 

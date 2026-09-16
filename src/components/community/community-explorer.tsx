@@ -305,7 +305,7 @@ export function CommunityExplorer({
       )}
       <div className={`glass-map-shell explorer-layout ${selectedPlace ? "has-detail" : ""}`}>
         <section
-          className="place-list lg:h-fit lg:max-h-[calc(100dvh-250px)] lg:min-h-[480px] lg:self-start lg:overflow-y-auto lg:border-r"
+          className="place-list lg:h-fit lg:max-h-[calc(100dvh-250px)] lg:min-h-[480px] lg:self-start lg:overflow-y-auto"
           aria-label="장소 목록"
         >
           <div className="place-list-heading sticky top-0 z-10 flex items-center justify-between border-b px-3 py-3">

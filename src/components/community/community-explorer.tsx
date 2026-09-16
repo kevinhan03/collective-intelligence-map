@@ -143,7 +143,7 @@ export function CommunityExplorer({
         setDetailId(id);
         return;
       }
-      setDetailId(null);
+      setDetailId((current) => current ? id : null);
       setFocusRequest((request) => request + 1);
     },
     [config.provider],
@@ -303,7 +303,7 @@ export function CommunityExplorer({
           onChange={() => router.refresh()}
         />
       )}
-      <div className="glass-map-shell lg:grid lg:grid-cols-[20%_80%]">
+      <div className={`glass-map-shell explorer-layout ${selectedPlace ? "has-detail" : ""}`}>
         <section
           className="place-list lg:h-fit lg:max-h-[calc(100dvh-250px)] lg:min-h-[480px] lg:self-start lg:overflow-y-auto lg:border-r"
           aria-label="장소 목록"
@@ -331,16 +331,17 @@ export function CommunityExplorer({
             return (
               <article
                 key={p.id}
-                className={`place-glass-card group p-3.5 transition-colors ${selected === p.id ? "ring-1 ring-primary/60" : ""}`}
+                onClick={() => focusPlace(p.id)}
+                className={`place-glass-card group cursor-pointer p-3 transition-colors ${selected === p.id ? "ring-1 ring-primary/60" : ""}`}
               >
-                <div className="mb-3 flex items-start gap-3">
+                <div className="flex items-start gap-2">
                   <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-secondary text-[11px] font-semibold text-primary">
                     {i + 1}
                   </span>
                   <div className="min-w-0 flex-1">
                     <button
-                      onClick={() => focusPlace(p.id)}
-                      className="text-left text-base font-semibold tracking-tight hover:underline"
+                      onClick={(event) => { event.stopPropagation(); focusPlace(p.id); }}
+                      className="text-left text-sm font-semibold tracking-tight hover:underline"
                     >
                       {p.name}
                     </button>
@@ -350,16 +351,13 @@ export function CommunityExplorer({
                   </div>
                   <button
                     aria-label={`${p.name} 상세 보기`}
-                    onClick={() => focusPlace(p.id)}
+                    onClick={(event) => { event.stopPropagation(); focusPlace(p.id); }}
                     className="p-1 text-muted-foreground"
                   >
                     <ArrowUpRight size={16} />
                   </button>
                 </div>
-                <p className="ml-9 line-clamp-2 text-[13px] leading-6 text-muted-foreground">
-                  {p.rationale}
-                </p>
-                <div className="mt-3 ml-9 flex items-center justify-between">
+                <div className="mt-2 ml-8 flex items-center justify-between">
                   <div className="flex items-center gap-2 text-[11px]">
                     <span className="flex items-center gap-1 rounded bg-secondary px-2 py-1 font-medium text-primary">
                       <Check size={11} />
@@ -373,7 +371,7 @@ export function CommunityExplorer({
                   </div>
                   <button
                     aria-label={`${p.name} 저장`}
-                    onClick={() => focusPlace(p.id)}
+                    onClick={(event) => { event.stopPropagation(); focusPlace(p.id); }}
                     className="p-1 text-muted-foreground"
                   >
                     <Bookmark
@@ -412,7 +410,7 @@ export function CommunityExplorer({
         </section>
         <section
           aria-label="장소 지도"
-          className="relative min-h-[420px] lg:h-[calc(100dvh-250px)]"
+          className="explorer-map relative min-w-0 min-h-[420px] lg:h-[calc(100dvh-250px)]"
         >
           <MapCanvas
             places={[...filtered, ...pendingPlaces]}
@@ -443,7 +441,6 @@ export function CommunityExplorer({
             순위는 일반 별점이 아닌, 이 주제에 대한 검증입니다.
           </div>
         </section>
-      </div>
       <PlaceDetail
         key={detailId ?? "closed"}
         place={selectedPlace}
@@ -460,6 +457,7 @@ export function CommunityExplorer({
           router.refresh();
         }}
       />
+      </div>
     </main>
   );
 }

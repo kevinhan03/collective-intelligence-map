@@ -159,12 +159,12 @@ export default function GoogleMap({
         title: p.name,
         label: {
           text: String(i + 1),
-          color: selected === p.id ? "#171b08" : "#171b08",
+          color: selected === p.id ? "#ffffff" : p.status === "pending" ? "#475569" : "#ffffff",
         },
         icon: {
           path: google.maps.SymbolPath.CIRCLE,
           scale: selected === p.id ? 19 : 15,
-          fillColor: selected === p.id ? "#ffffff" : "#edff70",
+          fillColor: selected === p.id ? "#f97316" : p.status === "pending" ? "#d1d5db" : "#23614a",
           fillOpacity: 1,
           strokeColor: "white",
           strokeWeight: 3,

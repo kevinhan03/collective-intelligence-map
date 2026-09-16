@@ -9,14 +9,8 @@ import {
   Flag,
   MessageCircle,
   ThumbsDown,
+  X,
 } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -45,6 +39,14 @@ export function PlaceDetail({
     [body, setBody] = useState(""),
     [report, setReport] = useState<string | null>(null),
     [reason, setReason] = useState("");
+  useEffect(() => {
+    if (!place) return;
+    const close = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, [place, onClose]);
   useEffect(() => {
     if (!place) return;
     const controller = new AbortController();
@@ -77,23 +79,22 @@ export function PlaceDetail({
   const total = place.positive + place.negative;
   const enabled = Boolean(viewer) && !demo;
   return (
-    <Dialog
-      open={Boolean(place)}
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
-    >
-      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-xl">
-        <DialogHeader>
+    <aside aria-label={`${place.name} 장소 상세`} className="place-detail-panel">
+      <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-card px-5 py-3">
+        <span className="text-xs font-medium text-muted-foreground">장소 상세</span>
+        <Button variant="ghost" size="icon" aria-label="장소 상세 닫기" onClick={onClose}><X size={18} /></Button>
+      </div>
+      <div className="space-y-6 p-5">
+        <header className="space-y-3">
           <Badge variant="secondary" className="mb-2">
             {place.category}
           </Badge>
           {place.status === "disputed" && (
             <Badge variant="outline">주제 적합성 재검토 중</Badge>
           )}
-          <DialogTitle className="text-2xl">{place.name}</DialogTitle>
-          <DialogDescription>{place.address}</DialogDescription>
-        </DialogHeader>
+          <h2 className="text-2xl font-semibold tracking-tight">{place.name}</h2>
+          <p className="text-sm text-muted-foreground">{place.address}</p>
+        </header>
         <div className="rounded-xl bg-secondary/60 p-5">
           <p className="kicker mb-2">Why it belongs here</p>
           <p className="text-sm leading-7">{place.rationale}</p>
@@ -313,7 +314,7 @@ export function PlaceDetail({
             {error}
           </p>
         )}
-      </DialogContent>
-    </Dialog>
+      </div>
+    </aside>
   );
 }

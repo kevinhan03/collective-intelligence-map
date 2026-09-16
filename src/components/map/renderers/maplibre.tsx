@@ -87,22 +87,23 @@ export default function MapLibreMap(props: MapProps) {
     const markers = props.places.map((p) => {
       const button = document.createElement("button");
       button.type = "button";
-      button.textContent = p.status === "pending" ? "?" : "●";
       button.title = p.name;
       button.setAttribute(
         "aria-label",
         `${p.name}${p.status === "pending" ? " · 검토 대기" : ""}`,
       );
-      button.className =
-        "rounded-full border-2 border-white shadow-md w-8 h-8 text-white";
-      button.style.background =
-        props.selected === p.id
-          ? "#18181b"
-          : p.status === "pending"
-            ? "#a16207"
-            : "#23614a";
+      button.className = "map-marker";
+      button.dataset.selected = String(props.selected === p.id);
+      button.dataset.status = p.status;
+      const face = document.createElement("span");
+      face.className = "map-marker-face";
+      const icon = document.createElement("span");
+      icon.textContent = p.status === "pending" ? "···" : "✓";
+      icon.setAttribute("aria-hidden", "true");
+      face.append(icon);
+      button.append(face);
       button.onclick = () => latest.current.onSelect(p.id);
-      return new maplibregl.Marker({ element: button })
+      return new maplibregl.Marker({ element: button, anchor: "bottom" })
         .setLngLat([p.lng, p.lat])
         .addTo(map);
     });

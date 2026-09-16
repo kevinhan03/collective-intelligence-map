@@ -26,7 +26,7 @@ test("discover community, filter venues, open context and protect participation"
   await page
     .getByRole("button", { name: "Second Chapter", exact: true })
     .click();
-  await expect(page.getByRole("dialog")).toBeVisible();
+  await expect(page.getByRole("complementary", { name: "Second Chapter 장소 상세" })).toBeVisible();
   await expect(page.getByText("Why it belongs here")).toBeVisible();
   await expect(page.getByRole("button", { name: "적합해요 0" })).toBeDisabled();
   await page.keyboard.press("Escape");

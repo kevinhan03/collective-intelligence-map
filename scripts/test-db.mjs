@@ -61,6 +61,14 @@ create function storage.foldername(text) returns text[] language sql immutable a
       ]),
     );
   }
+  await assert.rejects(() => as(a, () => c.query("select public.reserve_search_operation($1,'gemini')", [a])));
+  for (let i=0;i<31;i++) {
+    const result = await as(null, () => c.query("select public.reserve_search_operation($1,'gemini') allowed", [a]), "service_role");
+    assert.equal(result.rows[0].allowed, i<30);
+  }
+  await c.query("update private.search_operation_limits set count=1000 where scope='global' and operation='gemini'");
+  assert.equal((await as(null, () => c.query("select public.reserve_search_operation($1,'gemini') allowed", [b]), "service_role")).rows[0].allowed, false);
+  console.log("PASS: service-only search reservations enforce per-user and global caps");
   const proposal = {
     mapId: map,
     name: "Test independent boutique",

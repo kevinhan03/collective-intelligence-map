@@ -36,7 +36,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ko" className={`${sans.variable} ${mono.variable}`}>
+    <html
+      lang="ko"
+      className={`${sans.variable} ${mono.variable}`}
+      data-scroll-behavior="smooth"
+    >
       <body className="min-h-screen antialiased" suppressHydrationWarning>
         <a href="#main" className="sr-only focus:not-sr-only">
           본문으로 건너뛰기

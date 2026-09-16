@@ -10,7 +10,7 @@ import {
   getMaps,
   getMyState,
   getPendingPlaces,
-  getPlaces,
+  getInitialPlaces,
   getViewer,
   rendererFor,
 } from "@/server/queries";
@@ -26,7 +26,7 @@ async function Personalization({ mapId }: { mapId: string }) {
 async function MapContent({ map }: { map: Awaited<ReturnType<typeof getMap>> }) {
   if (!map) return null;
   const [places, pendingPlaces] = await Promise.all([
-    getPlaces(map),
+    getInitialPlaces(map),
     getPendingPlaces(map),
   ]);
   return (

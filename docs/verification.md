@@ -6,7 +6,7 @@
 - PostgreSQL/PostGIS 통합 검사: RLS, 승인 권한, 중복 투표, 비공개 저장, bbox, 병합과 롤백, 동시 API 예산 예약 통과.
 - 실제 로컬 Supabase: 서로 다른 3명 세션으로 이메일 인증, 프로필, Storage 아바타, 제안→승인, 투표·저장·댓글·팔로우·신고→처리 확인. 해당 흐름에서 외부 Places 호출 0건.
 - 로컬 Supabase security advisor 문제 없음.
-- 원격 Supabase `cujmxwlwijwomngchwoi`: 기존 public/private 테이블이 없음을 SQL로 확인 후 transactional bootstrap 적용. 네 migration version을 CLI 호환 history에 baseline 등록했습니다. SQL 본문은 저장소의 개별 migration 파일이 기준입니다.
+- 원격 Supabase `cujmxwlwijwomngchwoi`: 기존 public/private 테이블이 없음을 SQL로 확인 후 transactional bootstrap 적용. 2026-09-16에 migration history를 저장소와 다시 대조했고, `20260916143000`까지 이력을 복구했습니다. SQL 본문은 저장소의 개별 migration 파일이 기준입니다.
 - 원격 검증: Theme Map 1개, places 0개, RLS 없는 public 테이블 0개, public SECURITY DEFINER 함수 0개, avatars bucket 1개.
 - 원격 연결로 production build 성공. 홈·Tokyo Fashion 상세·로그인·PostGIS bbox API 모두 HTTP 200. 빈 장소 목록은 의도된 초기 상태입니다.
 - 현재 서버: http://localhost:3000 (`npm run start`). 다시 실행할 때 `npm run build && npm run start`; 개발 시 `npm run dev`.

@@ -70,6 +70,7 @@ export type Candidate = {
   locality?: string;
   countryCode?: string;
   attribution: string;
+  matchType?: "exact" | "prefix" | "similar";
   token?: string;
 };
 

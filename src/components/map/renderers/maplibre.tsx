@@ -73,6 +73,12 @@ export default function MapLibreMap(props: MapProps) {
       lastReportedBounds.current = nextBounds;
       latest.current.onBoundsChange(nextBounds);
     });
+    map.on("click", (event) => {
+      latest.current.onMapClick?.({
+        lat: event.lngLat.lat,
+        lng: event.lngLat.lng,
+      });
+    });
     const observer = new ResizeObserver(() => map.resize());
     observer.observe(container.current);
     return () => {

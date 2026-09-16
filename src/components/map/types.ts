@@ -7,6 +7,7 @@ export type MapProps = {
   focusRequest?: number;
   bounds: Bounds;
   onBoundsChange: (bounds: Bounds) => void;
+  onMapClick?: (point: { lat: number; lng: number }) => void;
   apiKey: string;
   mapId?: string;
   compact?: boolean;

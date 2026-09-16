@@ -118,6 +118,10 @@ export async function getPlaces(
   map: ThemeMap,
   b: Bounds = map.bounds,
 ): Promise<MapPlace[]> {
+  return readPlaces(map, b);
+}
+
+async function cachedInitialPlaces(map: ThemeMap): Promise<MapPlace[]> {
   "use cache";
   // Local development reads newly added places within seconds. Production keeps
   // the longer cache and uses the public-community tag after mutations.
@@ -127,6 +131,12 @@ export async function getPlaces(
     cacheLife({ stale: 300, revalidate: 300, expire: 3600 });
   }
   cacheTag("public-community");
+  return readPlaces(map, map.bounds);
+}
+
+export { cachedInitialPlaces as getInitialPlaces };
+
+async function readPlaces(map: ThemeMap, b: Bounds): Promise<MapPlace[]> {
   if (!configured()) return demoPlaces.filter((p) => inBounds(p.lat, p.lng, b));
   const client = publicDb();
   const { data, error } = await client.rpc("map_places_in_bounds", {
@@ -140,7 +150,7 @@ export async function getPlaces(
   // next tagged revalidation retries the query instead of caching an error page.
   if (error) {
     console.error("map_places_in_bounds_unavailable", error.code);
-    return [];
+    throw new Error("장소를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
   }
   return data as MapPlace[];
 }

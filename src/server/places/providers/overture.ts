@@ -9,8 +9,15 @@ export const overtureProvider: PlaceProvider = {
       q: query,
       m: map.id,
     });
-    if (error)
+    if (error) {
+      console.error("overture_search_failed", {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+      });
       throw new HttpError("지역 장소 검색 인덱스를 조회하지 못했습니다.", 503);
+    }
     return (data ?? []) as Candidate[];
   },
   async details(candidate, { map }) {

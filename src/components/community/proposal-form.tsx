@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import type { Candidate, RendererConfig, ThemeMap } from "@/domain/types";
 import { post } from "./api";
+import { placeCategoryLabel } from "@/domain/place-category";
 type Internal = {
   id: string;
   name: string;
@@ -50,6 +51,14 @@ export function ProposalForm({
   const [existingPlace, setExistingPlace] = useState<Internal | null>(null);
   const [manual, setManual] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [showRelated, setShowRelated] = useState(false);
+  const [manualAddress, setManualAddress] = useState("");
+  const [manualLocation, setManualLocation] = useState<{
+    lat: number;
+    lng: number;
+    label: string;
+  } | null>(null);
+  const [locating, setLocating] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const requestId = useRef(0);
@@ -62,6 +71,9 @@ export function ProposalForm({
     setExistingPlace(null);
     setManual(false);
     setSearched(false);
+    setShowRelated(false);
+    setManualAddress("");
+    setManualLocation(null);
     setError("");
   }
   async function search() {
@@ -74,6 +86,7 @@ export function ProposalForm({
     setInternal([]);
     setExistingPlace(null);
     setSearched(false);
+    setShowRelated(false);
     try {
       // Server enforces internal-first, including the second request (race-safe).
       let result = await post<{
@@ -128,6 +141,26 @@ export function ProposalForm({
       if (requestId.current === id) setBusy(false);
     }
   }
+  async function locateAddress() {
+    if (manualAddress.trim().length < 5) {
+      setError("주소를 더 자세히 입력해 주세요.");
+      return;
+    }
+    setLocating(true);
+    setError("");
+    try {
+      const location = await post<{ lat: number; lng: number; label: string }>(
+        "/api/places/geocode",
+        { mapId: map.id, address: manualAddress.trim() },
+      );
+      setManualLocation(location);
+    } catch (error) {
+      setManualLocation(null);
+      setError((error as Error).message);
+    } finally {
+      setLocating(false);
+    }
+  }
   return (
     <div className="space-y-7">
       {!enabled && (
@@ -163,6 +196,7 @@ export function ProposalForm({
               setQuery(e.target.value);
               setSelection(null);
               setSearched(false);
+              setShowRelated(false);
               setInternal([]);
               setCandidates([]);
               setError("");
@@ -193,37 +227,61 @@ export function ProposalForm({
             검색 결과 제공: {candidates[0].attribution}
           </p>
         )}
-        {candidates.map((c) => (
+        {candidates.slice(0, showRelated ? 10 : 5).map((c, index) => (
           <button
             key={`${c.provider}:${c.externalId}`}
             disabled={busy}
             className="block w-full rounded-lg border p-3 text-left hover:bg-secondary"
             onClick={() => void choose(c)}
           >
-            <span className="text-sm font-medium">{c.label}</span>
+            <span className="flex items-center gap-2 text-sm font-medium">
+              {c.label}
+              {index === 0 && c.matchType === "exact" && (
+                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                  검색어와 일치
+                </span>
+              )}
+            </span>
             <span className="mt-1 block text-xs text-muted-foreground">
-              {c.locality ?? map.city} · {c.category ?? "기타"} · {c.address}
+              {c.locality ?? map.city} · {placeCategoryLabel(c.category)}
+              {c.address ? ` · ${c.address}` : ""}
             </span>
           </button>
         ))}
-        {searched && !internal.length && !candidates.length && (
+        {candidates.length > 5 && !showRelated && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="w-full"
+            onClick={() => setShowRelated(true)}
+          >
+            관련 결과 {candidates.length - 5}개 더 보기
+          </Button>
+        )}
+        {searched && !error && !internal.length && !candidates.length && (
           <p className="text-sm text-muted-foreground">
             검색 결과가 없습니다. 아직 지원하지 않는 지역이거나 새 장소일 수
             있습니다.
           </p>
         )}
-        <Button
-          type="button"
-          variant="outline"
-          disabled={!enabled || busy}
-          onClick={() => {
-            setManual(true);
+        <details
+          className="rounded-lg border bg-secondary/20 px-4 py-3"
+          open={manual}
+          onToggle={(event) => {
+            const open = event.currentTarget.open;
+            setManual(open);
             setSelection(null);
-            setError("");
+            if (!open) setManualLocation(null);
           }}
         >
-          찾는 장소가 없나요? 새 장소 직접 등록
-        </Button>
+          <summary className="cursor-pointer text-sm font-medium">
+            찾는 장소가 없나요? 직접 등록
+          </summary>
+          <p className="mt-2 text-xs leading-5 text-muted-foreground">
+            이름과 정확한 주소를 입력하면 위치를 찾아드려요.
+          </p>
+        </details>
         {selection && (
           <div className="overflow-hidden rounded-lg border">
             <p className="bg-secondary p-3 text-sm">
@@ -290,8 +348,8 @@ export function ProposalForm({
                       name: f.get("name"),
                       address: f.get("address"),
                       category: f.get("category"),
-                      lat: Number(f.get("lat")),
-                      lng: Number(f.get("lng")),
+                      lat: manualLocation?.lat,
+                      lng: manualLocation?.lng,
                       sourceNote:
                         "사용자가 직접 알고 있는 장소 이름과 위치를 등록했습니다.",
                     }
@@ -312,8 +370,7 @@ export function ProposalForm({
             <section className="space-y-4 rounded-xl border bg-card p-6">
               <h2 className="text-sm font-semibold">새 장소 정보</h2>
               <p className="text-xs text-muted-foreground">
-                직접 알고 있는 이름과 위치를 입력해 주세요. {map.city} 지도 범위
-                안의 장소를 등록할 수 있습니다.
+                이름과 정확한 주소를 입력하면 위치를 찾습니다. 좌표를 직접 입력할 필요는 없어요.
               </p>
               <Label htmlFor="name">장소 이름</Label>
               <Input
@@ -323,36 +380,81 @@ export function ProposalForm({
                 maxLength={120}
                 defaultValue={query}
               />
-              <Label htmlFor="lat">위도</Label>
+              <Label htmlFor="address">주소</Label>
               <Input
-                id="lat"
-                name="lat"
-                type="number"
-                step="any"
+                id="address"
+                name="address"
                 required
-                min={map.bounds.south}
-                max={map.bounds.north}
+                maxLength={250}
+                placeholder="예: 東京都港区南青山6-1-3"
+                value={manualAddress}
+                onChange={(event) => {
+                  setManualAddress(event.target.value);
+                  setManualLocation(null);
+                }}
               />
-              <Label htmlFor="lng">경도</Label>
-              <Input
-                id="lng"
-                name="lng"
-                type="number"
-                step="any"
-                required
-                min={map.bounds.west}
-                max={map.bounds.east}
-              />
-              <Label htmlFor="category">분류</Label>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={locating || manualAddress.trim().length < 5}
+                onClick={() => void locateAddress()}
+              >
+                <Search size={14} />
+                {locating ? "위치 찾는 중…" : "주소에서 위치 찾기"}
+              </Button>
+              {manualLocation && (
+                <div className="overflow-hidden rounded-lg border">
+                  <p className="bg-secondary p-3 text-sm">
+                    위치를 찾았습니다. 핀이 맞는지 확인하고, 다르면 지도에서 원하는 위치를 눌러 조정하세요.
+                  </p>
+                  <div className="h-[300px]">
+                    <MapCanvas
+                      config={config}
+                      compact
+                      places={[
+                        {
+                          id: "manual-location",
+                          place_id: "manual-location",
+                          map_id: map.id,
+                          name: "등록할 장소",
+                          address: manualAddress,
+                          category: "",
+                          lat: manualLocation.lat,
+                          lng: manualLocation.lng,
+                          rationale: "",
+                          status: "selected",
+                          added_by: null,
+                          handle: "",
+                          positive: 0,
+                          negative: 0,
+                          saved_count: 0,
+                          created_at: "",
+                          last_verified_at: null,
+                        },
+                      ]}
+                      selected="manual-location"
+                      onSelect={() => {}}
+                      onMapClick={({ lat, lng }) =>
+                        setManualLocation({ lat, lng, label: "지도에서 조정한 위치" })
+                      }
+                      bounds={{
+                        south: manualLocation.lat - 0.006,
+                        north: manualLocation.lat + 0.006,
+                        west: manualLocation.lng - 0.008,
+                        east: manualLocation.lng + 0.008,
+                      }}
+                      onBoundsChange={() => {}}
+                    />
+                  </div>
+                </div>
+              )}
+              <Label htmlFor="category">분류 (선택)</Label>
               <Input
                 id="category"
                 name="category"
-                required
                 maxLength={40}
                 placeholder="예: 빈티지 숍"
               />
-              <Label htmlFor="address">주소 (선택)</Label>
-              <Input id="address" name="address" maxLength={250} />
             </section>
           )}
           <section className="space-y-4 rounded-xl border bg-card p-6">
@@ -370,7 +472,10 @@ export function ProposalForm({
               제안은 검토 대기 핀으로 표시되며, 승인 후 일반 목록에 공개됩니다.
             </p>
           </section>
-          <Button disabled={!enabled || busy} className="w-full">
+          <Button
+            disabled={!enabled || busy || (manual && !manualLocation)}
+            className="w-full"
+          >
             {busy ? "보내는 중…" : "장소 제안하기"}
           </Button>
         </form>

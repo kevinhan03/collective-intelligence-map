@@ -25,7 +25,7 @@ Read `provider-policies.md`. Add REST secrets and separate restricted renderer k
 
 ## Verification
 
-- `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`.
+- `npm audit --omit=dev`, `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`.
 - `npm run test:e2e`: keyless desktop/mobile flow; Playwright requires `npx playwright install chromium`.
 - `npm run test:db`: isolated local PostgreSQL/PostGIS database named `*_test`; `TEST_DATABASE_URL` override. Script drops/recreates application schemas in that test database only. Auth/Storage schemas are a test harness; it does not claim to verify real GoTrue/Storage service behavior.
 - Live Supabase auth/E2E needs the local stack and local test env; keep test credentials isolated.

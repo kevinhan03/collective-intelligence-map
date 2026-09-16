@@ -7,6 +7,7 @@ import { HttpError } from "@/server/http";
 import { routeProvider } from "./provider-router";
 import { signCandidate, verifyCandidate } from "./candidate-token";
 import { metered } from "./usage";
+import { japaneseSearchAliases } from "./gemini-search-alias";
 import type { Viewer, Candidate } from "@/domain/types";
 export async function searchPlaces(
   input: { mapId: string; query: string; external: boolean; session?: string },
@@ -29,7 +30,7 @@ export async function searchPlaces(
   const { name, adapter } = routeProvider(map.country);
   const session = input.session ?? crypto.randomUUID();
   productEvent("place_search_external", { mapId: map.id });
-  const candidates =
+  let candidates =
     name === "overture"
       ? await adapter.search(input.query, { map, session })
       : await metered(
@@ -42,6 +43,23 @@ export async function searchPlaces(
           },
           () => adapter.search(input.query, { map, session }),
         );
+  // English-only queries with no Japanese Overture match get one cached Gemini
+  // fallback. It translates the query, never provider place data.
+  if (name === "overture" && candidates.length === 0) {
+    const aliases = await japaneseSearchAliases(input.query, map.country, viewer.id);
+    if (aliases.length) {
+      const translated = await Promise.all(
+        aliases.map((alias) => adapter.search(alias, { map, session })),
+      );
+      candidates = translated
+        .flat()
+        .filter(
+          (candidate, index, all) =>
+            all.findIndex((item) => item.externalId === candidate.externalId) === index,
+        )
+        .slice(0, 10);
+    }
+  }
   return {
     internal: internal ?? [],
     session,

@@ -9,6 +9,33 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      search_query_aliases: {
+        Row: {
+          country_code: string;
+          normalized_query: string;
+          japanese_queries: string[];
+          generator: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          country_code: string;
+          normalized_query: string;
+          japanese_queries?: string[];
+          generator?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          country_code?: string;
+          normalized_query?: string;
+          japanese_queries?: string[];
+          generator?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       our_search_places: {
         Row: {
           source: string;
@@ -542,6 +569,7 @@ export type Database = {
       };
     };
     Functions: {
+      reserve_search_operation: { Args: { u: string; operation: string }; Returns: boolean };
       search_overture_places: { Args: { m: string; q: string }; Returns: Json };
       overture_place_details: {
         Args: { m: string; external_id_value: string };

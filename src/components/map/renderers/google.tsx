@@ -99,6 +99,7 @@ export default function GoogleMap({
   useEffect(() => {
     let active = true;
     let listener: google.maps.MapsEventListener | undefined;
+    let resizeObserver: ResizeObserver | undefined;
     load(apiKey)
       .then(() => {
         if (!active || !el.current) return;
@@ -114,6 +115,14 @@ export default function GoogleMap({
                 styles: minimalStyle,
               }),
         });
+        const instance = map.current;
+        resizeObserver = new ResizeObserver(([entry]) => {
+          if (!entry.contentRect.width || !entry.contentRect.height) return;
+          const center = instance.getCenter();
+          google.maps.event.trigger(instance, "resize");
+          if (center) instance.setCenter(center);
+        });
+        resizeObserver.observe(el.current);
         // Fit to the map's configured region on first load instead of a fixed
         // zoom, so a city-scoped map (Tokyo) and a country-scoped map (Korea)
         // both open showing their whole area rather than a random midpoint.
@@ -146,6 +155,7 @@ export default function GoogleMap({
     return () => {
       active = false;
       listener?.remove();
+      resizeObserver?.disconnect();
       markers.current.forEach((m) => m.setMap(null));
     };
   }, [apiKey, mapId, bounds.north, bounds.south, bounds.east, bounds.west]);

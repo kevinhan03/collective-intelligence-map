@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
-import { MobileNavigation } from "@/components/mobile-navigation";
 import { SiteHeader } from "@/components/site-header";
 import { Telemetry } from "@/components/telemetry";
 import "./globals.css";
@@ -59,9 +58,6 @@ export default function RootLayout({
           <SiteHeader />
         </Suspense>
         {children}
-        <Suspense fallback={null}>
-          <MobileNavigation />
-        </Suspense>
         <Suspense fallback={null}>
           <Telemetry />
         </Suspense>

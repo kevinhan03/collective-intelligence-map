@@ -27,13 +27,19 @@ test("discover community, filter venues, open context and protect participation"
   } else {
     await expect(page.getByText("6개의 발견")).toBeVisible();
   }
-  await page.getByRole("button", { name: "빈티지", exact: true }).click();
+  await page
+    .getByRole("textbox", { name: "이 맵의 장소 검색" })
+    .fill("Second Chapter");
+  await expect(
+    page.getByRole("option", { name: /Second Chapter/ }),
+  ).toBeVisible();
+  await page.getByRole("option", { name: /Second Chapter/ }).click();
   if (isMobile) {
     await expect(
       page.getByRole("button", { name: "Second Chapter 지도에서 선택" }),
     ).toBeVisible();
   } else {
-    await expect(page.getByText("2개의 발견")).toBeVisible();
+    await expect(page.getByText("1개의 발견")).toBeVisible();
   }
   if (isMobile) {
     await page
@@ -56,7 +62,6 @@ test("discover community, filter venues, open context and protect participation"
   await expect(page.getByText("이 테마에 추천하는 이유")).toBeVisible();
   await expect(page.getByRole("button", { name: "적합해요 0" })).toBeDisabled();
   await page.keyboard.press("Escape");
-  await page.getByRole("button", { name: "전체", exact: true }).click();
   await page
     .getByRole("textbox", { name: "이 맵의 장소 검색" })
     .fill("not-a-place");
@@ -129,6 +134,7 @@ test("mobile discovery filters and recovers from empty results", async ({
     .getByRole("textbox", { name: "테마 지도 검색" })
     .fill("Tokyo Fashion");
   await expect(page.getByRole("status")).toHaveText("1개");
+  await page.getByRole("button", { name: "메뉴 열기" }).click();
   await expect(
     page
       .getByRole("navigation", { name: "모바일 주요 메뉴" })
@@ -136,17 +142,19 @@ test("mobile discovery filters and recovers from empty results", async ({
   ).toHaveAttribute("aria-current", "page");
 });
 
-test("mobile view switching preserves filters and detail returns focus", async ({
+test("mobile view switching preserves scroll position and detail returns focus", async ({
   page,
   isMobile,
 }) => {
   test.skip(!isMobile, "Mobile view switching");
   await page.goto("/maps/tokyo-fashion");
-  await page.getByRole("button", { name: "빈티지", exact: true }).click();
   const list = page.getByRole("region", { name: "장소 목록" });
   const map = page.getByRole("region", { name: "장소 지도" });
   await expect(map).toBeVisible();
   await expect(list).toBeHidden();
+  const mapBox = await map.boundingBox();
+  const viewport = page.viewportSize();
+  expect(mapBox?.height).toBeGreaterThan((viewport?.height ?? 0) * 0.75);
   await expect(
     page.getByText(
       "도쿄의 패션을 발견하는 사람들의 공개 지도. 독립 편집숍부터 빈티지 아카이브까지, 함께 추천하고 검증합니다.",
@@ -183,14 +191,10 @@ test("mobile view switching preserves filters and detail returns focus", async (
   await preview.getByRole("button", { name: "장소 미리보기 닫기" }).click();
   await expect(preview).toBeHidden();
   await page.getByRole("button", { name: "목록 보기", exact: true }).click();
-  await expect(page.getByText("2개의 발견")).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "빈티지", exact: true }),
-  ).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByText("6개의 발견")).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Second Chapter", exact: true }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "전체", exact: true }).click();
   await page
     .getByRole("button", { name: "Sunday Vintage", exact: true })
     .scrollIntoViewIfNeeded();
@@ -213,7 +217,6 @@ test("mobile theme entry and saved-place deep links open the intended context", 
 }) => {
   test.skip(!isMobile, "Mobile entry points");
   await page.goto("/");
-  await page.getByRole("button", { name: "빈티지", exact: true }).click();
   await page
     .getByRole("link")
     .filter({
@@ -224,10 +227,7 @@ test("mobile theme entry and saved-place deep links open the intended context", 
     page.getByRole("button", { name: "지도 보기", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: "목록 보기", exact: true }).click();
-  await expect(page.getByText("2개의 발견")).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "빈티지", exact: true }),
-  ).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByText("6개의 발견")).toBeVisible();
   await page.goto(
     "/maps/tokyo-fashion?place=33333333-3333-4333-8333-000000000001",
   );

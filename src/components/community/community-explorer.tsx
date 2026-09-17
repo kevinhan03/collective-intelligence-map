@@ -20,7 +20,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogClose,
@@ -41,6 +40,7 @@ import { PlaceDetail } from "./place-detail";
 import { PlacePreview } from "./place-preview";
 import { PendingReview } from "./pending-review";
 import { post } from "./api";
+import { trackCommunityEvent } from "@/lib/community-analytics";
 import { sortPlaces } from "@/domain/relevance";
 import { formatLocation } from "@/domain/location";
 import type {
@@ -83,10 +83,6 @@ export function CommunityExplorer({
   const searchParams = useSearchParams();
   const requestedPlaceId = searchParams.get("place");
   const [query, setQuery] = useState(""),
-    [tag, setTag] = useState(() => {
-      const requested = searchParams.get("tag");
-      return requested && map.tags.includes(requested) ? requested : "전체";
-    }),
     [sort, setSort] = useState<Sort>("relevance"),
     [selected, setSelected] = useState<string | null>(null),
     [detailId, setDetailId] = useState<string | null>(null),
@@ -100,6 +96,7 @@ export function CommunityExplorer({
     [showPending, setShowPending] = useState(false);
   const latest = useRef(0);
   const openedPlaceId = useRef<string | null>(null);
+  const searchTracked = useRef(false);
   const places = useMemo(
     () => loaded ?? initialPlaces.slice(0, 500),
     [initialPlaces, loaded],
@@ -107,17 +104,30 @@ export function CommunityExplorer({
   const filtered = useMemo(
     () =>
       sortPlaces(
-        places.filter(
-          (p) =>
-            (tag === "전체" || p.category === tag) &&
-            `${p.name} ${p.rationale}`
-              .toLowerCase()
-              .includes(query.toLowerCase()),
+        places.filter((p) =>
+          `${p.name} ${p.category} ${p.rationale}`
+            .toLowerCase()
+            .includes(query.toLowerCase()),
         ),
         sort,
       ),
-    [places, tag, query, sort],
+    [places, query, sort],
   );
+  const searchSuggestions = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    if (!normalized) return [];
+    const suggestions = places.flatMap((place) => [
+      { term: place.name, kind: "장소" },
+      { term: place.category, kind: "분류" },
+    ]);
+    return suggestions
+      .filter((suggestion) => suggestion.term.toLowerCase().includes(normalized))
+      .filter(
+        (suggestion, index, all) =>
+          all.findIndex((item) => item.term === suggestion.term) === index,
+      )
+      .slice(0, 5);
+  }, [places, query]);
   const onBoundsChange = useCallback((b: Bounds) => {
     setViewport((current) => {
       if (
@@ -184,10 +194,18 @@ export function CommunityExplorer({
         if (mobileView === "map") {
           setDetailId(null);
           setPreviewId(id);
+          trackCommunityEvent("place_preview_opened", {
+            entry: "map_pin",
+            provider: config.provider,
+          });
           return;
         }
         setPreviewId(null);
         setDetailId(id);
+        trackCommunityEvent("place_detail_opened", {
+          entry: "list",
+          provider: config.provider,
+        });
         return;
       }
       if (config.provider === "preview" || config.provider === "kakao") {
@@ -210,11 +228,19 @@ export function CommunityExplorer({
       setSelected(mapPlace.id);
       setPreviewId(null);
       setDetailId(mapPlace.id);
+      trackCommunityEvent("place_detail_opened", {
+        entry: "deep_link",
+        provider: config.provider,
+      });
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [pendingPlaces, places, requestedPlaceId]);
+  }, [config.provider, pendingPlaces, places, requestedPlaceId]);
   return (
-    <main id="main" className="community-explorer mx-auto max-w-[1440px]">
+    <main
+      id="main"
+      className="community-explorer mx-auto max-w-[1440px]"
+      data-mobile-view={mobileView}
+    >
       <div
         className="map-hero border-b px-5 py-3 md:px-9"
         data-mobile-view={mobileView}
@@ -232,9 +258,6 @@ export function CommunityExplorer({
               <h1 className="text-xl font-semibold tracking-tight">
                 {map.title}
               </h1>
-              <Badge variant="secondary" className="text-[10px]">
-                공개 커뮤니티
-              </Badge>
               <span className="kicker">{formatLocation(map)}</span>
             </div>
             <p className="map-hero-description mt-1 line-clamp-2 md:line-clamp-1 max-w-2xl text-xs leading-5 text-muted-foreground">
@@ -246,7 +269,12 @@ export function CommunityExplorer({
             variant="ghost"
             size="icon"
             aria-label={`${map.title} 지도 정보 보기`}
-            onClick={() => setInfoOpen(true)}
+            onClick={() => {
+              setInfoOpen(true);
+              trackCommunityEvent("community_info_opened", {
+                provider: config.provider,
+              });
+            }}
           >
             <Info size={19} />
           </Button>
@@ -300,7 +328,7 @@ export function CommunityExplorer({
               <div>
                 <DialogTitle className="text-xl">{map.title}</DialogTitle>
                 <DialogDescription className="mt-1 text-xs">
-                  {formatLocation(map)} · 공개 커뮤니티
+                  {formatLocation(map)}
                 </DialogDescription>
               </div>
               <DialogClose asChild>
@@ -349,34 +377,6 @@ export function CommunityExplorer({
         </DialogContent>
       </Dialog>
       <div className="glass-toolbar explorer-toolbar flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3 md:px-9">
-        <div className="explorer-filters flex min-w-0 max-w-full flex-nowrap items-center gap-1.5 overflow-x-auto lg:flex-wrap lg:overflow-visible">
-          {["전체", ...map.tags.filter((t) => t !== "전체")].map((t) => (
-            <Button
-              key={t}
-              aria-pressed={tag === t}
-              size="sm"
-              variant={tag === t ? "default" : "ghost"}
-              className="h-8 shrink-0 rounded-full px-3 text-xs"
-              onClick={() => {
-                setTag(t);
-                setPage(1);
-              }}
-            >
-              {t}
-            </Button>
-          ))}
-          {pendingPlaces.length > 0 && (
-            <Button
-              size="sm"
-              variant={showPending ? "default" : "outline"}
-              className="h-8 shrink-0 rounded-full px-3 text-xs"
-              onClick={() => setShowPending((v) => !v)}
-            >
-              <Clock size={12} />
-              승인대기 {pendingPlaces.length}
-            </Button>
-          )}
-        </div>
         <div className="relative w-full sm:w-60">
           <Search
             className="absolute top-2.5 left-3 text-muted-foreground"
@@ -386,13 +386,97 @@ export function CommunityExplorer({
             className="h-9 bg-background pl-9 text-xs"
             value={query}
             onChange={(e) => {
-              setQuery(e.target.value);
+              const value = e.target.value;
+              setQuery(value);
               setPage(1);
+              if (value.trim() && !searchTracked.current) {
+                searchTracked.current = true;
+                trackCommunityEvent("place_search_started", {
+                  provider: config.provider,
+                });
+              }
             }}
             placeholder="이 맵의 장소 검색"
             aria-label="이 맵의 장소 검색"
           />
+          {searchSuggestions.length > 0 && (
+            <div
+              className="absolute top-[calc(100%+6px)] right-0 left-0 z-30 overflow-hidden rounded-xl border bg-card p-1 shadow-lg"
+              role="listbox"
+              aria-label="관련 검색어"
+            >
+              {searchSuggestions.map((suggestion) => (
+                <button
+                  key={suggestion.term}
+                  type="button"
+                  role="option"
+                  aria-selected={false}
+                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs hover:bg-secondary"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => {
+                    setQuery(suggestion.term);
+                    setPage(1);
+                    trackCommunityEvent("place_search_suggestion_selected", {
+                      provider: config.provider,
+                    });
+                  }}
+                >
+                  <span>{suggestion.term}</span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {suggestion.kind}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
+        <div
+          className="mobile-view-switch flex rounded-xl border bg-card p-0.5 lg:hidden"
+          role="group"
+          aria-label="장소 보기 방식"
+        >
+          <button
+            aria-label="목록 보기"
+            aria-pressed={mobileView === "list"}
+            aria-controls="explorer-list"
+            onClick={() => {
+              setMobileView("list");
+              trackCommunityEvent("community_view_changed", {
+                provider: config.provider,
+                view: "list",
+              });
+            }}
+          >
+            <List size={17} aria-hidden="true" />
+            <span className="sr-only">목록 보기</span>
+          </button>
+          <button
+            aria-label="지도 보기"
+            aria-pressed={mobileView === "map"}
+            aria-controls="explorer-map"
+            onClick={() => {
+              setMobileView("map");
+              trackCommunityEvent("community_view_changed", {
+                provider: config.provider,
+                view: "map",
+              });
+            }}
+          >
+            <MapIcon size={17} aria-hidden="true" />
+            <span className="sr-only">지도 보기</span>
+          </button>
+        </div>
+        {pendingPlaces.length > 0 && (
+          <Button
+            size="sm"
+            variant={showPending ? "default" : "outline"}
+            className="h-8 shrink-0 rounded-full px-3 text-xs"
+            onClick={() => setShowPending((v) => !v)}
+          >
+            <Clock size={12} />
+            승인대기 {pendingPlaces.length}
+          </Button>
+        )}
       </div>
       {error && (
         <p
@@ -411,28 +495,6 @@ export function CommunityExplorer({
           onChange={() => router.refresh()}
         />
       )}
-      <div
-        className="mobile-view-switch mx-4 mb-3 flex rounded-2xl border bg-card p-1 lg:hidden"
-        role="group"
-        aria-label="장소 보기 방식"
-      >
-        <button
-          aria-pressed={mobileView === "list"}
-          aria-controls="explorer-list"
-          onClick={() => setMobileView("list")}
-        >
-          <List size={17} />
-          목록 보기
-        </button>
-        <button
-          aria-pressed={mobileView === "map"}
-          aria-controls="explorer-map"
-          onClick={() => setMobileView("map")}
-        >
-          <MapIcon size={17} />
-          지도 보기
-        </button>
-      </div>
       <div
         data-mobile-view={mobileView}
         className={`glass-map-shell explorer-layout ${selectedPlace ? "has-detail" : ""}`}
@@ -537,13 +599,12 @@ export function CommunityExplorer({
                 다른 조건으로 찾아보거나,
                 <br />이 주제에 맞는 첫 장소를 제안해 주세요.
               </p>
-              {(query || tag !== "전체") && (
+              {query && (
                 <Button
                   variant="secondary"
                   className="mt-5 mr-2"
                   onClick={() => {
                     setQuery("");
-                    setTag("전체");
                     setPage(1);
                   }}
                 >
@@ -609,6 +670,10 @@ export function CommunityExplorer({
               onOpenDetail={() => {
                 setPreviewId(null);
                 setDetailId(previewPlace.id);
+                trackCommunityEvent("place_detail_opened", {
+                  entry: "map_preview",
+                  provider: config.provider,
+                });
               }}
               onSave={async () => {
                 setBusy(true);

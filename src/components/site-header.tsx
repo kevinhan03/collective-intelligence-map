@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowUpRight, Bookmark, Compass, Map as MapIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { MobileNavigation } from "@/components/mobile-navigation";
 import { getViewer } from "@/server/queries";
 export async function SiteHeader() {
   const viewer = await getViewer();
@@ -63,6 +64,7 @@ export async function SiteHeader() {
             </Button>
           )}
         </nav>
+        <MobileNavigation />
       </div>
     </header>
   );

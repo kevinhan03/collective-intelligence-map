@@ -23,7 +23,7 @@ const values = {
   NEXT_PUBLIC_SITE_URL: "http://127.0.0.1:3000",
   PROVIDER_SIGNING_SECRET: crypto.randomBytes(48).toString("base64url"),
   GOOGLE_PLACES_ENABLED: "false",
-  KAKAO_LOCAL_ENABLED: "false",
+  KAKAO_PLACES_ENABLED: "false",
   NEXT_PUBLIC_GOOGLE_MAPS_KEY: "",
   NEXT_PUBLIC_KAKAO_MAPS_KEY: "",
 };

@@ -12,18 +12,13 @@ export function MobileDiscovery({
   demo: boolean;
 }) {
   const [region, setRegion] = useState("");
-  const [theme, setTheme] = useState("");
   const [query, setQuery] = useState("");
   const regions = [...new Set(maps.map((map) => `${map.country}|${map.city}`))];
   const regionalMaps = maps.filter(
     (map) => !region || `${map.country}|${map.city}` === region,
   );
-  const themes = [...new Set(regionalMaps.flatMap((map) => map.tags))].filter(
-    (tag) => tag !== "전체",
-  );
   const results = regionalMaps.filter(
     (map) =>
-      (!theme || map.tags.includes(theme)) &&
       `${map.title} ${map.description} ${map.city} ${map.tags.join(" ")}`
         .toLowerCase()
         .includes(query.trim().toLowerCase()),
@@ -42,10 +37,7 @@ export function MobileDiscovery({
           <select
             aria-label="탐색 지역"
             value={region}
-            onChange={(event) => {
-              setRegion(event.target.value);
-              setTheme("");
-            }}
+            onChange={(event) => setRegion(event.target.value)}
             className="max-w-40 rounded-lg bg-card px-2 py-2"
           >
             <option value="">모든 지역</option>
@@ -78,21 +70,6 @@ export function MobileDiscovery({
           className="h-12 w-full rounded-2xl border bg-card pr-4 pl-11 text-base outline-none focus-visible:ring-2 focus-visible:ring-primary"
         />
       </div>
-      <div
-        className="mobile-theme-chips mt-3 flex gap-2 overflow-x-auto pb-2"
-        aria-label="지도 테마"
-      >
-        {["", ...themes].map((value) => (
-          <button
-            key={value}
-            aria-pressed={theme === value}
-            onClick={() => setTheme(value)}
-            className="shrink-0 rounded-full border px-4 text-sm"
-          >
-            {value || "전체"}
-          </button>
-        ))}
-      </div>
       {demo && (
         <p className="mt-3 text-xs leading-5 text-muted-foreground">
           미리보기 · 장소와 추천 내용은 가상 예시예요.
@@ -108,7 +85,7 @@ export function MobileDiscovery({
         {results.map((map) => (
           <Link
             key={map.id}
-            href={`/maps/${map.slug}${theme ? `?tag=${encodeURIComponent(theme)}` : ""}`}
+            href={`/maps/${map.slug}`}
             className="mobile-theme-card block rounded-2xl border p-5"
           >
             <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -143,7 +120,6 @@ export function MobileDiscovery({
               className="mt-4 rounded-xl bg-secondary px-5 text-sm"
               onClick={() => {
                 setRegion("");
-                setTheme("");
                 setQuery("");
               }}
             >

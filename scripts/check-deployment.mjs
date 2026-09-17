@@ -47,14 +47,15 @@ if (process.argv.includes("--production")) {
 console.log(
   `INFO: Google 지도 키 ${env.NEXT_PUBLIC_GOOGLE_MAPS_KEY ? "설정됨" : "미설정"}`,
 );
-for (const [flag, key] of [
-  ["GOOGLE_PLACES_ENABLED", "GOOGLE_PLACES_API_KEY"],
-  ["KAKAO_LOCAL_ENABLED", "KAKAO_LOCAL_API_KEY"],
-]) {
-  if (env[flag] === "true")
-    report(Boolean(env[key]), `${flag}에 필요한 서버 키`);
-  else console.log(`INFO: ${flag} 비활성 — 외부 검색 없이 내부 DB 사용`);
-}
+if (env.GOOGLE_PLACES_ENABLED === "true")
+  report(Boolean(env.GOOGLE_PLACES_API_KEY), "GOOGLE_PLACES_ENABLED에 필요한 서버 키");
+else console.log("INFO: GOOGLE_PLACES_ENABLED 비활성 — 외부 검색 없이 내부 DB 사용");
+if (env.KAKAO_PLACES_ENABLED === "true")
+  report(
+    Boolean(env.KAKAO_REST_API_KEY ?? env.KAKAO_LOCAL_API_KEY),
+    "KAKAO_PLACES_ENABLED에 필요한 서버 키",
+  );
+else console.log("INFO: KAKAO_PLACES_ENABLED 비활성 — 외부 검색 없이 내부 DB 사용");
 let base;
 try {
   base = new URL(env.NEXT_PUBLIC_SUPABASE_URL);

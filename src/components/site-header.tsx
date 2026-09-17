@@ -23,7 +23,7 @@ export async function SiteHeader() {
           </span>
         </Link>
         <nav
-          className="flex items-center gap-2 md:gap-6"
+          className="hidden items-center gap-2 lg:flex lg:gap-6"
           aria-label="주요 메뉴"
         >
           <Link

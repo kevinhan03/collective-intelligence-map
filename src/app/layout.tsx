@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
+import { MobileNavigation } from "@/components/mobile-navigation";
 import { SiteHeader } from "@/components/site-header";
 import { Telemetry } from "@/components/telemetry";
 import "./globals.css";
@@ -9,6 +10,13 @@ const mono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 const title = "Collective Map — 취향이 모이는 지도";
 const description =
   "장소를 넘어, 맥락을 발견하세요. 함께 추천하고 검증하는 공개 주제 커뮤니티.";
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#171d25",
+  interactiveWidget: "resizes-content",
+};
 export const metadata: Metadata = {
   metadataBase: process.env.NEXT_PUBLIC_SITE_URL
     ? new URL(process.env.NEXT_PUBLIC_SITE_URL)
@@ -51,6 +59,9 @@ export default function RootLayout({
           <SiteHeader />
         </Suspense>
         {children}
+        <Suspense fallback={null}>
+          <MobileNavigation />
+        </Suspense>
         <Suspense fallback={null}>
           <Telemetry />
         </Suspense>

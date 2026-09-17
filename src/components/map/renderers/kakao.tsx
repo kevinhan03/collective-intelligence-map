@@ -7,6 +7,9 @@ type LatLngBounds = object;
 type KMap = {
   getBounds(): { getNorthEast(): LatLng; getSouthWest(): LatLng };
   setBounds(bounds: LatLngBounds): void;
+  relayout(): void;
+  getCenter(): LatLng;
+  setCenter(center: LatLng): void;
 };
 type Overlay = { setMap(map: KMap | null): void };
 type KakaoMaps = {
@@ -73,6 +76,7 @@ export default function KakaoMap(props: MapProps) {
   useEffect(() => {
     let active = true;
     let listener: (() => void) | undefined;
+    let resizeObserver: ResizeObserver | undefined;
     load(apiKey)
       .then(() => {
         if (!active || !el.current || !window.kakao) return;
@@ -91,6 +95,14 @@ export default function KakaoMap(props: MapProps) {
           ),
         );
         map.current = instance;
+        // Switching mobile views must not reset the user's map position.
+        resizeObserver = new ResizeObserver(([entry]) => {
+          if (!entry.contentRect.width || !entry.contentRect.height) return;
+          const center = instance.getCenter();
+          instance.relayout();
+          instance.setCenter(center);
+        });
+        resizeObserver.observe(el.current);
         listener = () => {
           const b = instance.getBounds(),
             ne = b.getNorthEast(),
@@ -110,6 +122,7 @@ export default function KakaoMap(props: MapProps) {
       );
     return () => {
       active = false;
+      resizeObserver?.disconnect();
       if (map.current && listener)
         window.kakao?.maps.event.removeListener(map.current, "idle", listener);
       pins.current.forEach((p) => p.setMap(null));

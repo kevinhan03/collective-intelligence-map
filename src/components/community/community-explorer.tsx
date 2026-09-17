@@ -1,4 +1,5 @@
 "use client";
+import { useMobile } from "@/hooks/use-mobile";
 import { useViewerState } from "./viewer-state";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -11,6 +12,8 @@ import {
   Clock,
   Info,
   MapPin,
+  List,
+  Map as MapIcon,
   Plus,
   Search,
   Users,
@@ -18,6 +21,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -27,6 +38,7 @@ import {
 } from "@/components/ui/select";
 import { MapCanvas } from "@/components/map/map-canvas";
 import { PlaceDetail } from "./place-detail";
+import { PlacePreview } from "./place-preview";
 import { PendingReview } from "./pending-review";
 import { post } from "./api";
 import { sortPlaces } from "@/domain/relevance";
@@ -60,13 +72,21 @@ export function CommunityExplorer({
   };
   demo: boolean;
 }) {
+  const mobile = useMobile();
+  const [mobileView, setMobileView] = useState<"list" | "map">("map");
+  const [infoOpen, setInfoOpen] = useState(false);
+  const [previewId, setPreviewId] = useState<string | null>(null);
   const personalized = useViewerState();
   const viewer = personalized.viewer ?? initialViewer;
   const myState = personalized.viewer ? personalized.myState : initialMyState;
   const router = useRouter();
   const searchParams = useSearchParams();
+  const requestedPlaceId = searchParams.get("place");
   const [query, setQuery] = useState(""),
-    [tag, setTag] = useState("전체"),
+    [tag, setTag] = useState(() => {
+      const requested = searchParams.get("tag");
+      return requested && map.tags.includes(requested) ? requested : "전체";
+    }),
     [sort, setSort] = useState<Sort>("relevance"),
     [selected, setSelected] = useState<string | null>(null),
     [detailId, setDetailId] = useState<string | null>(null),
@@ -136,32 +156,69 @@ export function CommunityExplorer({
   }
   const selectedPlace =
     [...places, ...pendingPlaces].find((p) => p.id === detailId) ?? null;
+  const previewPlace =
+    [...places, ...pendingPlaces].find((p) => p.id === previewId) ?? null;
+  const toggleFollow = async () => {
+    if (!viewer) {
+      router.push("/login");
+      return;
+    }
+    setBusy(true);
+    try {
+      await post("/api/community", {
+        action: "follow",
+        id: map.id,
+        enabled: !myState.followed,
+      });
+      router.refresh();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
   const focusPlace = useCallback(
     (id: string) => {
       setSelected(id);
-      if (config.provider === "preview") {
+      if (mobile) {
+        if (mobileView === "map") {
+          setDetailId(null);
+          setPreviewId(id);
+          return;
+        }
+        setPreviewId(null);
         setDetailId(id);
         return;
       }
-      setDetailId((current) => current ? id : null);
+      if (config.provider === "preview" || config.provider === "kakao") {
+        setDetailId(id);
+        return;
+      }
+      setDetailId((current) => (current ? id : null));
       setFocusRequest((request) => request + 1);
     },
-    [config.provider],
+    [config.provider, mobile, mobileView],
   );
   useEffect(() => {
-    const placeId = searchParams.get("place");
-    if (!placeId || openedPlaceId.current === placeId) return;
+    if (!requestedPlaceId || openedPlaceId.current === requestedPlaceId) return;
     const mapPlace = [...places, ...pendingPlaces].find(
-      (place) => place.place_id === placeId,
+      (place) => place.place_id === requestedPlaceId,
     );
     if (!mapPlace) return;
-    openedPlaceId.current = placeId;
-    const timer = window.setTimeout(() => focusPlace(mapPlace.id), 0);
+    const timer = window.setTimeout(() => {
+      openedPlaceId.current = requestedPlaceId;
+      setSelected(mapPlace.id);
+      setPreviewId(null);
+      setDetailId(mapPlace.id);
+    }, 0);
     return () => window.clearTimeout(timer);
-  }, [focusPlace, pendingPlaces, places, searchParams]);
+  }, [pendingPlaces, places, requestedPlaceId]);
   return (
-    <main id="main" className="mx-auto max-w-[1440px]">
-      <div className="map-hero border-b px-5 py-3 md:px-9">
+    <main id="main" className="community-explorer mx-auto max-w-[1440px]">
+      <div
+        className="map-hero border-b px-5 py-3 md:px-9"
+        data-mobile-view={mobileView}
+      >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
             <Link
@@ -180,33 +237,24 @@ export function CommunityExplorer({
               </Badge>
               <span className="kicker">{formatLocation(map)}</span>
             </div>
-            <p className="mt-1 line-clamp-2 md:line-clamp-1 max-w-2xl text-xs leading-5 text-muted-foreground">
+            <p className="map-hero-description mt-1 line-clamp-2 md:line-clamp-1 max-w-2xl text-xs leading-5 text-muted-foreground">
               {map.description}
             </p>
           </div>
-          <div className="flex gap-2">
+          <Button
+            className="map-info-trigger lg:hidden"
+            variant="ghost"
+            size="icon"
+            aria-label={`${map.title} 지도 정보 보기`}
+            onClick={() => setInfoOpen(true)}
+          >
+            <Info size={19} />
+          </Button>
+          <div className="map-hero-actions flex gap-2">
             <Button
               variant={myState.followed ? "secondary" : "outline"}
               disabled={busy}
-              onClick={async () => {
-                if (!viewer) {
-                  router.push("/login");
-                  return;
-                }
-                setBusy(true);
-                try {
-                  await post("/api/community", {
-                    action: "follow",
-                    id: map.id,
-                    enabled: !myState.followed,
-                  });
-                  router.refresh();
-                } catch (e) {
-                  setError((e as Error).message);
-                } finally {
-                  setBusy(false);
-                }
-              }}
+              onClick={toggleFollow}
             >
               {myState.followed ? <Check size={14} /> : <Plus size={14} />}{" "}
               {myState.followed ? "팔로우 중" : "팔로우"}
@@ -219,7 +267,7 @@ export function CommunityExplorer({
             </Button>
           </div>
         </div>
-        <div className="mt-2 flex flex-wrap items-center gap-4 text-[11px] text-muted-foreground">
+        <div className="map-hero-meta mt-2 flex flex-wrap items-center gap-4 text-[11px] text-muted-foreground">
           <span className="flex gap-1.5">
             <MapPin size={13} />
             {map.place_count} 장소
@@ -235,17 +283,77 @@ export function CommunityExplorer({
           </details>
         </div>
         {demo && (
-          <p className="mt-1.5 flex items-center gap-2 text-[11px] text-muted-foreground">
+          <p className="map-hero-demo mt-1.5 flex items-center gap-2 text-[11px] text-muted-foreground">
             <Info size={13} />
             미리보기 · 가상 장소이며 실제 추천·검증 정보가 아닙니다.
           </p>
         )}
       </div>
-      <div className="glass-toolbar flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3 md:px-9">
-        <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto md:flex-wrap md:overflow-visible">
+      <Dialog open={infoOpen} onOpenChange={setInfoOpen}>
+        <DialogContent
+          className="map-info-sheet top-auto bottom-0 max-w-none translate-y-0 rounded-b-none p-0 sm:max-w-none"
+          showCloseButton={false}
+        >
+          <div className="mx-auto mt-3 h-1.5 w-10 rounded-full bg-muted-foreground/40" />
+          <DialogHeader className="gap-3 px-5 pt-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <DialogTitle className="text-xl">{map.title}</DialogTitle>
+                <DialogDescription className="mt-1 text-xs">
+                  {formatLocation(map)} · 공개 커뮤니티
+                </DialogDescription>
+              </div>
+              <DialogClose asChild>
+                <Button variant="ghost" size="icon" aria-label="지도 정보 닫기">
+                  <ArrowLeft className="rotate-180" size={18} />
+                </Button>
+              </DialogClose>
+            </div>
+            <DialogDescription className="text-sm leading-6">
+              {map.description}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-wrap gap-x-4 gap-y-2 px-5 pt-5 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1.5">
+              <MapPin size={14} />
+              {map.place_count} 장소
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Users size={14} />
+              {map.follower_count} 팔로워
+            </span>
+            <span>{map.contributor_count} 기여자</span>
+          </div>
+          <details className="mx-5 mt-5 border-t py-4 text-sm">
+            <summary className="cursor-pointer font-medium">
+              커뮤니티 규칙 보기
+            </summary>
+            <p className="pt-3 leading-6 text-muted-foreground">{map.rules}</p>
+          </details>
+          <div className="grid grid-cols-2 gap-2 border-t p-5 pb-[calc(20px+env(safe-area-inset-bottom))]">
+            <Button
+              variant={myState.followed ? "secondary" : "outline"}
+              disabled={busy}
+              onClick={toggleFollow}
+            >
+              {myState.followed ? <Check size={15} /> : <Plus size={15} />}
+              {myState.followed ? "팔로우 중" : "팔로우"}
+            </Button>
+            <Button asChild>
+              <Link href={`/maps/${map.slug}/submit`}>
+                <Plus size={15} />
+                장소 제안
+              </Link>
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <div className="glass-toolbar explorer-toolbar flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3 md:px-9">
+        <div className="explorer-filters flex min-w-0 max-w-full flex-nowrap items-center gap-1.5 overflow-x-auto lg:flex-wrap lg:overflow-visible">
           {["전체", ...map.tags.filter((t) => t !== "전체")].map((t) => (
             <Button
               key={t}
+              aria-pressed={tag === t}
               size="sm"
               variant={tag === t ? "default" : "ghost"}
               className="h-8 shrink-0 rounded-full px-3 text-xs"
@@ -303,8 +411,34 @@ export function CommunityExplorer({
           onChange={() => router.refresh()}
         />
       )}
-      <div className={`glass-map-shell explorer-layout ${selectedPlace ? "has-detail" : ""}`}>
+      <div
+        className="mobile-view-switch mx-4 mb-3 flex rounded-2xl border bg-card p-1 lg:hidden"
+        role="group"
+        aria-label="장소 보기 방식"
+      >
+        <button
+          aria-pressed={mobileView === "list"}
+          aria-controls="explorer-list"
+          onClick={() => setMobileView("list")}
+        >
+          <List size={17} />
+          목록 보기
+        </button>
+        <button
+          aria-pressed={mobileView === "map"}
+          aria-controls="explorer-map"
+          onClick={() => setMobileView("map")}
+        >
+          <MapIcon size={17} />
+          지도 보기
+        </button>
+      </div>
+      <div
+        data-mobile-view={mobileView}
+        className={`glass-map-shell explorer-layout ${selectedPlace ? "has-detail" : ""}`}
+      >
         <section
+          id="explorer-list"
           className="place-list lg:h-fit lg:max-h-[calc(100dvh-250px)] lg:min-h-[480px] lg:self-start lg:overflow-y-auto"
           aria-label="장소 목록"
         >
@@ -340,7 +474,10 @@ export function CommunityExplorer({
                   </span>
                   <div className="min-w-0 flex-1">
                     <button
-                      onClick={(event) => { event.stopPropagation(); focusPlace(p.id); }}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        focusPlace(p.id);
+                      }}
                       className="text-left text-sm font-semibold tracking-tight hover:underline"
                     >
                       {p.name}
@@ -351,27 +488,34 @@ export function CommunityExplorer({
                   </div>
                   <button
                     aria-label={`${p.name} 상세 보기`}
-                    onClick={(event) => { event.stopPropagation(); focusPlace(p.id); }}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      focusPlace(p.id);
+                    }}
                     className="p-1 text-muted-foreground"
                   >
                     <ArrowUpRight size={16} />
                   </button>
                 </div>
+                <p className="mt-3 ml-8 line-clamp-2 text-sm leading-6 text-muted-foreground">
+                  {p.rationale}
+                </p>
                 <div className="mt-2 ml-8 flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-[11px]">
+                  <div className="flex min-w-0 flex-wrap items-center gap-2 text-[11px]">
                     <span className="flex items-center gap-1 rounded bg-secondary px-2 py-1 font-medium text-primary">
                       <Check size={11} />
                       {total
-                        ? `${Math.round((p.positive / total) * 100)}% 적합`
+                        ? `${total}명 중 ${p.positive}명 추천`
                         : "검증 대기"}
                     </span>
-                    <span className="text-muted-foreground">
-                      {total}명 검증
-                    </span>
+                    <span className="text-muted-foreground">주제 적합성</span>
                   </div>
                   <button
-                    aria-label={`${p.name} 저장`}
-                    onClick={(event) => { event.stopPropagation(); focusPlace(p.id); }}
+                    aria-label={`${p.name} 저장 옵션 보기`}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      focusPlace(p.id);
+                    }}
                     className="p-1 text-muted-foreground"
                   >
                     <Bookmark
@@ -393,6 +537,19 @@ export function CommunityExplorer({
                 다른 조건으로 찾아보거나,
                 <br />이 주제에 맞는 첫 장소를 제안해 주세요.
               </p>
+              {(query || tag !== "전체") && (
+                <Button
+                  variant="secondary"
+                  className="mt-5 mr-2"
+                  onClick={() => {
+                    setQuery("");
+                    setTag("전체");
+                    setPage(1);
+                  }}
+                >
+                  검색 조건 초기화
+                </Button>
+              )}
               <Button asChild variant="outline" className="mt-5">
                 <Link href={`/maps/${map.slug}/submit`}>장소 제안하기</Link>
               </Button>
@@ -409,6 +566,7 @@ export function CommunityExplorer({
           )}
         </section>
         <section
+          id="explorer-map"
           aria-label="장소 지도"
           className="explorer-map relative min-w-0 min-h-[420px] lg:h-[calc(100dvh-250px)]"
         >
@@ -437,26 +595,62 @@ export function CommunityExplorer({
               {busy ? "불러오는 중" : "이 지역에서 다시 찾기"}
             </Button>
           )}
-          <div className="absolute bottom-15 left-5 rounded-lg border bg-card/95 px-3 py-2 text-[10px] text-muted-foreground">
-            순위는 일반 별점이 아닌, 이 주제에 대한 검증입니다.
-          </div>
+          {previewPlace ? (
+            <PlacePreview
+              place={previewPlace}
+              saved={myState.saves.includes(previewPlace.id)}
+              demo={demo}
+              signedIn={Boolean(viewer)}
+              busy={busy}
+              onClose={() => {
+                setPreviewId(null);
+                setSelected(null);
+              }}
+              onOpenDetail={() => {
+                setPreviewId(null);
+                setDetailId(previewPlace.id);
+              }}
+              onSave={async () => {
+                setBusy(true);
+                setError("");
+                try {
+                  await post("/api/community", {
+                    action: "save",
+                    id: previewPlace.id,
+                    enabled: !myState.saves.includes(previewPlace.id),
+                  });
+                  router.refresh();
+                } catch (e) {
+                  setError((e as Error).message);
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            />
+          ) : (
+            <div className="absolute bottom-15 left-5 rounded-lg border bg-card/95 px-3 py-2 text-[10px] text-muted-foreground">
+              순위는 일반 별점이 아닌, 이 주제에 대한 검증입니다.
+            </div>
+          )}
         </section>
-      <PlaceDetail
-        key={detailId ?? "closed"}
-        place={selectedPlace}
-        onClose={() => {
-          setDetailId(null);
-          setSelected(null);
-        }}
-        viewer={viewer}
-        vote={myState.votes[detailId ?? ""] ?? 0}
-        saved={myState.saves.includes(detailId ?? "")}
-        demo={demo}
-        onChange={() => {
-          setLoaded(null);
-          router.refresh();
-        }}
-      />
+        <PlaceDetail
+          key={detailId ?? "closed"}
+          place={selectedPlace}
+          onClose={() => {
+            setDetailId(null);
+            if (mobile && mobileView === "map" && selected) {
+              setPreviewId(selected);
+            }
+          }}
+          viewer={viewer}
+          vote={myState.votes[detailId ?? ""] ?? 0}
+          saved={myState.saves.includes(detailId ?? "")}
+          demo={demo}
+          onChange={() => {
+            setLoaded(null);
+            router.refresh();
+          }}
+        />
       </div>
     </main>
   );

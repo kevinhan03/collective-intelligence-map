@@ -232,7 +232,7 @@ export function CommunityExplorer({
         });
         return;
       }
-      if (config.provider === "preview" || config.provider === "kakao") {
+      if (config.provider === "preview") {
         setDetailId(id);
         return;
       }

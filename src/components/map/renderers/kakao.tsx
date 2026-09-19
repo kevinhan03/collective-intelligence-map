@@ -6,6 +6,8 @@ type LatLng = { getLat(): number; getLng(): number };
 type LatLngBounds = object;
 type KMap = {
   getBounds(): { getNorthEast(): LatLng; getSouthWest(): LatLng };
+  getLevel(): number;
+  setLevel(level: number, options?: object): void;
   setBounds(bounds: LatLngBounds): void;
   relayout(): void;
   getCenter(): LatLng;
@@ -62,17 +64,26 @@ function load(key: string) {
   return loaded;
 }
 export default function KakaoMap(props: MapProps) {
-  const { apiKey, places, selected, onSelect, bounds, onBoundsChange } = props;
+  const {
+    apiKey,
+    places,
+    selected,
+    onSelect,
+    onFocusComplete,
+    focusRequest = 0,
+    bounds,
+    onBoundsChange,
+  } = props;
   const el = useRef<HTMLDivElement>(null),
     map = useRef<KMap | null>(null),
     pins = useRef<Overlay[]>([]);
   const [ready, setReady] = useState(false),
     [error, setError] = useState("");
   const fallbackStyle = process.env.NEXT_PUBLIC_MAPLIBRE_STYLE_URL;
-  const handlers = useRef({ onSelect, onBoundsChange });
+  const handlers = useRef({ onSelect, onBoundsChange, onFocusComplete });
   useEffect(() => {
-    handlers.current = { onSelect, onBoundsChange };
-  }, [onSelect, onBoundsChange]);
+    handlers.current = { onSelect, onBoundsChange, onFocusComplete };
+  }, [onSelect, onBoundsChange, onFocusComplete]);
   useEffect(() => {
     let active = true;
     let listener: (() => void) | undefined;
@@ -149,6 +160,24 @@ export default function KakaoMap(props: MapProps) {
       });
     });
   }, [ready, places, selected]);
+  useEffect(() => {
+    if (!ready || !map.current || !selected || focusRequest === 0 || !window.kakao)
+      return;
+    const place = places.find((item) => item.id === selected);
+    if (!place) return;
+
+    // Kakao levels run in the opposite direction: lower means closer. Level 4
+    // gives the same neighborhood-level context as the MapLibre target zoom 14.
+    map.current.setCenter(new window.kakao.maps.LatLng(place.lat, place.lng));
+    map.current.setLevel(Math.min(map.current.getLevel(), 4), {
+      animate: { duration: 420 },
+    });
+    const timer = window.setTimeout(
+      () => handlers.current.onFocusComplete?.(place.id),
+      500,
+    );
+    return () => window.clearTimeout(timer);
+  }, [ready, places, selected, focusRequest]);
   if (error && fallbackStyle) {
     return <MapLibreMap {...props} apiKey={fallbackStyle} />;
   }

@@ -106,7 +106,7 @@ test("server rejects unauthenticated mutations and unknown maps", async ({
         data: { action: "vote", id: "x", value: 1 },
       })
     ).status(),
-  ).toBe(401);
+  ).toBe(403);
   expect(
     (
       await request.get(
@@ -176,6 +176,12 @@ test("mobile view switching preserves scroll position and detail returns focus",
     name: "Second Chapter 미리보기",
   });
   await expect(preview).toBeVisible();
+  await expect(
+    preview.getByRole("button", { name: /Second Chapter 테마에 잘 맞아요/ }),
+  ).toBeDisabled();
+  await expect(
+    preview.getByRole("button", { name: /Second Chapter 테마와 달라요/ }),
+  ).toBeDisabled();
   await expect(page.getByRole("dialog")).toBeHidden();
   await preview
     .getByRole("button", { name: "자세히 보기", exact: true })

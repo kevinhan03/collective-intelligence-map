@@ -53,7 +53,7 @@ export type Viewer = {
   bio: string;
   avatar_path: string | null;
 };
-export type Sort = "relevance" | "newest" | "verified";
+export type Sort = "relevance" | "newest" | "verified" | "controversial" | "popular";
 export type RendererConfig = {
   provider: "google" | "kakao" | "maplibre" | "preview";
   key: string;

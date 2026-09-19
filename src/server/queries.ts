@@ -3,7 +3,9 @@ import { z } from "zod";
 import { cache } from "react";
 import { cacheLife, cacheTag } from "next/cache";
 import { publicDb } from "@/lib/supabase/public";
+import { serviceDb } from "@/lib/supabase/admin";
 import { configured, db } from "@/lib/supabase/server";
+import { storedAnonymousVoteHash } from "@/server/anonymous-votes";
 import type {
   Bounds,
   Comment,
@@ -194,13 +196,29 @@ export async function getComments(id: string): Promise<Comment[]> {
 }
 export async function getMyState(mapId: string) {
   const viewer = await getViewer();
-  if (!viewer) return { votes: {}, saves: [], followed: false };
+  const anonymousVoteHash = viewer ? null : await storedAnonymousVoteHash();
+  if (!viewer && !anonymousVoteHash)
+    return { votes: {}, saves: [], followed: false };
   const client = await db();
-  const [votes, saves, follow] = await Promise.all([
-    client
-      .from("map_place_votes")
-      .select("map_place_id,value")
-      .eq("user_id", viewer.id),
+  const votes = viewer
+    ? await client
+        .from("map_place_votes")
+        .select("map_place_id,value")
+        .eq("user_id", viewer.id)
+    : await serviceDb()
+        .from("anonymous_map_place_votes")
+        .select("map_place_id,value")
+        .eq("token_hash", anonymousVoteHash!);
+  if (votes.error) throw new Error("내 활동을 불러올 수 없습니다.");
+  if (!viewer)
+    return {
+      votes: Object.fromEntries(
+        (votes.data ?? []).map((vote) => [vote.map_place_id, vote.value]),
+      ) as Record<string, number>,
+      saves: [],
+      followed: false,
+    };
+  const [saves, follow] = await Promise.all([
     client.from("saves").select("map_place_id").eq("user_id", viewer.id),
     client
       .from("map_follows")
@@ -208,7 +226,7 @@ export async function getMyState(mapId: string) {
       .eq("user_id", viewer.id)
       .eq("map_id", mapId),
   ]);
-  if (votes.error || saves.error || follow.error)
+  if (saves.error || follow.error)
     throw new Error("내 활동을 불러올 수 없습니다.");
   return {
     votes: Object.fromEntries(

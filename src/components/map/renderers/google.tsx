@@ -192,7 +192,7 @@ export default function GoogleMap({
     const startLat = start?.lat() ?? place.lat;
     const startLng = start?.lng() ?? place.lng;
     const startZoom = map.current.getZoom() ?? 12;
-    const targetZoom = Math.max(startZoom, 16);
+    const targetZoom = Math.max(startZoom, 14);
     const startedAt = performance.now();
     const duration = 420;
     let frame = 0;

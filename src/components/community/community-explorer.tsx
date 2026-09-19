@@ -16,6 +16,8 @@ import {
   Map as MapIcon,
   Plus,
   Search,
+  ThumbsDown,
+  ThumbsUp,
   Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -28,20 +30,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { MapCanvas } from "@/components/map/map-canvas";
 import { PlaceDetail } from "./place-detail";
 import { PlacePreview } from "./place-preview";
 import { PendingReview } from "./pending-review";
 import { post } from "./api";
 import { trackCommunityEvent } from "@/lib/community-analytics";
-import { sortPlaces } from "@/domain/relevance";
+import {
+  isControversial,
+  isNew,
+  isVerified,
+  sortPlaces,
+} from "@/domain/relevance";
 import { formatLocation } from "@/domain/location";
 import type {
   Bounds,
@@ -51,6 +51,13 @@ import type {
   ThemeMap,
   Viewer,
 } from "@/domain/types";
+const sortOptions: { value: Sort; label: string }[] = [
+  { value: "relevance", label: "적합순" },
+  { value: "newest", label: "최신순" },
+  { value: "controversial", label: "논쟁중" },
+  { value: "verified", label: "검증순" },
+  { value: "popular", label: "인기순" },
+];
 export function CommunityExplorer({
   map,
   initialPlaces,
@@ -179,6 +186,23 @@ export function CommunityExplorer({
         action: "follow",
         id: map.id,
         enabled: !myState.followed,
+      });
+      router.refresh();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const votePlace = async (id: string, value: 1 | -1) => {
+    if (demo) return;
+    setBusy(true);
+    setError("");
+    try {
+      await post("/api/community", {
+        action: "vote",
+        id,
+        value: myState.votes[id] === value ? 0 : value,
       });
       router.refresh();
     } catch (e) {
@@ -377,58 +401,83 @@ export function CommunityExplorer({
         </DialogContent>
       </Dialog>
       <div className="glass-toolbar explorer-toolbar flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3 md:px-9">
-        <div className="relative w-full sm:w-60">
-          <Search
-            className="absolute top-2.5 left-3 text-muted-foreground"
-            size={14}
-          />
-          <Input
-            className="h-9 bg-background pl-9 text-xs"
-            value={query}
-            onChange={(e) => {
-              const value = e.target.value;
-              setQuery(value);
-              setPage(1);
-              if (value.trim() && !searchTracked.current) {
-                searchTracked.current = true;
-                trackCommunityEvent("place_search_started", {
-                  provider: config.provider,
-                });
-              }
-            }}
-            placeholder="이 맵의 장소 검색"
-            aria-label="이 맵의 장소 검색"
-          />
-          {searchSuggestions.length > 0 && (
-            <div
-              className="absolute top-[calc(100%+6px)] right-0 left-0 z-30 overflow-hidden rounded-xl border bg-card p-1 shadow-lg"
-              role="listbox"
-              aria-label="관련 검색어"
-            >
-              {searchSuggestions.map((suggestion) => (
-                <button
-                  key={suggestion.term}
-                  type="button"
-                  role="option"
-                  aria-selected={false}
-                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs hover:bg-secondary"
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => {
-                    setQuery(suggestion.term);
-                    setPage(1);
-                    trackCommunityEvent("place_search_suggestion_selected", {
-                      provider: config.provider,
-                    });
-                  }}
-                >
-                  <span>{suggestion.term}</span>
-                  <span className="text-[10px] text-muted-foreground">
-                    {suggestion.kind}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
+        <div className="search-sort-group flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:flex-nowrap">
+          <div className="relative w-full sm:w-60">
+            <Search
+              className="absolute top-2.5 left-3 text-muted-foreground"
+              size={14}
+            />
+            <Input
+              className="h-9 bg-background pl-9 text-xs"
+              value={query}
+              onChange={(e) => {
+                const value = e.target.value;
+                setQuery(value);
+                setPage(1);
+                if (value.trim() && !searchTracked.current) {
+                  searchTracked.current = true;
+                  trackCommunityEvent("place_search_started", {
+                    provider: config.provider,
+                  });
+                }
+              }}
+              placeholder="이 맵의 장소 검색"
+              aria-label="이 맵의 장소 검색"
+            />
+            {searchSuggestions.length > 0 && (
+              <div
+                className="absolute top-[calc(100%+6px)] right-0 left-0 z-30 overflow-hidden rounded-xl border bg-card p-1 shadow-lg"
+                role="listbox"
+                aria-label="관련 검색어"
+              >
+                {searchSuggestions.map((suggestion) => (
+                  <button
+                    key={suggestion.term}
+                    type="button"
+                    role="option"
+                    aria-selected={false}
+                    className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs hover:bg-secondary"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => {
+                      setQuery(suggestion.term);
+                      setPage(1);
+                      trackCommunityEvent("place_search_suggestion_selected", {
+                        provider: config.provider,
+                      });
+                    }}
+                  >
+                    <span>{suggestion.term}</span>
+                    <span className="text-[10px] text-muted-foreground">
+                      {suggestion.kind}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <div
+            className="sort-chip-group flex shrink-0 items-center gap-1 overflow-x-auto"
+            role="group"
+            aria-label="장소 정렬"
+          >
+            {sortOptions.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                className="sort-chip"
+                aria-pressed={sort === option.value}
+                onClick={() => {
+                  setSort(option.value);
+                  trackCommunityEvent("place_sort_changed", {
+                    provider: config.provider,
+                    sort: option.value,
+                  });
+                }}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
         </div>
         <div
           className="mobile-view-switch flex rounded-xl border bg-card p-0.5 lg:hidden"
@@ -508,22 +557,8 @@ export function CommunityExplorer({
             <span className="text-xs font-medium">
               {filtered.length}개의 발견 {truncated && "· 일부 결과"}
             </span>
-            <Select value={sort} onValueChange={(v) => setSort(v as Sort)}>
-              <SelectTrigger
-                className="h-8 w-32 border-0 text-xs"
-                aria-label="장소 정렬"
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="relevance">주제 적합순</SelectItem>
-                <SelectItem value="newest">최근 추가순</SelectItem>
-                <SelectItem value="verified">최근 검증순</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
           {filtered.slice(0, page * 20).map((p, i) => {
-            const total = p.positive + p.negative;
             return (
               <article
                 key={p.id}
@@ -535,15 +570,30 @@ export function CommunityExplorer({
                     {i + 1}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <button
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        focusPlace(p.id);
-                      }}
-                      className="text-left text-sm font-semibold tracking-tight hover:underline"
-                    >
-                      {p.name}
-                    </button>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <button
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          focusPlace(p.id);
+                        }}
+                        className="text-left text-sm font-semibold tracking-tight hover:underline"
+                      >
+                        {p.name}
+                      </button>
+                      {!demo && isNew(p) && (
+                        <span className="place-badge place-badge-new">NEW</span>
+                      )}
+                      {!demo && isControversial(p) && (
+                        <span className="place-badge place-badge-controversial">
+                          논쟁 중
+                        </span>
+                      )}
+                      {!demo && isVerified(p) && (
+                        <span className="place-badge place-badge-verified">
+                          검증됨
+                        </span>
+                      )}
+                    </div>
                     <p className="mt-1 text-[11px] text-muted-foreground">
                       {demo ? "가상 예시" : p.category}
                     </p>
@@ -559,18 +609,39 @@ export function CommunityExplorer({
                     <ArrowUpRight size={16} />
                   </button>
                 </div>
-                <p className="mt-3 ml-8 line-clamp-2 text-sm leading-6 text-muted-foreground">
-                  {p.rationale}
-                </p>
                 <div className="mt-2 ml-8 flex items-center justify-between">
-                  <div className="flex min-w-0 flex-wrap items-center gap-2 text-[11px]">
-                    <span className="flex items-center gap-1 rounded bg-secondary px-2 py-1 font-medium text-primary">
-                      <Check size={11} />
-                      {total
-                        ? `${total}명 중 ${p.positive}명 추천`
-                        : "검증 대기"}
-                    </span>
-                    <span className="text-muted-foreground">주제 적합성</span>
+                  <div
+                    className="place-card-votes flex items-center gap-1.5"
+                    aria-label={`${p.name} 주제 적합성 투표`}
+                  >
+                    <button
+                      type="button"
+                      className="vote-control"
+                      aria-label={`${p.name} 테마에 잘 맞아요 ${p.positive}`}
+                      aria-pressed={myState.votes[p.id] === 1}
+                      disabled={demo || busy}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        void votePlace(p.id, 1);
+                      }}
+                    >
+                      <ThumbsUp size={13} fill="none" strokeWidth={1.8} />
+                      <span>{p.positive}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="vote-control"
+                      aria-label={`${p.name} 테마와 달라요 ${p.negative}`}
+                      aria-pressed={myState.votes[p.id] === -1}
+                      disabled={demo || busy}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        void votePlace(p.id, -1);
+                      }}
+                    >
+                      <ThumbsDown size={13} fill="none" strokeWidth={1.8} />
+                      <span>{p.negative}</span>
+                    </button>
                   </div>
                   <button
                     aria-label={`${p.name} 저장 옵션 보기`}
@@ -660,6 +731,7 @@ export function CommunityExplorer({
             <PlacePreview
               place={previewPlace}
               saved={myState.saves.includes(previewPlace.id)}
+              vote={myState.votes[previewPlace.id] ?? 0}
               demo={demo}
               signedIn={Boolean(viewer)}
               busy={busy}
@@ -675,6 +747,7 @@ export function CommunityExplorer({
                   provider: config.provider,
                 });
               }}
+              onVote={(value) => votePlace(previewPlace.id, value)}
               onSave={async () => {
                 setBusy(true);
                 setError("");

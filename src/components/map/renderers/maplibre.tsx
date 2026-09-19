@@ -132,7 +132,7 @@ export default function MapLibreMap(props: MapProps) {
     map.once("moveend", onArrival);
     map.flyTo({
       center: [p.lng, p.lat],
-      zoom: Math.max(map.getZoom(), 16),
+      zoom: Math.max(map.getZoom(), 14),
       duration: 650,
       essential: true,
     });

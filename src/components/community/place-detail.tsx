@@ -79,6 +79,7 @@ export function PlaceDetail({
   if (!place) return null;
   const total = place.positive + place.negative;
   const enabled = Boolean(viewer) && !demo;
+  const votingEnabled = !demo;
   return (
     <PlacePanel title={`${place.name} 장소 상세`} onClose={onClose}>
       <aside
@@ -139,7 +140,7 @@ export function PlaceDetail({
           <div className="flex flex-wrap gap-2">
             <Button
               variant={vote === 1 ? "default" : "outline"}
-              disabled={!enabled || busy}
+              disabled={!votingEnabled || busy}
               onClick={() =>
                 act({ action: "vote", id: place.id, value: vote === 1 ? 0 : 1 })
               }
@@ -149,7 +150,7 @@ export function PlaceDetail({
             </Button>
             <Button
               variant={vote === -1 ? "default" : "outline"}
-              disabled={!enabled || busy}
+              disabled={!votingEnabled || busy}
               onClick={() =>
                 act({
                   action: "vote",
@@ -167,9 +168,7 @@ export function PlaceDetail({
               {demo ? (
                 "가상 예시에서는 참여 기능을 사용할 수 없습니다."
               ) : (
-                <Link href="/login" className="underline">
-                  로그인하고 방문 경험을 나눠 주세요.
-                </Link>
+                "투표 외 저장·댓글·장소 제안에는 로그인이 필요합니다."
               )}
             </p>
           )}

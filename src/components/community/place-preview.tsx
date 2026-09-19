@@ -1,27 +1,31 @@
 "use client";
 
 import Link from "next/link";
-import { Bookmark, ChevronUp, X } from "lucide-react";
+import { Bookmark, ChevronUp, ThumbsDown, ThumbsUp, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { MapPlace } from "@/domain/types";
 
 export function PlacePreview({
   place,
   saved,
+  vote,
   demo,
   signedIn,
   busy,
   onClose,
   onOpenDetail,
+  onVote,
   onSave,
 }: {
   place: MapPlace;
   saved: boolean;
+  vote: number;
   demo: boolean;
   signedIn: boolean;
   busy: boolean;
   onClose: () => void;
   onOpenDetail: () => void;
+  onVote: (value: 1 | -1) => void;
   onSave: () => void;
 }) {
   const total = place.positive + place.negative;
@@ -53,6 +57,33 @@ export function PlacePreview({
           ? `${total}명 중 ${place.positive}명이 이 주제에 추천했어요.`
           : "아직 검증 전인 장소예요."}
       </p>
+      <div
+        className="place-card-votes mt-3 flex items-center gap-2"
+        aria-label={`${place.name} 주제 적합성 투표`}
+      >
+        <button
+          type="button"
+          className="vote-control"
+          aria-label={`${place.name} 테마에 잘 맞아요 ${place.positive}`}
+          aria-pressed={vote === 1}
+          disabled={demo || busy}
+          onClick={() => onVote(1)}
+        >
+          <ThumbsUp size={14} fill="none" strokeWidth={1.8} />
+          <span>{place.positive}</span>
+        </button>
+        <button
+          type="button"
+          className="vote-control"
+          aria-label={`${place.name} 테마와 달라요 ${place.negative}`}
+          aria-pressed={vote === -1}
+          disabled={demo || busy}
+          onClick={() => onVote(-1)}
+        >
+          <ThumbsDown size={14} fill="none" strokeWidth={1.8} />
+          <span>{place.negative}</span>
+        </button>
+      </div>
       <div className="mt-4 grid grid-cols-[1fr_auto] gap-2">
         <Button className="h-11" onClick={onOpenDetail}>
           자세히 보기

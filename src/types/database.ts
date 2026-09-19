@@ -216,6 +216,45 @@ export type Database = {
           },
         ];
       };
+      anonymous_map_place_votes: {
+        Row: {
+          map_place_id: string;
+          token_hash: string;
+          value: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          map_place_id: string;
+          token_hash: string;
+          value: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          map_place_id?: string;
+          token_hash?: string;
+          value?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "anonymous_map_place_votes_map_place_id_fkey";
+            columns: ["map_place_id"];
+            isOneToOne: false;
+            referencedRelation: "map_place_cards";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "anonymous_map_place_votes_map_place_id_fkey";
+            columns: ["map_place_id"];
+            isOneToOne: false;
+            referencedRelation: "map_places";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       map_places: {
         Row: {
           added_by: string | null;
@@ -578,6 +617,14 @@ export type Database = {
       place_check_summary: { Args: { m: string }; Returns: Json };
       admin_snapshot: { Args: never; Returns: Json };
       community_command: { Args: { payload: Json }; Returns: Json };
+      record_anonymous_vote: {
+        Args: { p_target: string; p_token_hash: string; p_value: number };
+        Returns: Json;
+      };
+      merge_anonymous_votes: {
+        Args: { p_token_hash: string };
+        Returns: Json;
+      };
       finish_provider: {
         Args: { ms: number; r: string; result: string };
         Returns: undefined;

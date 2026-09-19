@@ -126,6 +126,55 @@ create function storage.foldername(text) returns text[] language sql immutable a
     1,
   );
   await command(b, { action: "vote", id: pid, value: 0 });
+  const anonymousTokenHash = "d".repeat(64);
+  await as(
+    null,
+    () =>
+      c.query(
+        "select public.record_anonymous_vote($1,$2,$3::smallint)",
+        [pid, anonymousTokenHash, 1],
+      ),
+    "service_role",
+  );
+  await as(
+    null,
+    () =>
+      c.query(
+        "select public.record_anonymous_vote($1,$2,$3::smallint)",
+        [pid, anonymousTokenHash, -1],
+      ),
+    "service_role",
+  );
+  assert.equal(
+    (
+      await c.query(
+        "select value from public.anonymous_map_place_votes where map_place_id=$1 and token_hash=$2",
+        [pid, anonymousTokenHash],
+      )
+    ).rows[0].value,
+    -1,
+  );
+  await assert.rejects(() =>
+    as(
+      null,
+      () =>
+        c.query("select public.record_anonymous_vote($1,$2,$3::smallint)", [
+          pid,
+          "e".repeat(64),
+          1,
+        ]),
+      "anon",
+    ),
+  );
+  await as(
+    null,
+    () =>
+      c.query(
+        "select public.record_anonymous_vote($1,$2,$3::smallint)",
+        [pid, anonymousTokenHash, 0],
+      ),
+    "service_role",
+  );
   console.log(
     "PASS: pending proposals are readable and votable on the theme map, but hidden from the public bbox query",
   );

@@ -189,7 +189,7 @@ test("mobile view switching preserves scroll position and detail returns focus",
   const detail = page.getByRole("dialog", { name: "Second Chapter 장소 상세" });
   await expect(detail).toBeVisible();
   await expect(
-    detail.getByRole("button", { name: "미리보기에서는 저장할 수 없어요" }),
+    detail.getByRole("button", { name: "저장 불가" }),
   ).toBeDisabled();
   await page.getByRole("button", { name: "장소 상세 닫기" }).click();
   await expect(detail).toBeHidden();

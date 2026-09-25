@@ -129,9 +129,21 @@ export function ProposalForm({
         candidate: Candidate;
       }>("/api/places/details", { mapId: map.id, token: candidate.token });
       if (requestId.current !== id) return;
+      if (result.placeId) {
+        setExistingPlace({
+          id: result.placeId,
+          name: result.candidate.label,
+          address: result.candidate.address ?? "",
+          category: result.candidate.category ?? "",
+          locality: result.candidate.locality ?? map.city,
+          lat: result.candidate.lat ?? 0,
+          lng: result.candidate.lng ?? 0,
+        });
+        return;
+      }
       setSelection({
-        placeId: result.placeId ?? undefined,
-        token: result.placeId ? undefined : result.candidate.token,
+        placeId: undefined,
+        token: result.candidate.token,
         label: result.candidate.label,
         lat: result.candidate.lat,
         lng: result.candidate.lng,

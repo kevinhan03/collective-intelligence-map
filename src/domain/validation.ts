@@ -10,21 +10,12 @@ export const boundsSchema = z
     (b) => b.south < b.north && b.west !== b.east,
     "올바른 지도 범위를 선택해 주세요.",
   );
-export const searchSchema = z
-  .object({
-    mapId: z.uuid(),
-    query: z.string().trim().min(2).max(100),
-    external: z.boolean().default(false),
-    session: z.uuid().optional(),
-  })
-  .superRefine((value, context) => {
-    if (value.external && value.query.length < 3)
-      context.addIssue({
-        code: "custom",
-        path: ["query"],
-        message: "외부 장소 검색은 세 글자 이상 입력해 주세요.",
-      });
-  });
+export const searchSchema = z.object({
+  mapId: z.uuid(),
+  query: z.string().trim().min(1).max(100),
+  external: z.boolean().default(false),
+  session: z.uuid().optional(),
+});
 export const proposalSchema = z
   .object({
     mapId: z.uuid(),

@@ -28,14 +28,10 @@ it("internal search never touches an external provider, including zero hits", as
   expect(mocks.route).not.toHaveBeenCalled();
 });
 
-it("requires three characters before an external Places lookup", () => {
-  expect(() =>
-    searchSchema.parse({
-      mapId: demoMap.id,
-      query: "ab",
-      external: true,
-    }),
-  ).toThrow("외부 장소 검색은 세 글자 이상 입력해 주세요.");
+it("allows short queries for both internal and external search", () => {
+  expect(
+    searchSchema.parse({ mapId: demoMap.id, query: "ab", external: true }),
+  ).toMatchObject({ query: "ab", external: true });
   expect(
     searchSchema.parse({ mapId: demoMap.id, query: "ab", external: false }),
   ).toMatchObject({ query: "ab", external: false });

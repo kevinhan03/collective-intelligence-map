@@ -188,7 +188,6 @@ export function ProposalForm({
             aria-label="제안할 장소 검색"
             placeholder="장소 이름을 입력하세요"
             value={query}
-            minLength={3}
             maxLength={100}
             disabled={!enabled}
             onChange={(e) => {
@@ -203,7 +202,7 @@ export function ProposalForm({
               setError("");
             }}
           />
-          <Button disabled={!enabled || busy || query.trim().length < 3}>
+          <Button disabled={!enabled || busy || query.trim().length === 0}>
             <Search size={15} />
             {busy ? "검색 중…" : "검색"}
           </Button>

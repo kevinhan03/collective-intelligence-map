@@ -32,7 +32,7 @@ export async function SiteHeader() {
             className="hidden items-center gap-2 text-sm font-medium sm:flex"
           >
             <Compass size={16} />
-            커뮤니티 탐색
+            발견
           </Link>
           <Link
             href="/saved"
@@ -64,7 +64,16 @@ export async function SiteHeader() {
             </Button>
           )}
         </nav>
-        <MobileNavigation />
+        <div className="flex items-center gap-1 lg:hidden">
+          <Link
+            href="/saved"
+            aria-label="저장한 장소"
+            className="grid size-11 place-items-center rounded-xl text-muted-foreground hover:bg-secondary hover:text-foreground"
+          >
+            <Bookmark size={20} />
+          </Link>
+          <MobileNavigation />
+        </div>
       </div>
     </header>
   );

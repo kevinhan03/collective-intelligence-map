@@ -31,6 +31,7 @@ export default function MapLibreMap(props: MapProps) {
   const latest = useRef(props);
   const lastReportedBounds = useRef<MapProps["bounds"] | null>(null);
   const [error, setError] = useState(false);
+  const [viewRevision, setViewRevision] = useState(0);
   useEffect(() => {
     latest.current = props;
   });
@@ -60,6 +61,7 @@ export default function MapLibreMap(props: MapProps) {
     map.on("error", () => setError(true));
     map.on("idle", () => setError(false));
     map.on("moveend", () => {
+      setViewRevision((revision) => revision + 1);
       const v = map.getBounds();
       const nextBounds = {
         west: Math.max(-180, v.getWest()),
@@ -90,31 +92,62 @@ export default function MapLibreMap(props: MapProps) {
   useEffect(() => {
     const map = instance.current;
     if (!map) return;
-    const markers = props.places.map((p) => {
+    const groups: { places: { place: typeof props.places[number]; rank: number }[]; x: number; y: number }[] = [];
+    props.places.forEach((place, rank) => {
+      const point = map.project([place.lng, place.lat]);
+      const nearby = groups.find(
+        (group) =>
+          place.id !== props.selected &&
+          group.places.every(({ place: member }) => member.id !== props.selected) &&
+          Math.hypot(group.x - point.x, group.y - point.y) < 36,
+      );
+      if (nearby) nearby.places.push({ place, rank });
+      else groups.push({ places: [{ place, rank }], x: point.x, y: point.y });
+    });
+    const markers = groups.map((group) => {
+      const { place: p, rank } = group.places[0];
+      const clustered = group.places.length > 1;
+      const canZoom = map.getZoom() < 17;
       const button = document.createElement("button");
       button.type = "button";
-      button.title = p.name;
+      button.title = clustered
+        ? canZoom
+          ? `${group.places.length}개 장소 확대`
+          : `${group.places.length}개 장소 중 ${p.name} 보기`
+        : p.name;
       button.setAttribute(
         "aria-label",
-        `${p.name}${p.status === "pending" ? " · 검토 대기" : ""}`,
+        clustered
+          ? button.title
+          : `${p.name}${p.status === "pending" ? " · 검토 대기" : ""}`,
       );
       button.className = "map-marker";
+      button.dataset.cluster = String(clustered);
       button.dataset.selected = String(props.selected === p.id);
       button.dataset.status = p.status;
       const face = document.createElement("span");
       face.className = "map-marker-face";
       const icon = document.createElement("span");
-      icon.textContent = p.status === "pending" ? "···" : "✓";
+      icon.textContent = clustered
+        ? String(group.places.length)
+        : p.status === "pending" ? "···" : String(rank + 1);
       icon.setAttribute("aria-hidden", "true");
       face.append(icon);
       button.append(face);
-      button.onclick = () => latest.current.onSelect(p.id);
+      button.onclick = () => {
+        if (clustered && canZoom) {
+          map.easeTo({
+            center: [p.lng, p.lat],
+            zoom: Math.min(map.getZoom() + 2, 18),
+          });
+        } else latest.current.onSelect(p.id);
+      };
       return new maplibregl.Marker({ element: button, anchor: "bottom" })
         .setLngLat([p.lng, p.lat])
         .addTo(map);
     });
     return () => markers.forEach((m) => m.remove());
-  }, [props.places, props.selected, props.apiKey]);
+  }, [props.places, props.selected, props.apiKey, viewRevision]);
   useEffect(() => {
     if (!props.focusRequest) return;
     const { places, selected, onFocusComplete } = latest.current;

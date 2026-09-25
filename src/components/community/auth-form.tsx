@@ -2,7 +2,8 @@
 import { useState } from "react";
 import { browserDb } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
-export function AuthForm({ enabled }: { enabled: boolean }) {
+import { loginReturnCookie, safeReturnPath } from "@/domain/login-return";
+export function AuthForm({ enabled, next }: { enabled: boolean; next: string }) {
   const [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
   async function loginWithGoogle() {
@@ -10,6 +11,7 @@ export function AuthForm({ enabled }: { enabled: boolean }) {
     setError("");
     try {
       const client = browserDb();
+      document.cookie = `${loginReturnCookie}=${encodeURIComponent(safeReturnPath(next))}; Path=/; Max-Age=600; SameSite=Lax`;
       const redirectTo = `${window.location.origin}/auth/callback`;
       const result = await client.auth.signInWithOAuth({
         provider: "google",

@@ -168,7 +168,7 @@ export default function GoogleMap({
         position: { lat: p.lat, lng: p.lng },
         title: p.name,
         label: {
-          text: String(i + 1),
+          text: p.status === "pending" ? "···" : String(i + 1),
           color: selected === p.id ? "#ffffff" : p.status === "pending" ? "#475569" : "#ffffff",
         },
         icon: {

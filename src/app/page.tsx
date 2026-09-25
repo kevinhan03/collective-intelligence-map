@@ -1,16 +1,15 @@
 import Link from "next/link";
 import { MobileDiscovery } from "@/components/community/mobile-discovery";
+import { DesktopDiscovery } from "@/components/community/desktop-discovery";
 import {
   ArrowRight,
-  ArrowUpRight,
   MapPin,
-  Users,
   Globe2,
   Check,
 } from "lucide-react";
-import { getMaps } from "@/server/queries";
+import { getInitialPlaces, getMaps } from "@/server/queries";
 import { configured } from "@/lib/supabase/server";
-import { formatLocation } from "@/domain/location";
+import { placeArea } from "@/domain/place-location";
 import { SmoothScrollLink } from "@/components/smooth-scroll-link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,9 +20,18 @@ export default async function Home() {
       b.place_count - a.place_count ||
       a.slug.localeCompare(b.slug),
   );
+  const placesByMap = await Promise.all(maps.map(getInitialPlaces));
+  const locationTerms = Object.fromEntries(
+    maps.map((map, index) => [
+      map.id,
+      placesByMap[index]
+        .map((place) => `${place.address} ${placeArea(place.address)}`)
+        .join(" "),
+    ]),
+  );
   return (
     <main id="main" className="page-wrap">
-      <MobileDiscovery maps={maps} demo={!configured()} />
+      <MobileDiscovery maps={maps} locationTerms={locationTerms} demo={!configured()} />
       <div className="hidden lg:block">
         <div className="mb-8 flex items-center justify-between border-b pb-5">
           <p className="kicker">A place for shared discoveries</p>
@@ -53,7 +61,7 @@ export default async function Home() {
             </p>
             <Button asChild className="mt-7 h-11 px-5">
               <SmoothScrollLink href="#communities">
-                Theme Map 둘러보기
+                지도 둘러보기
                 <ArrowRight size={16} />
               </SmoothScrollLink>
             </Button>
@@ -111,80 +119,7 @@ export default async function Home() {
               추천·검증 데이터가 아닙니다.
             </p>
           )}
-          <p className="mb-4 text-xs text-muted-foreground">
-            팔로워 많은 순 · 동률이면 등록 장소 수 기준
-          </p>
-          <ol className="divide-y divide-white/10 rounded-3xl border border-white/15 bg-black/20 p-2 backdrop-blur-xl sm:p-3">
-            {maps.map((map, i) => (
-              <li key={map.id}>
-                <Link
-                  href={`/maps/${map.slug}`}
-                  className="group grid grid-cols-[44px_minmax(0,1fr)] items-start gap-3 rounded-2xl px-3 py-5 transition-colors hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-primary sm:grid-cols-[64px_minmax(0,1fr)_auto] sm:items-center sm:gap-5 sm:px-5 sm:py-6"
-                >
-                  <span
-                    aria-hidden="true"
-                    className="grid size-11 place-items-center rounded-2xl border border-primary/20 bg-primary/10 text-primary sm:size-16"
-                  >
-                    <MapPin className="size-6 sm:size-7" />
-                  </span>
-                  <div className="min-w-0">
-                    <h3 className="flex items-center gap-2 text-lg font-semibold tracking-tight group-hover:text-primary sm:text-xl">
-                      <span className="tabular-nums">{i + 1}.</span>
-                      <span className="truncate">{map.title}</span>
-                      <ArrowUpRight
-                        aria-hidden="true"
-                        className="size-4 shrink-0 opacity-0 transition-opacity group-hover:opacity-70 group-focus-visible:opacity-70"
-                      />
-                    </h3>
-                    <p
-                      className="mt-1.5 truncate text-sm text-muted-foreground sm:text-base"
-                      title={map.description}
-                    >
-                      {map.description}
-                    </p>
-                    <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                      <span>{formatLocation(map)}</span>
-                      {map.tags
-                        .filter((tag) => tag !== "전체")
-                        .map((tag) => (
-                          <span key={tag} className="text-primary/80">
-                            #{tag}
-                          </span>
-                        ))}
-                    </div>
-                  </div>
-                  <div className="col-start-2 flex gap-2 sm:col-start-auto sm:gap-3">
-                    <div className="flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 py-2 sm:min-w-20 sm:flex-col sm:gap-1">
-                      <MapPin
-                        aria-hidden="true"
-                        size={15}
-                        className="text-muted-foreground"
-                      />
-                      <span className="font-semibold tabular-nums">
-                        {map.place_count.toLocaleString("ko-KR")}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground">
-                        장소
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 py-2 sm:min-w-20 sm:flex-col sm:gap-1">
-                      <Users
-                        aria-hidden="true"
-                        size={15}
-                        className="text-muted-foreground"
-                      />
-                      <span className="font-semibold tabular-nums">
-                        {map.follower_count.toLocaleString("ko-KR")}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground">
-                        팔로워
-                      </span>
-                    </div>
-                  </div>
-                </Link>
-              </li>
-            ))}
-          </ol>
+          <DesktopDiscovery maps={maps} locationTerms={locationTerms} />
         </section>
       </div>
       <footer className="mt-14 flex justify-between border-t pt-5 text-xs text-muted-foreground">

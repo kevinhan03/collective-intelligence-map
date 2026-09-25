@@ -43,6 +43,8 @@ import {
   sortPlaces,
 } from "@/domain/relevance";
 import { formatLocation } from "@/domain/location";
+import { placeArea } from "@/domain/place-location";
+import { loginHref } from "@/domain/login-return";
 import type {
   Bounds,
   MapPlace,
@@ -52,11 +54,11 @@ import type {
   Viewer,
 } from "@/domain/types";
 const sortOptions: { value: Sort; label: string }[] = [
-  { value: "relevance", label: "적합순" },
+  { value: "relevance", label: "추천순" },
   { value: "newest", label: "최신순" },
   { value: "controversial", label: "논쟁중" },
-  { value: "verified", label: "검증순" },
-  { value: "popular", label: "인기순" },
+  { value: "verified", label: "최근 확인순" },
+  { value: "popular", label: "추천 많은 순" },
 ];
 export function CommunityExplorer({
   map,
@@ -83,6 +85,12 @@ export function CommunityExplorer({
   const [mobileView, setMobileView] = useState<"list" | "map">("map");
   const [infoOpen, setInfoOpen] = useState(false);
   const [previewId, setPreviewId] = useState<string | null>(null);
+  const [savedOverrides, setSavedOverrides] = useState<Record<string, boolean>>({});
+  const [saveNotice, setSaveNotice] = useState<{
+    id: string;
+    name: string;
+    enabled: boolean;
+  } | null>(null);
   const personalized = useViewerState();
   const viewer = personalized.viewer ?? initialViewer;
   const myState = personalized.viewer ? personalized.myState : initialMyState;
@@ -108,17 +116,23 @@ export function CommunityExplorer({
     () => loaded ?? initialPlaces.slice(0, 500),
     [initialPlaces, loaded],
   );
+  const isSaved = (id: string) =>
+    savedOverrides[id] ?? myState.saves.includes(id);
   const filtered = useMemo(
     () =>
       sortPlaces(
         places.filter((p) =>
-          `${p.name} ${p.category} ${p.rationale}`
+          `${p.name} ${p.category} ${p.rationale} ${p.address} ${placeArea(p.address)}`
             .toLowerCase()
             .includes(query.toLowerCase()),
         ),
         sort,
       ),
     [places, query, sort],
+  );
+  const visiblePlaces = useMemo(
+    () => filtered.slice(0, page * 20),
+    [filtered, page],
   );
   const searchSuggestions = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -177,7 +191,7 @@ export function CommunityExplorer({
     [...places, ...pendingPlaces].find((p) => p.id === previewId) ?? null;
   const toggleFollow = async () => {
     if (!viewer) {
-      router.push("/login");
+      router.push(loginHref(`/maps/${map.slug}`));
       return;
     }
     setBusy(true);
@@ -204,6 +218,39 @@ export function CommunityExplorer({
         id,
         value: myState.votes[id] === value ? 0 : value,
       });
+      router.refresh();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const savePlace = async (id: string, undo = false) => {
+    if (demo || busy) return;
+    if (!viewer) {
+      const place = places.find((item) => item.id === id);
+      router.push(
+        loginHref(
+          `/maps/${map.slug}${place ? `?place=${encodeURIComponent(place.place_id)}` : ""}`,
+        ),
+      );
+      return;
+    }
+    const enabled = !isSaved(id);
+    setBusy(true);
+    setError("");
+    try {
+      await post("/api/community", { action: "save", id, enabled });
+      setSavedOverrides((current) => ({ ...current, [id]: enabled }));
+      setSaveNotice(
+        undo
+          ? null
+          : {
+              id,
+              name: places.find((place) => place.id === id)?.name ?? "장소",
+              enabled,
+            },
+      );
       router.refresh();
     } catch (e) {
       setError((e as Error).message);
@@ -276,7 +323,7 @@ export function CommunityExplorer({
               className="mb-1 flex items-center gap-1.5 text-xs text-muted-foreground"
             >
               <ArrowLeft size={13} />
-              커뮤니티 탐색
+              발견
             </Link>
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-xl font-semibold tracking-tight">
@@ -535,6 +582,31 @@ export function CommunityExplorer({
           {error}
         </p>
       )}
+      {saveNotice && (
+        <div
+          role="status"
+          className="fixed right-4 bottom-5 z-50 flex items-center gap-3 rounded-xl border bg-card px-4 py-3 text-sm shadow-xl"
+        >
+          <span>
+            {saveNotice.name} {saveNotice.enabled ? "저장했어요." : "저장 해제했어요."}
+          </span>
+          <button
+            type="button"
+            className="font-semibold text-primary underline"
+            disabled={busy}
+            onClick={() => void savePlace(saveNotice.id, true)}
+          >
+            실행 취소
+          </button>
+          <button
+            type="button"
+            aria-label="알림 닫기"
+            onClick={() => setSaveNotice(null)}
+          >
+            ×
+          </button>
+        </div>
+      )}
       {showPending && pendingPlaces.length > 0 && (
         <PendingReview
           places={pendingPlaces}
@@ -555,15 +627,19 @@ export function CommunityExplorer({
         >
           <div className="place-list-heading sticky top-0 z-10 flex items-center justify-between border-b px-3 py-3">
             <span className="text-xs font-medium">
-              {filtered.length}개의 발견 {truncated && "· 일부 결과"}
+              {filtered.length}개의 발견
+              {filtered.length > visiblePlaces.length &&
+                ` · 현재 ${visiblePlaces.length}곳 표시`}
+              {truncated && " · 일부 결과"}
             </span>
           </div>
-          {filtered.slice(0, page * 20).map((p, i) => {
+          {visiblePlaces.map((p, i) => {
             return (
               <article
                 key={p.id}
                 onClick={() => focusPlace(p.id)}
-                className={`place-glass-card group cursor-pointer p-3 transition-colors ${selected === p.id ? "ring-1 ring-primary/60" : ""}`}
+                data-selected={selected === p.id}
+                className="place-glass-card group cursor-pointer p-3 transition-colors"
               >
                 <div className="flex items-start gap-2">
                   <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-secondary text-[11px] font-semibold text-primary">
@@ -594,8 +670,10 @@ export function CommunityExplorer({
                         </span>
                       )}
                     </div>
-                    <p className="mt-1 text-[11px] text-muted-foreground">
-                      {demo ? "가상 예시" : p.category}
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {[demo ? "가상 예시" : p.category, placeArea(p.address)]
+                        .filter(Boolean)
+                        .join(" · ")}
                     </p>
                   </div>
                   <button
@@ -644,17 +722,20 @@ export function CommunityExplorer({
                     </button>
                   </div>
                   <button
-                    aria-label={`${p.name} 저장 옵션 보기`}
+                    type="button"
+                    aria-label={`${p.name} ${isSaved(p.id) ? "저장 해제" : "저장"}`}
+                    aria-pressed={isSaved(p.id)}
+                    disabled={demo || busy}
                     onClick={(event) => {
                       event.stopPropagation();
-                      focusPlace(p.id);
+                      void savePlace(p.id);
                     }}
                     className="p-1 text-muted-foreground"
                   >
                     <Bookmark
                       size={15}
                       fill={
-                        myState.saves.includes(p.id) ? "currentColor" : "none"
+                        isSaved(p.id) ? "currentColor" : "none"
                       }
                     />
                   </button>
@@ -703,7 +784,7 @@ export function CommunityExplorer({
           className="explorer-map relative min-w-0 min-h-[420px] lg:h-[calc(100dvh-250px)]"
         >
           <MapCanvas
-            places={[...filtered, ...pendingPlaces]}
+            places={[...visiblePlaces, ...pendingPlaces]}
             selected={selected}
             onSelect={(id) => {
               if (pendingPlaces.some((p) => p.id === id)) {
@@ -719,7 +800,7 @@ export function CommunityExplorer({
           />
           {viewport && config.provider !== "preview" && (
             <Button
-              className="absolute top-5 left-1/2 -translate-x-1/2 rounded-full shadow-lg"
+              className="search-area-button absolute top-5 left-1/2 -translate-x-1/2 rounded-full shadow-lg"
               disabled={busy}
               onClick={searchArea}
             >
@@ -730,7 +811,10 @@ export function CommunityExplorer({
           {previewPlace ? (
             <PlacePreview
               place={previewPlace}
-              saved={myState.saves.includes(previewPlace.id)}
+              loginHref={loginHref(
+                `/maps/${map.slug}?place=${encodeURIComponent(previewPlace.place_id)}`,
+              )}
+              saved={isSaved(previewPlace.id)}
               vote={myState.votes[previewPlace.id] ?? 0}
               demo={demo}
               signedIn={Boolean(viewer)}
@@ -748,32 +832,29 @@ export function CommunityExplorer({
                 });
               }}
               onVote={(value) => votePlace(previewPlace.id, value)}
-              onSave={async () => {
-                setBusy(true);
-                setError("");
-                try {
-                  await post("/api/community", {
-                    action: "save",
-                    id: previewPlace.id,
-                    enabled: !myState.saves.includes(previewPlace.id),
-                  });
-                  router.refresh();
-                } catch (e) {
-                  setError((e as Error).message);
-                } finally {
-                  setBusy(false);
-                }
-              }}
+              onSave={() => void savePlace(previewPlace.id)}
             />
           ) : (
-            <div className="absolute bottom-15 left-5 rounded-lg border bg-card/95 px-3 py-2 text-[10px] text-muted-foreground">
-              순위는 일반 별점이 아닌, 이 주제에 대한 검증입니다.
-            </div>
+            <>
+              <div className="absolute bottom-15 left-5 rounded-lg border bg-card/95 px-3 py-2 text-[10px] text-muted-foreground">
+                순위는 별점이 아닌, 이 주제에 대한 추천 의견입니다.
+              </div>
+              <Link
+                href={`/maps/${map.slug}/submit`}
+                className="absolute right-4 bottom-16 z-10 hidden min-h-11 items-center gap-1.5 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-lg max-lg:inline-flex"
+              >
+                <Plus size={16} aria-hidden="true" />
+                장소 제안
+              </Link>
+            </>
           )}
         </section>
         <PlaceDetail
           key={detailId ?? "closed"}
           place={selectedPlace}
+          loginHref={loginHref(
+            `/maps/${map.slug}${selectedPlace ? `?place=${encodeURIComponent(selectedPlace.place_id)}` : ""}`,
+          )}
           onClose={() => {
             setDetailId(null);
             if (mobile && mobileView === "map" && selected) {
@@ -782,7 +863,7 @@ export function CommunityExplorer({
           }}
           viewer={viewer}
           vote={myState.votes[detailId ?? ""] ?? 0}
-          saved={myState.saves.includes(detailId ?? "")}
+          saved={isSaved(detailId ?? "")}
           demo={demo}
           onChange={() => {
             setLoaded(null);

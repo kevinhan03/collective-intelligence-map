@@ -238,22 +238,30 @@ select {
     0 22px 54px var(--glass-shadow),
     inset 0 1px 0 var(--glass-highlight);
   backdrop-filter: blur(28px);
-  padding: 8px;
+  padding: 0;
 }
 .place-list-heading {
   background: rgb(35 42 51 / 94%);
-  border-radius: 16px;
-  margin-bottom: 10px;
+  border-radius: 19px 19px 0 0;
+}
+.place-list-heading:has(+ .place-glass-card[data-selected="true"]) {
+  border-bottom-color: transparent;
 }
 .place-glass-card {
-  margin-bottom: 10px;
-  border: 1px solid rgb(255 255 255 / 17%);
-  border-radius: 20px;
-  background: rgb(210 223 239 / 9%);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 18%);
+  border-bottom: 1px solid rgb(255 255 255 / 14%);
+  border-left: 3px solid transparent;
+  background: transparent;
 }
 .place-glass-card:hover {
-  background: rgb(210 223 239 / 16%);
+  background: rgb(210 223 239 / 7%);
+}
+.place-glass-card[data-selected="true"] {
+  border-left-color: var(--primary);
+  border-bottom-color: transparent;
+  background: color-mix(in oklab, var(--primary) 10%, transparent);
+}
+.place-glass-card:has(+ .place-glass-card[data-selected="true"]) {
+  border-bottom-color: transparent;
 }
 .vote-control {
   display: inline-flex;
@@ -536,6 +544,10 @@ button:not(:disabled),
   font-weight: 800;
   line-height: 1;
 }
+.map-marker[data-cluster="true"] .map-marker-face {
+  border-radius: 50%;
+  background: #283d22;
+}
 .map-marker[data-status="pending"] {
   color: #475569;
 }
@@ -636,8 +648,7 @@ button:not(:disabled),
     gap: 16px;
     margin-top: 32px;
   }
-  .mobile-theme-card,
-  .place-glass-card {
+  .mobile-theme-card {
     background: #252d38;
     box-shadow: none;
   }
@@ -651,6 +662,12 @@ button:not(:disabled),
   }
   .mobile-discovery button,
   .mobile-discovery select {
+    min-height: 44px;
+  }
+  .proposal-form [data-slot="input"],
+  .profile-form [data-slot="input"]:not([type="file"]),
+  .proposal-form button,
+  .profile-form button {
     min-height: 44px;
   }
   .map-hero {
@@ -734,6 +751,14 @@ button:not(:disabled),
   .explorer-toolbar > .search-sort-group > .relative > svg {
     top: 16px;
   }
+  .explorer-toolbar .sort-chip-group {
+    min-width: 0;
+    max-width: 100%;
+    flex-shrink: 1;
+  }
+  .explorer-toolbar .sort-chip {
+    flex: 0 0 auto;
+  }
   .explorer-toolbar > [data-slot="button"] {
     flex-basis: 100%;
   }
@@ -765,19 +790,11 @@ button:not(:disabled),
     overflow-y: auto;
     overscroll-behavior: contain;
     padding: 0;
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-    backdrop-filter: none;
-    box-shadow: none;
   }
   .place-list-heading {
-    background: #171d25;
-    margin: 0;
-    padding-inline: 8px;
+    background: #252d38;
   }
   .place-glass-card {
-    border-radius: 18px;
     padding: 16px 12px;
   }
   .place-glass-card button.text-left {
@@ -850,6 +867,12 @@ button:not(:disabled),
     min-height: 0;
     border: 0;
     border-radius: 0;
+  }
+  .community-explorer[data-mobile-view="map"] .maplibregl-ctrl-top-right {
+    top: 124px;
+  }
+  .community-explorer[data-mobile-view="map"] .search-area-button {
+    top: 128px;
   }
   .place-preview-card {
     position: absolute;

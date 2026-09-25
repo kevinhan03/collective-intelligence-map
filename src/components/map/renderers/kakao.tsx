@@ -143,14 +143,14 @@ export default function KakaoMap(props: MapProps) {
     if (!ready || !map.current || !window.kakao) return;
     const k = window.kakao.maps;
     pins.current.forEach((p) => p.setMap(null));
-    pins.current = places.map((p) => {
+    pins.current = places.map((p, i) => {
       const button = document.createElement("button");
       button.className = "map-pin";
       button.dataset.selected = String(selected === p.id);
       button.dataset.status = p.status;
       button.setAttribute("aria-label", p.name);
       const span = document.createElement("span");
-      span.textContent = p.status === "pending" ? "···" : "✓";
+      span.textContent = p.status === "pending" ? "···" : String(i + 1);
       button.append(span);
       button.onclick = () => handlers.current.onSelect(p.id);
       return new k.CustomOverlay({

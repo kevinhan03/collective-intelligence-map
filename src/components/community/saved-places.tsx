@@ -6,6 +6,7 @@ import {
   ArrowUpRight,
   Bookmark,
   Check,
+  ExternalLink,
   MapPin,
   Search,
   SlidersHorizontal,
@@ -16,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { MapPlace, RendererConfig, ThemeMap } from "@/domain/types";
+import { placeArea } from "@/domain/place-location";
 import { post } from "./api";
 
 export type SavedPlace = MapPlace & {
@@ -36,9 +38,11 @@ export function SavedPlaces({
   const [cards, setCards] = useState(initialCards);
   const [query, setQuery] = useState("");
   const [mapId, setMapId] = useState("all");
+  const [showMobileMap, setShowMobileMap] = useState(false);
   const [selected, setSelected] = useState<string | null>(
     initialCards[0]?.id ?? null,
   );
+  const [mapSelection, setMapSelection] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
 
@@ -53,7 +57,7 @@ export function SavedPlaces({
       cards.filter(
         (place) =>
           (mapId === "all" || place.map_id === mapId) &&
-          `${place.name} ${place.rationale} ${place.map_title}`
+          `${place.name} ${place.rationale} ${place.map_title} ${place.address} ${placeArea(place.address)}`
             .toLowerCase()
             .includes(query.toLowerCase()),
       ),
@@ -77,7 +81,10 @@ export function SavedPlaces({
       });
       const remaining = cards.filter((item) => item.id !== place.id);
       setCards(remaining);
-      if (selected === place.id) setSelected(remaining[0]?.id ?? null);
+      if (selected === place.id) {
+        setSelected(remaining[0]?.id ?? null);
+        setMapSelection(false);
+      }
     } catch (cause) {
       setError((cause as Error).message);
     } finally {
@@ -92,7 +99,7 @@ export function SavedPlaces({
       id="main"
       className="mx-auto min-h-[calc(100dvh-96px)] max-w-[1440px] px-4 pb-6 sm:px-6 lg:px-8"
     >
-      <section className="glass-panel mt-5 overflow-hidden rounded-4xl px-5 py-6 sm:px-8 sm:py-8">
+      <section className="glass-panel mt-5 overflow-hidden rounded-4xl px-5 py-5 sm:px-8 sm:py-8">
         <div className="flex flex-wrap items-end justify-between gap-5">
           <div>
             <p className="kicker">Personal collection</p>
@@ -100,19 +107,19 @@ export function SavedPlaces({
               저장한 장소
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              Theme Map에서 다시 찾고 싶은 {cards.length}곳을 모아두었어요.
+              주제 지도에서 다시 찾고 싶은 {cards.length}곳을 모아두었어요.
             </p>
           </div>
           <Button asChild variant="outline">
             <Link href="/">
-              커뮤니티 탐색 <ArrowUpRight />
+              발견 <ArrowUpRight />
             </Link>
           </Button>
         </div>
       </section>
 
-      <section className="mt-4 grid min-h-[calc(100dvh-270px)] gap-4 lg:grid-cols-[minmax(270px,0.8fr)_minmax(0,1.5fr)_minmax(300px,0.9fr)]">
-        <aside className="glass-panel rounded-3xl p-4 lg:overflow-y-auto lg:p-5">
+      <section className="mt-4 grid gap-4 lg:min-h-[calc(100dvh-270px)] lg:grid-cols-[minmax(270px,0.8fr)_minmax(0,1.5fr)_minmax(300px,0.9fr)]">
+        <aside className="glass-panel order-2 rounded-3xl p-4 lg:order-none lg:overflow-y-auto lg:p-5">
           <div className="flex items-center gap-2 text-sm font-medium">
             <SlidersHorizontal size={16} /> 내 컬렉션
           </div>
@@ -125,13 +132,13 @@ export function SavedPlaces({
               aria-label="저장한 장소 검색"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="장소 또는 테마 검색"
+              placeholder="장소, 지역 또는 테마 검색"
               className="h-10 pl-9"
             />
           </label>
-          <div className="mt-5 space-y-1">
+          <div className="mt-5 flex gap-1 overflow-x-auto lg:block lg:space-y-1">
             <button
-              className={`flex w-full items-center justify-between rounded-2xl px-3 py-2.5 text-left text-sm transition ${mapId === "all" ? "bg-primary text-primary-foreground" : "hover:bg-white/10"}`}
+              className={`flex min-h-11 shrink-0 items-center justify-between gap-2 rounded-2xl px-3 py-2.5 text-left text-sm transition lg:w-full ${mapId === "all" ? "bg-primary text-primary-foreground" : "hover:bg-white/10"}`}
               onClick={() => setMapId("all")}
             >
               전체 장소{" "}
@@ -144,9 +151,10 @@ export function SavedPlaces({
               return (
                 <button
                   key={map.id}
-                  className={`flex w-full items-center justify-between rounded-2xl px-3 py-2.5 text-left text-sm transition ${mapId === map.id ? "bg-primary text-primary-foreground" : "hover:bg-white/10"}`}
+                  className={`flex min-h-11 shrink-0 items-center justify-between gap-2 rounded-2xl px-3 py-2.5 text-left text-sm transition lg:w-full ${mapId === map.id ? "bg-primary text-primary-foreground" : "hover:bg-white/10"}`}
                   onClick={() => {
                     setMapId(map.id);
+                    setMapSelection(false);
                     setSelected(
                       cards.find((place) => place.map_id === map.id)?.id ??
                         null,
@@ -160,14 +168,15 @@ export function SavedPlaces({
             })}
           </div>
           <p className="mt-6 border-t pt-4 text-xs leading-5 text-muted-foreground">
-            저장은 개인 컬렉션입니다. 추천 근거와 검증은 각 Theme Map에서 공개로
+            저장은 개인 컬렉션입니다. 추천 근거와 검증은 각 주제 지도에서 공개로
             관리됩니다.
           </p>
         </aside>
 
         <section
+          id="saved-places-map"
           aria-label="저장한 장소 지도"
-          className="glass-map-shell relative m-0 min-h-[360px] lg:min-h-0"
+          className={`glass-map-shell relative order-3 m-0 min-h-[320px] lg:order-none lg:min-h-0 ${showMobileMap ? "" : "hidden lg:block"}`}
         >
           {activeMap ? (
             <MapCanvas
@@ -175,7 +184,10 @@ export function SavedPlaces({
               selected={
                 selectedPlace?.map_id === activeMap.id ? selected : null
               }
-              onSelect={setSelected}
+              onSelect={(id) => {
+                setSelected(id);
+                setMapSelection(true);
+              }}
               bounds={activeMap.bounds}
               onBoundsChange={() => undefined}
               config={config}
@@ -189,6 +201,40 @@ export function SavedPlaces({
               </p>
             </div>
           )}
+          {mapSelection && selectedPlace?.map_id === activeMap?.id && (
+            <div className="absolute right-3 bottom-3 left-3 rounded-2xl border border-white/15 bg-card/95 p-4 shadow-xl backdrop-blur-xl sm:right-auto sm:left-4 sm:w-72">
+              <button
+                type="button"
+                aria-label="선택한 장소 정보 닫기"
+                className="absolute top-3 right-3 grid size-8 place-items-center rounded-lg text-muted-foreground hover:bg-secondary"
+                onClick={() => setMapSelection(false)}
+              >
+                <X size={16} />
+              </button>
+              <p className="pr-8 text-sm font-semibold">{selectedPlace.name}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {[selectedPlace.map_title, placeArea(selectedPlace.address)]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
+              <div className="mt-3 flex gap-2">
+                <Link
+                  href={`/maps/${selectedPlace.map_slug}?place=${selectedPlace.place_id}`}
+                  className="inline-flex min-h-10 flex-1 items-center justify-center rounded-xl bg-primary px-3 text-xs font-semibold text-primary-foreground"
+                >
+                  상세 보기
+                </Link>
+                <a
+                  href={`/go/${selectedPlace.id}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex min-h-10 flex-1 items-center justify-center rounded-xl border px-3 text-xs font-semibold"
+                >
+                  길찾기 <ExternalLink size={13} className="ml-1" />
+                </a>
+              </div>
+            </div>
+          )}
           {selectedPlace && selectedPlace.map_id !== activeMap?.id && (
             <button
               className="absolute right-4 bottom-4 rounded-full bg-primary px-4 py-2 text-xs font-medium text-primary-foreground shadow-lg"
@@ -199,27 +245,46 @@ export function SavedPlaces({
           )}
         </section>
 
-        <section className="glass-panel flex min-h-[420px] flex-col rounded-3xl p-3 lg:overflow-hidden">
+        <section className="glass-panel order-1 flex min-h-0 flex-col rounded-3xl p-3 lg:order-none lg:min-h-[420px] lg:overflow-hidden">
           <div className="flex items-center justify-between px-2 py-2">
             <p className="text-sm font-medium">발견한 장소</p>
-            <span className="text-xs text-muted-foreground">
-              {filtered.length}곳
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-muted-foreground">
+                {filtered.length}곳
+              </span>
+              <button
+                type="button"
+                className="min-h-11 text-xs font-medium text-primary lg:hidden"
+                aria-expanded={showMobileMap}
+                aria-controls="saved-places-map"
+                onClick={() => setShowMobileMap((current) => !current)}
+              >
+                {showMobileMap ? "지도 닫기" : "지도 보기"}
+              </button>
+            </div>
           </div>
           <div className="space-y-2 overflow-y-auto pr-1">
             {filtered.map((place) => (
               <article
                 key={place.id}
-                className={`place-glass-card cursor-pointer p-4 transition ${selected === place.id ? "ring-1 ring-primary" : ""}`}
+                data-selected={selected === place.id}
+                className="place-glass-card cursor-pointer p-4 transition"
                 onClick={() => {
                   setSelected(place.id);
                   setMapId(place.map_id);
+                  setMapSelection(false);
                 }}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <h2 className="truncate text-sm font-semibold">
-                      {place.name}
+                      <Link
+                        href={`/maps/${place.map_slug}?place=${place.place_id}`}
+                        onClick={(event) => event.stopPropagation()}
+                        className="hover:underline"
+                      >
+                        {place.name}
+                      </Link>
                     </h2>
                     <Badge
                       variant="secondary"
@@ -246,16 +311,25 @@ export function SavedPlaces({
                 </p>
                 <div className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground">
                   <span className="flex min-w-0 items-center gap-1 truncate">
-                    <MapPin size={12} /> {place.category}
+                    <MapPin size={12} /> {[place.category, placeArea(place.address)].filter(Boolean).join(" · ")}
                   </span>
                   <Link
                     className="text-primary hover:underline"
-                    href={`/maps/${place.map_slug}`}
+                    href={`/maps/${place.map_slug}?place=${place.place_id}`}
                     onClick={(event) => event.stopPropagation()}
                   >
                     원본 지도
                   </Link>
                 </div>
+                <a
+                  href={`/go/${place.id}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={(event) => event.stopPropagation()}
+                  className="mt-3 inline-flex min-h-11 items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+                >
+                  <ExternalLink size={14} /> Google Maps에서 길찾기
+                </a>
               </article>
             ))}
             {!filtered.length && (
@@ -290,12 +364,12 @@ function SavedEmpty() {
           다시 가고 싶은 곳을 모아보세요.
         </h1>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">
-          Theme Map에서 마음에 드는 장소를 저장하면 이곳에서 한눈에 다시 찾을 수
+          주제 지도에서 마음에 드는 장소를 저장하면 이곳에서 한눈에 다시 찾을 수
           있어요.
         </p>
         <Button asChild className="mt-7">
           <Link href="/">
-            <Check /> 커뮤니티 탐색
+            <Check /> 발견
           </Link>
         </Button>
       </section>

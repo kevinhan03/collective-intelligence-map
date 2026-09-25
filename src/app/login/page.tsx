@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { AuthForm } from "@/components/community/auth-form";
 import { configured } from "@/lib/supabase/server";
 import { getViewer } from "@/server/queries";
+import { safeReturnPath } from "@/domain/login-return";
 import {
   Card,
   CardContent,
@@ -13,10 +14,10 @@ import {
 export default async function Login({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; next?: string }>;
 }) {
-  if (await getViewer()) redirect("/settings/profile");
-  const { error } = await searchParams;
+  const { error, next } = await searchParams;
+  if (await getViewer()) redirect(next ? safeReturnPath(next) : "/settings/profile");
   return (
     <main
       id="main"
@@ -42,6 +43,7 @@ export default async function Login({
           )}
           <AuthForm
             enabled={configured() && process.env.GOOGLE_AUTH_ENABLED === "true"}
+            next={next ? safeReturnPath(next) : "/"}
           />
           <p className="mt-16 text-xs leading-6 text-muted-foreground">
             계속하면{" "}

@@ -18,6 +18,7 @@ import {
 import type { Candidate, RendererConfig, ThemeMap } from "@/domain/types";
 import { post } from "./api";
 import { placeCategoryLabel } from "@/domain/place-category";
+import { loginHref } from "@/domain/login-return";
 type Internal = {
   id: string;
   name: string;
@@ -162,11 +163,11 @@ export function ProposalForm({
     }
   }
   return (
-    <div className="space-y-7">
+    <div className="proposal-form space-y-7">
       {!enabled && (
         <p className="rounded-lg border p-4 text-sm">
           로그인하면 누구나 장소를 제안할 수 있어요.{" "}
-          <Link href="/login" className="underline">
+          <Link href={loginHref(`/maps/${map.slug}/submit`)} className="underline">
             로그인하기
           </Link>
         </p>
@@ -386,7 +387,8 @@ export function ProposalForm({
                 name="address"
                 required
                 maxLength={250}
-                placeholder="예: 東京都港区南青山6-1-3"
+                placeholder={map.country === "KR" ? "예: 서울 용산구 신흥로 20길 38" : "예: 東京都港区南青山6-1-3"}
+                className="min-h-11"
                 value={manualAddress}
                 onChange={(event) => {
                   setManualAddress(event.target.value);
@@ -466,7 +468,7 @@ export function ProposalForm({
               required
               minLength={5}
               maxLength={1000}
-              placeholder="예: 90년대 일본 빈티지를 찾기 좋아요"
+              placeholder={map.country === "KR" ? "예: 빈티지 의류를 천천히 살펴보기 좋아요" : "예: 90년대 일본 빈티지를 찾기 좋아요"}
             />
             <p className="text-xs text-muted-foreground">
               제안은 검토 대기 핀으로 표시되며, 승인 후 일반 목록에 공개됩니다.

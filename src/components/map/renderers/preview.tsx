@@ -17,7 +17,7 @@ export default function PreviewMap({ places, selected, onSelect }: MapProps) {
       <span className="absolute top-[43%] left-[38%] text-[10px] tracking-widest text-[#9aa38e]">
         TOKYO FASHION
       </span>
-      {places.map((p) => (
+      {places.map((p, i) => (
         <button
           key={p.id}
           className="map-pin"
@@ -30,7 +30,7 @@ export default function PreviewMap({ places, selected, onSelect }: MapProps) {
             top: `${78 - (p.lat - 35.655) * 2600}%`,
           }}
         >
-          <span>{p.status === "pending" ? "···" : "✓"}</span>
+          <span>{p.status === "pending" ? "···" : i + 1}</span>
         </button>
       ))}
       <div className="absolute right-4 bottom-4 left-4 flex justify-between rounded-lg border bg-white/90 px-3 py-2 text-[10px] text-muted-foreground">

@@ -18,7 +18,7 @@ export default async function PublicProfile({
   if (!profile) notFound();
   const { data: contributions, error } = await client
     .from("map_places")
-    .select("id,rationale,theme_maps(slug,title)")
+    .select("id,place_id,rationale,places(name),theme_maps(slug,title)")
     .eq("added_by", profile.id)
     .eq("status", "approved")
     .limit(100);
@@ -44,18 +44,20 @@ export default async function PublicProfile({
         {profile.bio || "아직 소개가 없습니다."}
       </p>
       <h2 className="mt-10 mb-5 text-lg font-semibold">
-        승인된 기여 {contributions?.length ?? 0}
+        추천한 장소 {contributions?.length ?? 0}
       </h2>
       {contributions?.map((c) => {
         const m = c.theme_maps as unknown as { slug: string; title: string };
+        const place = c.places as unknown as { name: string };
         return (
           <article key={c.id} className="border-b py-5">
             <Link
-              href={`/maps/${m.slug}`}
-              className="text-sm font-semibold text-primary"
+              href={`/maps/${m.slug}?place=${c.place_id}`}
+              className="text-base font-semibold text-foreground hover:underline"
             >
-              {m.title}
+              {place.name}
             </Link>
+            <p className="mt-1 text-xs text-primary">{m.title}</p>
             <p className="mt-2 text-sm leading-6">{c.rationale}</p>
           </article>
         );

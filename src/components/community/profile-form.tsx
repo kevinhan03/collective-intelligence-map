@@ -1,5 +1,6 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,10 +15,22 @@ export function ProfileForm({ viewer }: { viewer: Viewer }) {
     [file, setFile] = useState<File | null>(null),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const router = useRouter();
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+  const avatarUrl =
+    previewUrl ??
+    (viewer.avatar_path
+      ? browserDb().storage.from("avatars").getPublicUrl(viewer.avatar_path)
+          .data.publicUrl
+      : null);
   return (
     <form
-      className="space-y-5"
+      className="profile-form space-y-5"
       onSubmit={async (e) => {
         e.preventDefault();
         setBusy(true);
@@ -75,12 +88,34 @@ export function ProfileForm({ viewer }: { viewer: Viewer }) {
       </div>
       <div className="space-y-2">
         <Label htmlFor="avatar">프로필 이미지</Label>
+        {avatarUrl && (
+          <Image
+            unoptimized
+            src={avatarUrl}
+            alt="현재 프로필 이미지 미리보기"
+            width={64}
+            height={64}
+            className="size-16 rounded-full object-cover"
+          />
+        )}
         <Input
           id="avatar"
           type="file"
+          className="sr-only"
           accept="image/png,image/jpeg,image/webp"
-          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          onChange={(e) => {
+            const selected = e.target.files?.[0] ?? null;
+            setFile(selected);
+            setPreviewUrl(selected ? URL.createObjectURL(selected) : null);
+          }}
         />
+        <label
+          htmlFor="avatar"
+          className="inline-flex min-h-11 cursor-pointer items-center rounded-lg border px-4 text-sm font-medium hover:bg-secondary"
+        >
+          이미지 선택
+        </label>
+        {file && <p className="text-xs text-muted-foreground">{file.name}</p>}
         <p className="text-xs text-muted-foreground">
           공개 프로필에 사용됩니다. 최대 2MB.
         </p>

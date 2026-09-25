@@ -14,7 +14,7 @@ export default async function Submit({
   return (
     <main id="main" className="page-wrap max-w-2xl">
       <p className="kicker mb-3">Contribute to {map.title}</p>
-      <h1 className="text-3xl font-semibold">나만 알기 아까운 곳이 있나요?</h1>
+      <h1 className="text-3xl font-semibold break-keep">나만 알기 아까운 곳이 있나요?</h1>
       <p className="mt-4 mb-8 text-sm leading-7 text-muted-foreground">
         장소를 고르고, 추천하는 점을 한 줄만 남겨 주세요.
         <br />

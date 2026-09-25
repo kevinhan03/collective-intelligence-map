@@ -16,11 +16,13 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import type { Comment, MapPlace, Viewer } from "@/domain/types";
+import { placeArea } from "@/domain/place-location";
 import { post } from "./api";
 export function PlaceDetail({
   place,
   onClose,
   viewer,
+  loginHref,
   vote,
   saved,
   onChange,
@@ -29,6 +31,7 @@ export function PlaceDetail({
   place: MapPlace | null;
   onClose: () => void;
   viewer: Viewer | null;
+  loginHref: string;
   vote: number;
   saved: boolean;
   onChange: () => void;
@@ -110,6 +113,11 @@ export function PlaceDetail({
             <h2 className="text-2xl font-semibold tracking-tight">
               {place.name}
             </h2>
+            {placeArea(place.address) && (
+              <p className="text-sm font-medium text-primary">
+                {placeArea(place.address)}
+              </p>
+            )}
             <p className="text-sm text-muted-foreground">{place.address}</p>
           </header>
           <div className="rounded-xl bg-secondary/60 p-5">
@@ -173,20 +181,7 @@ export function PlaceDetail({
             </p>
           )}
           <PlaceChecks id={place.id} enabled={enabled} demo={demo} />
-          <div className="flex justify-between border-y py-3">
-            <Button asChild variant="ghost" size="sm" disabled={demo}>
-              {demo ? (
-                <span>
-                  <ExternalLink size={14} />
-                  가상 예시 장소
-                </span>
-              ) : (
-                <a href={`/go/${place.id}`} target="_blank" rel="noreferrer">
-                  <ExternalLink size={14} />
-                  Google Maps에서 열기
-                </a>
-              )}
-            </Button>
+          <div className="flex justify-end border-y py-3">
             <Button
               variant="ghost"
               size="sm"
@@ -330,33 +325,39 @@ export function PlaceDetail({
               {error}
             </p>
           )}
-          {!viewer && !demo ? (
-            <Button asChild className="h-12 w-full">
-              <Link href="/login">
-                <Bookmark size={18} />
-                로그인하고 저장하기
-              </Link>
-            </Button>
-          ) : (
-            <Button
-              className="h-12 w-full"
-              variant={saved ? "secondary" : "default"}
-              disabled={!enabled || busy}
-              aria-pressed={saved}
-              onClick={() =>
-                act({ action: "save", id: place.id, enabled: !saved })
-              }
-            >
-              <Bookmark size={18} fill={saved ? "currentColor" : "none"} />
-              {demo
-                ? "미리보기에서는 저장할 수 없어요"
-                : busy
-                  ? "처리 중…"
-                  : saved
-                    ? "저장됨 · 다시 누르면 해제"
-                    : "이 장소 저장하기"}
-            </Button>
-          )}
+          <div className="grid grid-cols-2 gap-2">
+            {!viewer && !demo ? (
+              <Button asChild className="h-12">
+                <Link href={loginHref}>
+                  <Bookmark size={17} /> 저장하기
+                </Link>
+              </Button>
+            ) : (
+              <Button
+                className="h-12"
+                variant={saved ? "secondary" : "default"}
+                disabled={!enabled || busy}
+                aria-pressed={saved}
+                onClick={() =>
+                  act({ action: "save", id: place.id, enabled: !saved })
+                }
+              >
+                <Bookmark size={17} fill={saved ? "currentColor" : "none"} />
+                {demo ? "저장 불가" : busy ? "처리 중…" : saved ? "저장됨" : "저장하기"}
+              </Button>
+            )}
+            {demo ? (
+              <Button variant="outline" className="h-12" disabled>
+                <ExternalLink size={17} /> 길찾기
+              </Button>
+            ) : (
+              <Button asChild variant="outline" className="h-12">
+                <a href={`/go/${place.id}`} target="_blank" rel="noreferrer">
+                  <ExternalLink size={17} /> 길찾기
+                </a>
+              </Button>
+            )}
+          </div>
         </div>
       </aside>
     </PlacePanel>

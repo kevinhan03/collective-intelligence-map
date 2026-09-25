@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Bookmark, ChevronUp, ThumbsDown, ThumbsUp, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { MapPlace } from "@/domain/types";
+import { placeArea } from "@/domain/place-location";
 
 export function PlacePreview({
   place,
@@ -11,6 +12,7 @@ export function PlacePreview({
   vote,
   demo,
   signedIn,
+  loginHref,
   busy,
   onClose,
   onOpenDetail,
@@ -22,6 +24,7 @@ export function PlacePreview({
   vote: number;
   demo: boolean;
   signedIn: boolean;
+  loginHref: string;
   busy: boolean;
   onClose: () => void;
   onOpenDetail: () => void;
@@ -37,7 +40,9 @@ export function PlacePreview({
           onClick={onOpenDetail}
           aria-label={`${place.name} 자세히 보기`}
         >
-          <span className="text-xs text-primary">{place.category}</span>
+          <span className="text-xs text-primary">
+            {[place.category, placeArea(place.address)].filter(Boolean).join(" · ")}
+          </span>
           <h2 className="mt-1 truncate text-lg font-semibold">{place.name}</h2>
         </button>
         <Button
@@ -114,7 +119,7 @@ export function PlacePreview({
           </Button>
         ) : (
           <Button asChild className="h-11" variant="outline">
-            <Link href="/login" aria-label="로그인하고 장소 저장">
+            <Link href={loginHref} aria-label="로그인하고 장소 저장">
               <Bookmark size={17} />
             </Link>
           </Button>

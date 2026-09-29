@@ -97,6 +97,10 @@ test("proposal and Google login honestly report unavailable connections", async 
     page.getByRole("button", { name: "Google로 계속하기" }),
   ).toBeDisabled();
 });
+test("my proposals requires login and preserves its return path", async ({ page }) => {
+  await page.goto("/my-proposals");
+  await expect(page).toHaveURL(/\/login\?next=%2Fmy-proposals/);
+});
 test("server rejects unauthenticated mutations and unknown maps", async ({
   request,
 }) => {

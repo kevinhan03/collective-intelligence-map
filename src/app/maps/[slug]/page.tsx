@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { ProposalNotice } from "@/components/community/proposal-notice";
 import {
   HydrateViewer,
@@ -10,6 +11,7 @@ import {
   getMaps,
   getMyState,
   getPendingPlaces,
+  getMapPlaceById,
   getInitialPlaces,
   getViewer,
   rendererFor,
@@ -23,22 +25,46 @@ async function Personalization({ mapId }: { mapId: string }) {
   const [viewer, myState] = await Promise.all([getViewer(), getMyState(mapId)]);
   return <HydrateViewer state={{ viewer, myState }} />;
 }
-async function MapContent({ map }: { map: Awaited<ReturnType<typeof getMap>> }) {
+async function MapContent({
+  map,
+  proposalId,
+  submitted,
+  created,
+}: {
+  map: Awaited<ReturnType<typeof getMap>>;
+  proposalId: string | null;
+  submitted: boolean;
+  created: boolean;
+}) {
   if (!map) return null;
-  const [places, pendingPlaces] = await Promise.all([
+  const [places, pendingPlaces, proposal] = await Promise.all([
     getInitialPlaces(map),
     getPendingPlaces(map),
+    proposalId ? getMapPlaceById(map, proposalId) : null,
   ]);
+  const publicPlaces = proposal && proposal.status !== "pending" && !places.some((p) => p.id === proposal.id)
+    ? [proposal, ...places]
+    : places;
+  const allPending = proposal?.status === "pending" && !pendingPlaces.some((p) => p.id === proposal.id)
+    ? [proposal, ...pendingPlaces]
+    : pendingPlaces;
   return (
+    <>
+    {submitted && (proposal
+      ? <ProposalNotice status={proposal.status} created={created} mapSlug={map.slug} id={proposal.id} />
+      : <p role="status" className="mx-auto max-w-7xl px-6 py-3 text-sm text-primary">
+          처리 상태가 변경됐을 수 있어요. <Link href="/my-proposals" className="underline">내 제안에서 확인하기</Link>
+        </p>)}
     <CommunityExplorer
       map={map}
-      initialPlaces={places}
-      pendingPlaces={pendingPlaces}
+      initialPlaces={publicPlaces}
+      pendingPlaces={allPending}
       viewer={null}
       myState={{ votes: {}, saves: [], followed: false }}
       config={rendererFor()}
       demo={!configured()}
     />
+    </>
   );
 }
 
@@ -67,21 +93,24 @@ export async function generateMetadata({
 }
 export default async function MapPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  const map = await getMap((await params).slug);
+  const [route, query] = await Promise.all([params, searchParams]);
+  const map = await getMap(route.slug);
   if (!map) notFound();
+  const proposalId = typeof query.proposal === "string" && /^[0-9a-f-]{36}$/i.test(query.proposal)
+    ? query.proposal
+    : null;
   return (
     <ViewerStateProvider key={map.id}>
-      <Suspense fallback={null}>
-        <ProposalNotice />
-      </Suspense>
       <Suspense fallback={null}>
         <Personalization mapId={map.id} />
       </Suspense>
       <Suspense fallback={<MapContentFallback />}>
-        <MapContent map={map} />
+        <MapContent map={map} proposalId={proposalId} submitted={query.submitted === "1"} created={query.created === "1"} />
       </Suspense>
     </ViewerStateProvider>
   );

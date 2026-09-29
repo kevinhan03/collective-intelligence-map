@@ -1,12 +1,22 @@
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
-import { Geist, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import { SiteHeader } from "@/components/site-header";
 import { Telemetry } from "@/components/telemetry";
 import "./globals.css";
-const sans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
-const mono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
-const title = "Collective Map — 취향이 모이는 지도";
+const suit = localFont({
+  src: "../../node_modules/@sun-typeface/suit/fonts/variable/woff2/SUIT-Variable.woff2",
+  weight: "100 900",
+  display: "swap",
+  variable: "--font-suit",
+});
+const suitHeavy = localFont({
+  src: "../../node_modules/@sun-typeface/suit/fonts/static/woff2/SUIT-Heavy.woff2",
+  weight: "900",
+  display: "swap",
+  variable: "--font-suit-heavy",
+});
+const title = "Ting map — 취향이 모이는 지도";
 const description =
   "장소를 넘어, 맥락을 발견하세요. 함께 추천하고 검증하는 공개 주제 커뮤니티.";
 export const viewport: Viewport = {
@@ -20,12 +30,12 @@ export const metadata: Metadata = {
   metadataBase: process.env.NEXT_PUBLIC_SITE_URL
     ? new URL(process.env.NEXT_PUBLIC_SITE_URL)
     : undefined,
-  title: { default: title, template: "%s · Collective Map" },
+  title: { default: title, template: "%s · Ting map" },
   description,
   openGraph: {
     title,
     description,
-    siteName: "Collective Map",
+    siteName: "Ting map",
     images: ["/glass-neighborhood-og.jpg"],
     locale: "ko_KR",
     type: "website",
@@ -45,7 +55,7 @@ export default function RootLayout({
   return (
     <html
       lang="ko"
-      className={`${sans.variable} ${mono.variable}`}
+      className={`${suit.variable} ${suitHeavy.variable}`}
       data-scroll-behavior="smooth"
     >
       <body className="min-h-screen antialiased" suppressHydrationWarning>

@@ -4,7 +4,7 @@ export default function Terms() {
     <main id="main" className="page-wrap max-w-2xl space-y-6">
       <h1 className="text-3xl font-semibold">이용약관 · 비공개 MVP 초안</h1>
       <p className="text-sm leading-7">
-        Collective Map은 장소의 주제 적합성을 함께 추천하고 검증하는 공개
+        Ting map은 장소의 주제 적합성을 함께 추천하고 검증하는 공개
         커뮤니티입니다. 일반 평점이나 영업 여부를 보장하지 않습니다. 방문 전
         장소의 공식 안내를 확인해 주세요.
       </p>

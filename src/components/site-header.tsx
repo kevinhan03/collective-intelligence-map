@@ -11,16 +11,13 @@ export async function SiteHeader() {
         <Link
           href="/"
           className="flex items-center gap-2.5"
-          aria-label="Collective Map 홈"
+          aria-label="Ting map 홈"
         >
           <span className="grid size-9 place-items-center rounded-xl bg-primary text-primary-foreground">
             <MapIcon size={20} />
           </span>
-          <span className="text-lg font-semibold tracking-tight">
-            collective<span className="text-muted-foreground"> map</span>
-            <span className="ml-2 hidden align-top text-[9px] tracking-widest text-primary sm:inline">
-              BETA
-            </span>
+          <span className="font-heading text-xl font-black tracking-tight">
+            Ting<span className="text-muted-foreground"> map</span>
           </span>
         </Link>
         <nav
@@ -28,7 +25,7 @@ export async function SiteHeader() {
           aria-label="주요 메뉴"
         >
           <Link
-            href="/"
+            href="/discover"
             className="hidden items-center gap-2 text-sm font-medium sm:flex"
           >
             <Compass size={16} />
@@ -43,6 +40,9 @@ export async function SiteHeader() {
           </Link>
           {viewer ? (
             <>
+              <Link href="/my-proposals" className="text-sm text-muted-foreground">
+                내 제안
+              </Link>
               <Link
                 href="/settings/profile"
                 className="rounded-full bg-secondary px-3 py-2 text-xs font-medium"

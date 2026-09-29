@@ -27,6 +27,8 @@ type Internal = {
   locality: string;
   lat: number;
   lng: number;
+  currentMapPlaceId?: string | null;
+  currentMapStatus?: string | null;
 };
 type Selection = {
   placeId?: string;
@@ -38,10 +40,12 @@ type Selection = {
 export function ProposalForm({
   map,
   enabled,
+  autoApprove,
   config,
 }: {
   map: ThemeMap;
   enabled: boolean;
+  autoApprove: boolean;
   config: RendererConfig;
 }) {
   const router = useRouter();
@@ -126,11 +130,13 @@ export function ProposalForm({
     try {
       const result = await post<{
         placeId: string | null;
+        currentMapPlaceId: string | null;
+        currentMapStatus: string | null;
         candidate: Candidate;
       }>("/api/places/details", { mapId: map.id, token: candidate.token });
       if (requestId.current !== id) return;
       if (result.placeId) {
-        setExistingPlace({
+        const place = {
           id: result.placeId,
           name: result.candidate.label,
           address: result.candidate.address ?? "",
@@ -138,7 +144,11 @@ export function ProposalForm({
           locality: result.candidate.locality ?? map.city,
           lat: result.candidate.lat ?? 0,
           lng: result.candidate.lng ?? 0,
-        });
+          currentMapPlaceId: result.currentMapPlaceId,
+          currentMapStatus: result.currentMapStatus,
+        };
+        if (result.currentMapStatus) setExistingPlace(place);
+        else setSelection({ placeId: place.id, label: place.name, lat: place.lat, lng: place.lng });
         return;
       }
       setSelection({
@@ -225,12 +235,20 @@ export function ProposalForm({
             disabled={busy}
             className="block w-full rounded-lg border p-3 text-left hover:bg-secondary"
             onClick={() => {
-              setExistingPlace(p);
+              if (p.currentMapStatus) setExistingPlace(p);
+              else setSelection({ placeId: p.id, label: p.name, lat: p.lat, lng: p.lng });
             }}
           >
             <span className="text-sm font-medium">{p.name}</span>
             <span className="mt-1 block text-xs text-muted-foreground">
               {p.locality} · {p.category} · {p.address} · 커뮤니티 장소
+            </span>
+            <span className="mt-1 block text-xs text-primary">
+              {!p.currentMapStatus
+                ? "이 지도에 추천할 수 있음"
+                : ["rejected", "archived", "reviewed"].includes(p.currentMapStatus)
+                  ? "이 지도에서 검토된 장소"
+                  : "이 지도에 등록됨"}
             </span>
           </button>
         ))}
@@ -350,7 +368,7 @@ export function ProposalForm({
             setError("");
             const f = new FormData(form);
             try {
-              await post("/api/places/propose", {
+              const result = await post<{ id: string; placeId: string; status: string; created: boolean }>("/api/places/propose", {
                 mapId: map.id,
                 placeId: selection?.placeId,
                 candidateToken: selection?.token,
@@ -369,7 +387,9 @@ export function ProposalForm({
               });
               form.reset();
               resetProposal();
-              router.replace(`/maps/${map.slug}?submitted=1`);
+              router.replace(
+                `/maps/${map.slug}?proposal=${encodeURIComponent(result.id)}&submitted=1&created=${result.created ? "1" : "0"}`,
+              );
               router.refresh();
             } catch (e) {
               setError((e as Error).message);
@@ -482,7 +502,9 @@ export function ProposalForm({
               placeholder={map.country === "KR" ? "예: 빈티지 의류를 천천히 살펴보기 좋아요" : "예: 90년대 일본 빈티지를 찾기 좋아요"}
             />
             <p className="text-xs text-muted-foreground">
-              제안은 검토 대기 핀으로 표시되며, 승인 후 일반 목록에 공개됩니다.
+              {autoApprove
+                ? "운영자 제안은 제출 즉시 일반 목록에 공개됩니다."
+                : "제안은 검토 대기 핀으로 표시되며, 승인 후 일반 목록에 공개됩니다."}
             </p>
           </section>
           <Button
@@ -530,11 +552,14 @@ export function ProposalForm({
             </p>
             <DialogHeader className="mt-2 gap-2">
               <DialogTitle className="text-2xl leading-tight font-semibold tracking-tight">
-                이미 등록된 장소입니다
+                {["rejected", "archived", "reviewed"].includes(existingPlace?.currentMapStatus ?? "")
+                  ? "이미 검토된 장소입니다"
+                  : "이미 등록된 장소입니다"}
               </DialogTitle>
               <DialogDescription className="max-w-sm leading-6">
-                같은 장소를 다시 제안할 필요가 없어요. 지도에서 위치와
-                커뮤니티의 추천 근거를 확인해 보세요.
+                {existingPlace?.currentMapStatus === "rejected" || existingPlace?.currentMapStatus === "archived" || existingPlace?.currentMapStatus === "reviewed"
+                  ? "이 지도에서 이미 검토된 장소입니다. 처리 상태는 내 제안에서 확인할 수 있어요."
+                  : "이 지도에 이미 등록된 장소입니다. 지도에서 위치와 추천 근거를 확인해 보세요."}
               </DialogDescription>
             </DialogHeader>
           </div>
@@ -557,19 +582,19 @@ export function ProposalForm({
               >
                 계속 검색
               </Button>
-            <Button
-              type="button"
-              onClick={() => {
-                if (!existingPlace) return;
-                router.push(
-                  `/maps/${map.slug}?place=${encodeURIComponent(existingPlace.id)}`,
-                );
-                setExistingPlace(null);
-              }}
-            >
-              지도에서 보기
-              <ArrowUpRight size={15} />
-            </Button>
+              {existingPlace?.currentMapPlaceId && (
+                <Button
+                  type="button"
+                  onClick={() => {
+                    if (!existingPlace?.currentMapPlaceId) return;
+                    router.push(`/maps/${map.slug}?proposal=${encodeURIComponent(existingPlace.currentMapPlaceId)}`);
+                    setExistingPlace(null);
+                  }}
+                >
+                  지도에서 보기
+                  <ArrowUpRight size={15} />
+                </Button>
+              )}
             </div>
           </div>
         </DialogContent>

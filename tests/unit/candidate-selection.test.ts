@@ -25,6 +25,17 @@ vi.mock("@/server/places/provider-router", () => ({
 vi.mock("@/server/places/usage", () => ({
   metered: async (_args: unknown, run: () => unknown) => run(),
 }));
+vi.mock("@/lib/supabase/admin", () => ({
+  serviceDb: () => ({
+    from: () => ({
+      select: () => ({
+        eq: () => ({
+          eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }),
+        }),
+      }),
+    }),
+  }),
+}));
 import { selectCandidate } from "@/server/places/search-service";
 import {
   signCandidate,

@@ -97,6 +97,7 @@ export function CommunityExplorer({
   const router = useRouter();
   const searchParams = useSearchParams();
   const requestedPlaceId = searchParams.get("place");
+  const requestedProposalId = searchParams.get("proposal");
   const [query, setQuery] = useState(""),
     [sort, setSort] = useState<Sort>("relevance"),
     [selected, setSelected] = useState<string | null>(null),
@@ -289,14 +290,16 @@ export function CommunityExplorer({
     [config.provider, mobile, mobileView],
   );
   useEffect(() => {
-    if (!requestedPlaceId || openedPlaceId.current === requestedPlaceId) return;
+    const requestKey = requestedProposalId ?? requestedPlaceId;
+    if (!requestKey || openedPlaceId.current === requestKey) return;
     const mapPlace = [...places, ...pendingPlaces].find(
-      (place) => place.place_id === requestedPlaceId,
+      (place) => requestedProposalId ? place.id === requestedProposalId : place.place_id === requestedPlaceId,
     );
     if (!mapPlace) return;
     const timer = window.setTimeout(() => {
-      openedPlaceId.current = requestedPlaceId;
+      openedPlaceId.current = requestKey;
       setSelected(mapPlace.id);
+      setFocusRequest((request) => request + 1);
       setPreviewId(null);
       setDetailId(mapPlace.id);
       trackCommunityEvent("place_detail_opened", {
@@ -305,7 +308,7 @@ export function CommunityExplorer({
       });
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [config.provider, pendingPlaces, places, requestedPlaceId]);
+  }, [config.provider, pendingPlaces, places, requestedPlaceId, requestedProposalId]);
   return (
     <main
       id="main"

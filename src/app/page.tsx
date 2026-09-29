@@ -13,6 +13,7 @@ export default async function Home() {
       b.place_count - a.place_count ||
       a.slug.localeCompare(b.slug),
   );
+  const featuredMaps = maps.slice(0, 4);
   const placesByMap = await Promise.all(maps.map(getInitialPlaces));
   const locationTerms = Object.fromEntries(
     maps.map((map, index) => [
@@ -25,12 +26,12 @@ export default async function Home() {
   return (
     <main id="main" className="page-wrap">
       <MobileDiscovery
-        maps={maps}
+        maps={featuredMaps}
         locationTerms={locationTerms}
         demo={!configured()}
       />
       <div className="hidden lg:block">
-        <section className="grid items-start gap-10 pb-12 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] xl:gap-16">
+        <section className="grid items-start gap-10 pb-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] xl:gap-16">
           <div className="sticky top-5 flex h-[calc(100dvh-148px)] min-h-[520px] flex-col pt-5">
             <Badge variant="secondary" className="mb-5 rounded-full px-3 py-1">
               <Globe2 size={12} />
@@ -39,7 +40,7 @@ export default async function Home() {
             <h1 className="text-[clamp(2.5rem,3.6vw,4rem)] leading-[1.22] font-semibold tracking-[-.055em]">
               좋은 장소는,
               <br />
-              같은 취향의 사람들이
+              <span className="xl:whitespace-nowrap">같은 취향의 사람들이</span>
               <br />
               <span className="text-primary">더 잘 아니까.</span>
             </h1>
@@ -81,9 +82,12 @@ export default async function Home() {
                   지금, 함께 만드는 지도
                 </h2>
               </div>
-              <span className="shrink-0 text-xs text-muted-foreground">
-                공개 지도 {maps.length}개
-              </span>
+              <Link
+                href="/discover"
+                className="shrink-0 text-xs text-primary hover:underline"
+              >
+                전체 지도 {maps.length}개 보기 →
+              </Link>
             </div>
             {!configured() && (
               <p className="mb-5 rounded-lg border border-dashed px-4 py-3 text-xs leading-5 text-muted-foreground">
@@ -91,7 +95,10 @@ export default async function Home() {
                 추천·검증 데이터가 아닙니다.
               </p>
             )}
-            <DesktopDiscovery maps={maps} locationTerms={locationTerms} />
+            <DesktopDiscovery
+              maps={featuredMaps}
+              locationTerms={locationTerms}
+            />
           </div>
         </section>
       </div>

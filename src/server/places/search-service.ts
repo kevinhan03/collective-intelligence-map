@@ -1,6 +1,7 @@
 import "server-only";
 import { productEvent } from "@/server/events";
 import { db } from "@/lib/supabase/server";
+import { serviceDb } from "@/lib/supabase/admin";
 import { resolveExistingPlaceDetails } from "./canonical-resolver";
 import { getSearchMap } from "./search-map";
 import { HttpError } from "@/server/http";
@@ -21,12 +22,33 @@ export async function searchPlaces(
     m: map.id,
   });
   if (error) throw new HttpError("내부 장소를 검색하지 못했습니다.", 503);
+  const matches = (internal ?? []) as { id: string }[];
+  const { data: currentMap, error: mapError } = matches.length
+    ? await serviceDb()
+        .from("map_places")
+        .select("id,place_id,status,added_by")
+        .eq("map_id", map.id)
+        .in("place_id", matches.map((place) => place.id))
+    : { data: [], error: null };
+  if (mapError) throw new HttpError("지도 등록 여부를 확인하지 못했습니다.", 503);
+  const mapPlaces = new Map((currentMap ?? []).map((place) => [place.place_id, place]));
+  const internalWithStatus = matches.map((place) => {
+    const current = mapPlaces.get(place.id);
+    const publicStatus = current && ["approved", "pending", "disputed"].includes(current.status);
+    return {
+      ...place,
+      currentMapPlaceId: publicStatus ? current.id : null,
+      currentMapStatus: current
+        ? publicStatus || current.added_by === viewer.id ? current.status : "reviewed"
+        : null,
+    };
+  });
   productEvent("place_search_internal", {
     mapId: map.id,
-    count: Array.isArray(internal) ? internal.length : 0,
+    count: matches.length,
   });
-  if (!input.external || (Array.isArray(internal) && internal.length > 0))
-    return { internal: internal ?? [], candidates: [] };
+  if (!input.external || matches.length > 0)
+    return { internal: internalWithStatus, candidates: [] };
   const { name, adapter } = routeProvider(map.country);
   const session = input.session ?? crypto.randomUUID();
   productEvent("place_search_external", { mapId: map.id });
@@ -61,7 +83,7 @@ export async function searchPlaces(
     }
   }
   return {
-    internal: internal ?? [],
+    internal: internalWithStatus,
     session,
     candidates: candidates.map((c) => ({
       ...c,
@@ -134,8 +156,26 @@ export async function selectCandidate(
     selected.lng > map.bounds.east
   )
     throw new HttpError("지도 범위 안의 장소를 다시 선택해 주세요.");
+  const currentMapPlace = existing?.placeId
+    ? await serviceDb()
+        .from("map_places")
+        .select("id,status,added_by")
+        .eq("map_id", map.id)
+        .eq("place_id", existing.placeId)
+        .maybeSingle()
+    : null;
+  if (currentMapPlace?.error)
+    throw new HttpError("지도 등록 여부를 확인하지 못했습니다.", 503);
+  const publicStatus = currentMapPlace?.data &&
+    ["approved", "pending", "disputed"].includes(currentMapPlace.data.status);
   return {
     placeId: existing?.placeId ?? null,
+    currentMapPlaceId: publicStatus ? currentMapPlace?.data?.id ?? null : null,
+    currentMapStatus: currentMapPlace?.data
+      ? publicStatus || currentMapPlace.data.added_by === viewer.id
+        ? currentMapPlace.data.status
+        : "reviewed"
+      : null,
     candidate: {
       ...selected,
       token: signCandidate({

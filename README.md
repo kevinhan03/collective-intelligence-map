@@ -1,4 +1,4 @@
-# Collective Intelligence Map
+# Ting map
 
 한 도시 × 관심사에 집중하는 공개 장소 커뮤니티 MVP. 핵심 객체는 **Theme Map**, 검증 단위는 **Place × Theme Map (`map_places`)** 입니다.
 

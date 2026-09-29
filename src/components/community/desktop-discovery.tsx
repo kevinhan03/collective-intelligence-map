@@ -1,35 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { useState } from "react";
 import { ArrowUpRight, MapPin, Search, Users } from "lucide-react";
 import type { ThemeMap } from "@/domain/types";
 import { formatLocation } from "@/domain/location";
-
-const cardPalettes = [
-  ["#bd794f", "#533b54", "#1b2829"],
-  ["#627d9b", "#59476c", "#202c39"],
-  ["#8b9857", "#6d6050", "#242c2b"],
-  ["#b56b70", "#744d72", "#252b40"],
-  ["#9b8660", "#526c70", "#1e3037"],
-] as const;
-
-const cardImages: Record<string, string> = {
-  "korea-vintage": "/korea-vintage-gyeongbokgung.jpg",
-  "tokyo-fashion": "/tokyo-fashion-shinjuku.jpg",
-};
-
-function cardBackground(slug: string) {
-  const index =
-    [...slug].reduce((sum, character) => sum + character.charCodeAt(0), 0) %
-    cardPalettes.length;
-  const [light, middle, dark] = cardPalettes[index];
-
-  return {
-    backgroundImage: `radial-gradient(circle at 75% 20%, ${light} 0%, transparent 52%), radial-gradient(circle at 15% 80%, ${middle} 0%, transparent 60%), linear-gradient(135deg, ${dark}, ${middle})`,
-  };
-}
+import { MapCardBackdrop } from "@/components/community/map-card-backdrop";
 
 export function DesktopDiscovery({
   maps,
@@ -69,26 +45,7 @@ export function DesktopDiscovery({
               href={`/maps/${map.slug}`}
               className="group relative flex h-full min-h-[182px] flex-col overflow-hidden rounded-2xl border border-white/20 bg-[#28323a] p-4 text-white shadow-lg transition-[border-color,transform,box-shadow] hover:-translate-y-0.5 hover:border-white/50 hover:shadow-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             >
-              {cardImages[map.slug] ? (
-                <div
-                  aria-hidden="true"
-                  className="absolute -inset-5 transition-transform duration-500 group-hover:scale-110"
-                >
-                  <Image
-                    src={cardImages[map.slug]}
-                    alt=""
-                    fill
-                    sizes="(min-width: 1024px) 28vw, 50vw"
-                    className="scale-110 object-cover blur-[1px]"
-                  />
-                </div>
-              ) : (
-                <div
-                  aria-hidden="true"
-                  className="absolute -inset-5 scale-110 blur-2xl transition-transform duration-500 group-hover:scale-125"
-                  style={cardBackground(map.slug)}
-                />
-              )}
+              <MapCardBackdrop slug={map.slug} />
               <div
                 aria-hidden="true"
                 className="absolute inset-0 bg-gradient-to-b from-black/15 via-black/25 to-black/65"

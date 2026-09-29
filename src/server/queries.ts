@@ -176,6 +176,15 @@ export async function getPendingPlaces(map: ThemeMap): Promise<MapPlace[]> {
   }
   return data as MapPlace[];
 }
+export async function getMapPlaceById(map: ThemeMap, id: string): Promise<MapPlace | null> {
+  if (!configured()) return null;
+  const { data, error } = await publicDb().rpc("map_place_for_map", {
+    m: map.id,
+    target: id,
+  });
+  if (error) throw new Error("제안한 장소를 불러오지 못했습니다.");
+  return (data as MapPlace | null) ?? null;
+}
 export async function getComments(id: string): Promise<Comment[]> {
   "use cache";
   cacheLife({ stale: 60, revalidate: 120, expire: 600 });

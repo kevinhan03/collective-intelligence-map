@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bookmark, Compass, Menu, UserRound } from "lucide-react";
+import { Bookmark, Compass, Menu, MapPinPlus, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -15,16 +15,22 @@ export function MobileNavigation() {
   const pathname = usePathname();
   const links = [
     {
-      href: "/",
+      href: "/discover",
       label: "발견",
       icon: Compass,
-      active: pathname === "/" || pathname.startsWith("/maps/"),
+      active: pathname === "/discover" || pathname.startsWith("/maps/"),
     },
     {
       href: "/saved",
       label: "저장",
       icon: Bookmark,
       active: pathname === "/saved",
+    },
+    {
+      href: "/my-proposals",
+      label: "내 제안",
+      icon: MapPinPlus,
+      active: pathname === "/my-proposals",
     },
     {
       href: "/settings/profile",

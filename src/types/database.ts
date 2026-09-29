@@ -638,6 +638,8 @@ export type Database = {
         Returns: Json;
       };
       map_pending_places: { Args: { m: string }; Returns: Json };
+      map_place_for_map: { Args: { m: string; target: string }; Returns: Json };
+      my_proposals: { Args: { page_num: number }; Returns: Json };
       map_stats: { Args: { m: string }; Returns: Json };
       map_stats_all: {
         Args: never;
@@ -670,6 +672,7 @@ export type Database = {
       saved_place_cards: { Args: never; Returns: Json };
       search_internal_places: { Args: { m: string; q: string }; Returns: Json };
       submit_proposal: { Args: { payload: Json }; Returns: string };
+      submit_proposal_result: { Args: { payload: Json }; Returns: Json };
       submit_resolved_proposal: {
         Args: {
           allow_ref: boolean;
@@ -679,6 +682,16 @@ export type Database = {
           u: string;
         };
         Returns: string;
+      };
+      submit_resolved_proposal_result: {
+        Args: {
+          allow_ref: boolean;
+          external_id_value: string;
+          p: string;
+          payload: Json;
+          u: string;
+        };
+        Returns: Json;
       };
       usage_snapshot: { Args: never; Returns: Json };
       viewer_role: { Args: never; Returns: string };

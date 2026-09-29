@@ -15,6 +15,13 @@ import {
 import { db } from "@/lib/supabase/server";
 import { serviceDb } from "@/lib/supabase/admin";
 import { verifyCandidate } from "@/server/places/candidate-token";
+import { z } from "zod";
+const proposalResult = z.object({
+  id: z.uuid(),
+  placeId: z.uuid(),
+  status: z.string(),
+  created: z.boolean(),
+});
 export async function POST(request: Request) {
   try {
     const viewer = await requireViewer();
@@ -37,8 +44,8 @@ export async function POST(request: Request) {
     const { candidateToken: _, ...payload } = input;
     void _;
     const client = await db();
-    const { data: id, error } = claims
-      ? await serviceDb().rpc("submit_resolved_proposal", {
+    const { data, error } = claims
+      ? await serviceDb().rpc("submit_resolved_proposal_result", {
           payload: {
             ...payload,
             placeId: undefined,
@@ -54,16 +61,14 @@ export async function POST(request: Request) {
           external_id_value: claims.externalId,
           allow_ref: mayPersistReference(claims.provider),
         })
-      : await client.rpc("submit_proposal", { payload });
+      : await client.rpc("submit_proposal_result", { payload });
     dbError(error);
-    if (!id) throw new HttpError("장소 제안을 저장하지 못했습니다.", 503);
+    if (!data) throw new HttpError("장소 제안을 저장하지 못했습니다.", 503);
+    const result = proposalResult.parse(data);
+    if (!result.created && ["rejected", "archived"].includes(result.status))
+      throw new HttpError("이 지도에서 이미 검토된 장소입니다. 다른 장소를 선택해 주세요.", 409);
     revalidateTag("public-community", { expire: 0 });
-    const { data: saved } = await client
-      .from("map_places")
-      .select("status")
-      .eq("id", id)
-      .single();
-    return json({ id, status: saved?.status ?? "pending" }, 201);
+    return json(result, result.created ? 201 : 200);
   } catch (e) {
     return failure(e);
   }

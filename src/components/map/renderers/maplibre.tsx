@@ -92,20 +92,20 @@ export default function MapLibreMap(props: MapProps) {
   useEffect(() => {
     const map = instance.current;
     if (!map) return;
-    const groups: { places: { place: typeof props.places[number]; rank: number }[]; x: number; y: number }[] = [];
-    props.places.forEach((place, rank) => {
+    const groups: { places: typeof props.places; x: number; y: number }[] = [];
+    props.places.forEach((place) => {
       const point = map.project([place.lng, place.lat]);
       const nearby = groups.find(
         (group) =>
           place.id !== props.selected &&
-          group.places.every(({ place: member }) => member.id !== props.selected) &&
+          group.places.every((member) => member.id !== props.selected) &&
           Math.hypot(group.x - point.x, group.y - point.y) < 36,
       );
-      if (nearby) nearby.places.push({ place, rank });
-      else groups.push({ places: [{ place, rank }], x: point.x, y: point.y });
+      if (nearby) nearby.places.push(place);
+      else groups.push({ places: [place], x: point.x, y: point.y });
     });
     const markers = groups.map((group) => {
-      const { place: p, rank } = group.places[0];
+      const p = group.places[0];
       const clustered = group.places.length > 1;
       const canZoom = map.getZoom() < 17;
       const button = document.createElement("button");
@@ -130,7 +130,7 @@ export default function MapLibreMap(props: MapProps) {
       const icon = document.createElement("span");
       icon.textContent = clustered
         ? String(group.places.length)
-        : p.status === "pending" ? "···" : String(rank + 1);
+        : p.status === "pending" ? "···" : "✓";
       icon.setAttribute("aria-hidden", "true");
       face.append(icon);
       button.append(face);

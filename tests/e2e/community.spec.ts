@@ -18,7 +18,7 @@ test("discover community, filter venues, open context and protect participation"
     .filter({ has: page.getByRole("heading", { name: /Tokyo Fashion/ }) })
     .click();
   await expect(
-    page.getByRole("heading", { name: "Tokyo Fashion", exact: true }),
+    page.getByRole("heading", { name: "Tokyo Fashion Store", exact: true }),
   ).toBeVisible();
   if (isMobile) {
     await expect(
@@ -128,11 +128,11 @@ test("mobile discovery filters and recovers from empty results", async ({
   await expect(page.getByText("조건에 맞는 지도가 아직 없어요.")).toBeVisible();
   await page.getByRole("button", { name: "전체 지도 보기" }).click();
   await expect(
-    page.getByRole("heading", { name: "Tokyo Fashion", exact: true }),
+    page.getByRole("heading", { name: "Tokyo Fashion Store", exact: true }),
   ).toBeVisible();
   await page
     .getByRole("textbox", { name: "테마 지도 검색" })
-    .fill("Tokyo Fashion");
+    .fill("Tokyo Fashion Store");
   await expect(page.getByRole("status")).toHaveText("1개");
   await page.getByRole("button", { name: "메뉴 열기" }).click();
   await expect(
@@ -161,9 +161,9 @@ test("mobile view switching preserves scroll position and detail returns focus",
     ),
   ).toBeHidden();
   await page
-    .getByRole("button", { name: "Tokyo Fashion 지도 정보 보기" })
+    .getByRole("button", { name: "Tokyo Fashion Store 지도 정보 보기" })
     .click();
-  const mapInfo = page.getByRole("dialog", { name: "Tokyo Fashion" });
+  const mapInfo = page.getByRole("dialog", { name: "Tokyo Fashion Store" });
   await expect(mapInfo).toBeVisible();
   await expect(mapInfo.getByText("커뮤니티 규칙 보기")).toBeVisible();
   await expect(mapInfo.getByRole("link", { name: "장소 제안" })).toBeVisible();
@@ -226,7 +226,10 @@ test("mobile theme entry and saved-place deep links open the intended context", 
   await page
     .getByRole("link")
     .filter({
-      has: page.getByRole("heading", { name: "Tokyo Fashion", exact: true }),
+      has: page.getByRole("heading", {
+        name: "Tokyo Fashion Store",
+        exact: true,
+      }),
     })
     .click();
   await expect(

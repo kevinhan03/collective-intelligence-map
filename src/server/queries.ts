@@ -36,10 +36,13 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
 });
 export const getMaps = cache(async (): Promise<ThemeMap[]> => {
   "use cache";
-  // Public community data changes only through mutations that invalidate this
-  // tag. A longer lifetime keeps read-heavy traffic off Postgres and Vercel
-  // functions while preserving immediate updates after a mutation.
-  cacheLife({ stale: 300, revalidate: 300, expire: 3600 });
+  // Local development should reflect data edits immediately. Production keeps
+  // a longer lifetime and mutations invalidate this tag when they complete.
+  if (process.env.NODE_ENV === "development") {
+    cacheLife("seconds");
+  } else {
+    cacheLife({ stale: 300, revalidate: 300, expire: 3600 });
+  }
   cacheTag("public-community");
   if (!configured()) return [demoMap];
   const client = publicDb();
@@ -240,5 +243,8 @@ export function rendererFor(): RendererConfig {
   if (!configured()) return { provider: "preview", key: "" };
   // Basemap rendering is independent from place search. Korea still uses the
   // Kakao Local API in provider-router.ts; MapTiler renders every map.
-  return { provider: "maplibre", key: process.env.NEXT_PUBLIC_MAPLIBRE_STYLE_URL ?? "" };
+  return {
+    provider: "maplibre",
+    key: process.env.NEXT_PUBLIC_MAPLIBRE_STYLE_URL ?? "",
+  };
 }

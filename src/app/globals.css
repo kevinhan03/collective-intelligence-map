@@ -220,7 +220,7 @@ select {
   background: transparent;
 }
 .glass-toolbar {
-  margin: 0 18px;
+  margin: 18px;
   border: 1px solid var(--glass-stroke);
   border-radius: 22px;
   background: rgb(196 210 229 / 12%);
@@ -450,7 +450,7 @@ select {
     margin: 10px;
   }
   .glass-toolbar {
-    margin-inline: 10px;
+    margin: 0 10px;
   }
 }
 

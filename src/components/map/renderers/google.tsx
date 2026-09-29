@@ -162,14 +162,14 @@ export default function GoogleMap({
   useEffect(() => {
     if (!ready || !map.current) return;
     markers.current.forEach((m) => m.setMap(null));
-    markers.current = places.map((p, i) => {
+    markers.current = places.map((p) => {
       const marker = new google.maps.Marker({
         map: map.current,
         position: { lat: p.lat, lng: p.lng },
         title: p.name,
         label: {
-          text: p.status === "pending" ? "···" : String(i + 1),
-          color: selected === p.id ? "#ffffff" : p.status === "pending" ? "#475569" : "#ffffff",
+          text: p.status === "pending" ? "···" : "✓",
+          color: p.status === "pending" ? "#475569" : "#ffffff",
         },
         icon: {
           path: google.maps.SymbolPath.CIRCLE,

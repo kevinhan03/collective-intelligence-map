@@ -1,17 +1,10 @@
 import Link from "next/link";
 import { MobileDiscovery } from "@/components/community/mobile-discovery";
 import { DesktopDiscovery } from "@/components/community/desktop-discovery";
-import {
-  ArrowRight,
-  MapPin,
-  Globe2,
-  Check,
-} from "lucide-react";
+import { Globe2 } from "lucide-react";
 import { getInitialPlaces, getMaps } from "@/server/queries";
 import { configured } from "@/lib/supabase/server";
 import { placeArea } from "@/domain/place-location";
-import { SmoothScrollLink } from "@/components/smooth-scroll-link";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 export default async function Home() {
   const maps = [...(await getMaps())].sort(
@@ -31,22 +24,19 @@ export default async function Home() {
   );
   return (
     <main id="main" className="page-wrap">
-      <MobileDiscovery maps={maps} locationTerms={locationTerms} demo={!configured()} />
+      <MobileDiscovery
+        maps={maps}
+        locationTerms={locationTerms}
+        demo={!configured()}
+      />
       <div className="hidden lg:block">
-        <div className="mb-8 flex items-center justify-between border-b pb-5">
-          <p className="kicker">A place for shared discoveries</p>
-          <span className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="size-1.5 rounded-full bg-primary" />
-            모두의 발견이 하나의 지도로
-          </span>
-        </div>
-        <section className="grid gap-8 pb-12 pt-4 md:grid-cols-[1.5fr_1fr]">
-          <div>
+        <section className="grid items-start gap-10 pb-12 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] xl:gap-16">
+          <div className="sticky top-5 flex h-[calc(100dvh-148px)] min-h-[520px] flex-col pt-5">
             <Badge variant="secondary" className="mb-5 rounded-full px-3 py-1">
               <Globe2 size={12} />
               취향으로 연결되는 공개 지도
             </Badge>
-            <h1 className="text-[38px] leading-[1.24] font-semibold tracking-[-.055em] md:text-[54px]">
+            <h1 className="text-[clamp(2.5rem,3.6vw,4rem)] leading-[1.22] font-semibold tracking-[-.055em]">
               좋은 장소는,
               <br />
               같은 취향의 사람들이
@@ -59,67 +49,50 @@ export default async function Home() {
               관심사가 같은 사람들과 추천하고 검증하며, 나에게 맞는 곳을
               발견하세요.
             </p>
-            <Button asChild className="mt-7 h-11 px-5">
-              <SmoothScrollLink href="#communities">
-                지도 둘러보기
-                <ArrowRight size={16} />
-              </SmoothScrollLink>
-            </Button>
-          </div>
-          <div
-            className="relative hidden min-h-80 overflow-hidden rounded-2xl glass-panel md:block"
-            aria-hidden="true"
-          >
-            <div className="absolute top-7 left-7 text-xs tracking-[.2em] text-primary">
-              PLACES × CONTEXT × COMMUNITY
-            </div>
-            <div className="absolute top-25 left-7 h-52 w-80 -rotate-12 rounded-xl border-8 border-white/20 bg-[#343b26] shadow-xl">
-              <div className="absolute top-7 left-6 h-40 w-56 rounded-[50%] border border-white/80" />
-              <div className="absolute top-2 left-16 h-40 w-36 rotate-45 rounded-[50%] border border-white/80" />
-              <MapPin
-                className="absolute top-12 left-26 text-primary"
-                size={40}
-              />
-              <MapPin
-                className="absolute top-26 left-48 text-primary"
-                size={30}
-              />
-            </div>
-            <div className="absolute right-5 bottom-10 rotate-3 rounded-xl glass-panel px-5 py-4 shadow-lg">
-              <div className="flex items-center gap-2 text-sm font-semibold">
-                <span className="rounded-full bg-secondary p-1.5">
-                  <Check size={14} />
-                </span>
-                왜 이 주제에 맞나요?
-              </div>
-              <p className="mt-2 text-xs text-muted-foreground">
-                한 사람의 발견이, 모두의 지도로.
+            <div className="mt-[60px] max-w-lg border-t border-white/15 pt-5">
+              <p className="kicker mb-3">How it works</p>
+              <ol className="space-y-2.5 text-sm text-muted-foreground">
+                <li className="flex items-center gap-3">
+                  <span className="font-mono text-xs text-primary">01</span>
+                  관심 있는 지도 탐색
+                </li>
+                <li className="flex items-center gap-3">
+                  <span className="font-mono text-xs text-primary">02</span>
+                  장소 추천 제안
+                </li>
+                <li className="flex items-center gap-3">
+                  <span className="font-mono text-xs text-primary">03</span>
+                  함께 검증하며 지도 완성
+                </li>
+              </ol>
+              <p className="mt-5 text-xs text-muted-foreground">
+                작은 발견이 모여, 더 나은 선택으로.
               </p>
             </div>
-            <span className="absolute right-7 bottom-3 font-mono text-[10px] text-primary/60">
-              COLLECTIVE FIELD NOTES / 001
-            </span>
           </div>
-        </section>
-        <section id="communities" className="border-t pt-8">
-          <div className="mb-6 flex items-end justify-between">
-            <div>
-              <p className="kicker mb-2">Find your community</p>
-              <h2 className="text-2xl font-semibold tracking-tight">
-                지금, 함께 만드는 지도
-              </h2>
+          <div
+            id="communities"
+            className="flex h-[calc(100dvh-148px)] min-h-[520px] min-w-0 flex-col overflow-hidden rounded-[2rem] border border-white/15 bg-black/25 p-5 shadow-2xl backdrop-blur-xl xl:p-7"
+          >
+            <div className="mb-5 flex items-end justify-between gap-3">
+              <div>
+                <p className="kicker mb-2">Find your community</p>
+                <h2 className="text-xl font-semibold tracking-tight xl:text-2xl">
+                  지금, 함께 만드는 지도
+                </h2>
+              </div>
+              <span className="shrink-0 text-xs text-muted-foreground">
+                공개 지도 {maps.length}개
+              </span>
             </div>
-            <span className="text-xs text-muted-foreground">
-              선별된 도시와 주제 · {maps.length}개
-            </span>
+            {!configured() && (
+              <p className="mb-5 rounded-lg border border-dashed px-4 py-3 text-xs leading-5 text-muted-foreground">
+                미리보기 모드입니다. 장소는 화면 확인을 위한 가상 예시이며 실제
+                추천·검증 데이터가 아닙니다.
+              </p>
+            )}
+            <DesktopDiscovery maps={maps} locationTerms={locationTerms} />
           </div>
-          {!configured() && (
-            <p className="mb-5 rounded-lg border border-dashed px-4 py-3 text-xs leading-5 text-muted-foreground">
-              미리보기 모드입니다. 장소는 화면 확인을 위한 가상 예시이며 실제
-              추천·검증 데이터가 아닙니다.
-            </p>
-          )}
-          <DesktopDiscovery maps={maps} locationTerms={locationTerms} />
         </section>
       </div>
       <footer className="mt-14 flex justify-between border-t pt-5 text-xs text-muted-foreground">

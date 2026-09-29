@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
-import { ArrowLeft, ArrowUpRight, CheckCircle2, MapPin, Search, X } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, CheckCircle2, LoaderCircle, MapPin, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -66,6 +66,7 @@ export function ProposalForm({
   const [locating, setLocating] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [searching, setSearching] = useState(false);
   const requestId = useRef(0);
   function resetProposal() {
     requestId.current++;
@@ -80,10 +81,12 @@ export function ProposalForm({
     setManualAddress("");
     setManualLocation(null);
     setError("");
+    setSearching(false);
   }
   async function search() {
     const id = ++requestId.current;
     setBusy(true);
+    setSearching(true);
     setError("");
     setSelection(null);
     setManual(false);
@@ -119,7 +122,10 @@ export function ProposalForm({
         setSearched(true);
       }
     } finally {
-      if (requestId.current === id) setBusy(false);
+      if (requestId.current === id) {
+        setBusy(false);
+        setSearching(false);
+      }
     }
   }
   async function choose(candidate: Candidate) {
@@ -201,6 +207,7 @@ export function ProposalForm({
         </p>
         <form
           className="flex gap-2"
+          aria-busy={searching}
           onSubmit={(e) => {
             e.preventDefault();
             void search();
@@ -215,6 +222,7 @@ export function ProposalForm({
             onChange={(e) => {
               requestId.current++;
               setBusy(false);
+              setSearching(false);
               setQuery(e.target.value);
               setSelection(null);
               setSearched(false);
@@ -225,8 +233,12 @@ export function ProposalForm({
             }}
           />
           <Button disabled={!enabled || busy || query.trim().length === 0}>
-            <Search size={15} />
-            {busy ? "검색 중…" : "검색"}
+            {searching ? (
+              <LoaderCircle size={15} className="animate-spin" aria-hidden="true" />
+            ) : (
+              <Search size={15} aria-hidden="true" />
+            )}
+            {searching ? "검색 중…" : "검색"}
           </Button>
         </form>
         {internal.map((p) => (

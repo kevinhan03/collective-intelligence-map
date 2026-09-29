@@ -23,13 +23,14 @@ export default function PreviewMap({ places, selected, onSelect }: MapProps) {
           className="map-pin"
           data-selected={selected === p.id}
           data-status={p.status}
-          aria-label={`${p.name} 지도에서 선택`}
+          aria-label={`${p.name} 지도에서 선택 · 좋아요 ${p.positive} · 싫어요 ${p.negative}`}
           onClick={() => onSelect(p.id)}
           style={{
             left: `${18 + (p.lng - 139.69) * 1900}%`,
             top: `${78 - (p.lat - 35.655) * 2600}%`,
           }}
         >
+          <span className="map-pin-votes" aria-hidden="true">👍 {p.positive} · 👎 {p.negative}</span>
           <span>{p.status === "pending" ? "···" : "✓"}</span>
         </button>
       ))}

@@ -138,10 +138,10 @@ export function CommunityExplorer({
   const searchSuggestions = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     if (!normalized) return [];
-    const suggestions = places.flatMap((place) => [
-      { term: place.name, kind: "장소" },
-      { term: place.category, kind: "분류" },
-    ]);
+    const suggestions = places.map((place) => ({
+      term: place.name,
+      kind: "장소",
+    }));
     return suggestions
       .filter((suggestion) => suggestion.term.toLowerCase().includes(normalized))
       .filter(
@@ -673,11 +673,13 @@ export function CommunityExplorer({
                         </span>
                       )}
                     </div>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {[demo ? "가상 예시" : p.category, placeArea(p.address)]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </p>
+                    {(demo || placeArea(p.address)) && (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {[demo ? "가상 예시" : null, placeArea(p.address)]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </p>
+                    )}
                   </div>
                   <button
                     aria-label={`${p.name} 상세 보기`}

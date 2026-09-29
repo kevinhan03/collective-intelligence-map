@@ -166,10 +166,11 @@ export default function GoogleMap({
       const marker = new google.maps.Marker({
         map: map.current,
         position: { lat: p.lat, lng: p.lng },
-        title: p.name,
+        title: `${p.name} · 좋아요 ${p.positive} · 싫어요 ${p.negative}`,
         label: {
-          text: p.status === "pending" ? "···" : "✓",
-          color: p.status === "pending" ? "#475569" : "#ffffff",
+          text: `👍 ${p.positive} · 👎 ${p.negative}`,
+          color: "#ffffff",
+          className: "map-google-votes",
         },
         icon: {
           path: google.maps.SymbolPath.CIRCLE,
@@ -178,6 +179,7 @@ export default function GoogleMap({
           fillOpacity: 1,
           strokeColor: "white",
           strokeWeight: 3,
+          labelOrigin: new google.maps.Point(0, selected === p.id ? -24 : -20),
         },
       });
       marker.addListener("click", () => handlers.current.onSelect(p.id));

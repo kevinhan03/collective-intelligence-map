@@ -507,6 +507,7 @@ button:not(:disabled),
   transform-origin: center;
 }
 .map-pin {
+  --map-pin-vote-offset: 35px;
   position: absolute;
   transform: translate(-50%, -50%);
   border: 3px solid white;
@@ -525,10 +526,50 @@ button:not(:disabled),
   font-size: 12px;
   font-weight: 700;
 }
+.map-pin > .map-pin-votes,
+.map-marker-votes {
+  position: absolute;
+  bottom: 34px;
+  left: 50%;
+  z-index: 2;
+  width: max-content;
+  padding: 4px 7px;
+  border: 1px solid #ffffff66;
+  border-radius: 999px;
+  background: #202522;
+  color: white;
+  box-shadow: 0 2px 8px #0005;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.map-pin > .map-pin-votes {
+  left: 12px;
+  bottom: var(--map-pin-vote-offset);
+  rotate: 45deg;
+  transform: translateX(-50%);
+}
+.map-google-votes {
+  padding: 4px 7px;
+  border: 1px solid #ffffff66;
+  border-radius: 999px;
+  background: #202522;
+  box-shadow: 0 2px 8px #0005;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  white-space: nowrap;
+}
 .map-marker {
+  --map-pin-vote-offset: 34px;
   position: relative;
   width: 32px;
   height: 32px;
+}
+.map-marker-votes {
+  bottom: var(--map-pin-vote-offset);
+  transform: translateX(-50%);
 }
 .map-marker-face {
   position: absolute;
@@ -560,6 +601,7 @@ button:not(:disabled),
   background: #d1d5db;
 }
 .map-marker[data-selected="true"] {
+  --map-pin-vote-offset: 42px;
   width: 40px;
   height: 40px;
   color: white;
@@ -590,6 +632,7 @@ button:not(:disabled),
   }
 }
 .map-pin[data-selected="true"] {
+  --map-pin-vote-offset: 43px;
   background: #f97316;
   color: white;
   width: 40px;

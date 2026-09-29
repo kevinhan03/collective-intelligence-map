@@ -40,9 +40,11 @@ export function PlacePreview({
           onClick={onOpenDetail}
           aria-label={`${place.name} 자세히 보기`}
         >
-          <span className="text-xs text-primary">
-            {[place.category, placeArea(place.address)].filter(Boolean).join(" · ")}
-          </span>
+          {placeArea(place.address) && (
+            <span className="text-xs text-primary">
+              {placeArea(place.address)}
+            </span>
+          )}
           <h2 className="mt-1 truncate text-lg font-semibold">{place.name}</h2>
         </button>
         <Button

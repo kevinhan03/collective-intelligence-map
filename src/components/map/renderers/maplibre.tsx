@@ -119,12 +119,19 @@ export default function MapLibreMap(props: MapProps) {
         "aria-label",
         clustered
           ? button.title
-          : `${p.name}${p.status === "pending" ? " · 검토 대기" : ""}`,
+          : `${p.name} · 좋아요 ${p.positive} · 싫어요 ${p.negative}${p.status === "pending" ? " · 검토 대기" : ""}`,
       );
       button.className = "map-marker";
       button.dataset.cluster = String(clustered);
       button.dataset.selected = String(props.selected === p.id);
       button.dataset.status = p.status;
+      if (!clustered) {
+        const votes = document.createElement("span");
+        votes.className = "map-marker-votes";
+        votes.textContent = `👍 ${p.positive} · 👎 ${p.negative}`;
+        votes.setAttribute("aria-hidden", "true");
+        button.append(votes);
+      }
       const face = document.createElement("span");
       face.className = "map-marker-face";
       const icon = document.createElement("span");

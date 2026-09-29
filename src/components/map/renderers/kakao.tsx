@@ -148,7 +148,12 @@ export default function KakaoMap(props: MapProps) {
       button.className = "map-pin";
       button.dataset.selected = String(selected === p.id);
       button.dataset.status = p.status;
-      button.setAttribute("aria-label", p.name);
+      button.setAttribute("aria-label", `${p.name} · 좋아요 ${p.positive} · 싫어요 ${p.negative}`);
+      const votes = document.createElement("span");
+      votes.className = "map-pin-votes";
+      votes.textContent = `👍 ${p.positive} · 👎 ${p.negative}`;
+      votes.setAttribute("aria-hidden", "true");
+      button.append(votes);
       const span = document.createElement("span");
       span.textContent = p.status === "pending" ? "···" : "✓";
       button.append(span);

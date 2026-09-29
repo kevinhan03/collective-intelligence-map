@@ -104,9 +104,6 @@ export function PlaceDetail({
         </div>
         <div className="space-y-6 p-5">
           <header className="space-y-3">
-            <Badge variant="secondary" className="mb-2">
-              {place.category}
-            </Badge>
             {place.status === "disputed" && (
               <Badge variant="outline">주제 적합성 재검토 중</Badge>
             )}

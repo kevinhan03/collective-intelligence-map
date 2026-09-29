@@ -9,7 +9,9 @@ const cardPalettes = [
 ] as const;
 
 const cardImages: Record<string, string> = {
+  "choiza-road-restaurants": "/choiza-road-restaurants.jpeg",
   "korea-vintage": "/korea-vintage-gyeongbokgung.jpg",
+  "seoul-taco-restaurant": "/seoul-taco-restaurant.jpg",
   "tokyo-fashion": "/tokyo-fashion-shinjuku.jpg",
 };
 

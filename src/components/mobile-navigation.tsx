@@ -18,7 +18,10 @@ export function MobileNavigation() {
       href: "/discover",
       label: "발견",
       icon: Compass,
-      active: pathname === "/discover" || pathname.startsWith("/maps/"),
+      active:
+        pathname === "/" ||
+        pathname === "/discover" ||
+        pathname.startsWith("/maps/"),
     },
     {
       href: "/saved",

@@ -91,7 +91,7 @@ export async function generateMetadata({
     twitter: { title: map.title, description: map.description },
   };
 }
-export default async function MapPage({
+async function MapRoute({
   params,
   searchParams,
 }: {
@@ -113,5 +113,19 @@ export default async function MapPage({
         <MapContent map={map} proposalId={proposalId} submitted={query.submitted === "1"} created={query.created === "1"} />
       </Suspense>
     </ViewerStateProvider>
+  );
+}
+
+export default function MapPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  return (
+    <Suspense fallback={<MapContentFallback />}>
+      <MapRoute params={params} searchParams={searchParams} />
+    </Suspense>
   );
 }

@@ -24,8 +24,12 @@ test("discover community, filter venues, open context and protect participation"
     await expect(
       page.getByRole("button", { name: "지도 보기", exact: true }),
     ).toHaveAttribute("aria-pressed", "true");
+    await page.getByRole("button", { name: "목록 보기", exact: true }).click();
+    await expect(page.getByRole("article").filter({ hasText: "Archive Room" })).toContainText("시대를 읽는 옷");
+    await page.getByRole("button", { name: "지도 보기", exact: true }).click();
   } else {
     await expect(page.getByText("6개의 발견")).toBeVisible();
+    await expect(page.getByRole("article").filter({ hasText: "Archive Room" })).toContainText("시대를 읽는 옷");
   }
   await page
     .getByRole("textbox", { name: "이 맵의 장소 검색" })

@@ -8,6 +8,8 @@ const cardPalettes = [
   ["#9b8660", "#526c70", "#1e3037"],
 ] as const;
 
+// Editorial images for the currently curated maps. New maps use the stable
+// palette fallback below until an intentional image is selected.
 const cardImages: Record<string, string> = {
   "choiza-road-restaurants": "/choiza-road-restaurants.jpeg",
   "korea-vintage": "/korea-vintage-gyeongbokgung.jpg",

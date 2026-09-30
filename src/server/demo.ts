@@ -2,6 +2,7 @@ import type { MapPlace, ThemeMap } from "@/domain/types";
 export const demoMap: ThemeMap = {
   id: "11111111-1111-4111-8111-111111111111",
   slug: "tokyo-fashion",
+  created_at: "2026-09-10T00:00:00.000Z",
   title: "Tokyo Fashion Store",
   description:
     "도쿄의 패션을 발견하는 사람들의 공개 지도. 독립 편집숍부터 빈티지 아카이브까지, 함께 추천하고 검증합니다.",

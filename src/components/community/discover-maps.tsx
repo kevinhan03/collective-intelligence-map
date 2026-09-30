@@ -5,6 +5,7 @@ import { useState } from "react";
 import { ArrowUpRight, MapPin, Search, Users } from "lucide-react";
 import type { ThemeMap } from "@/domain/types";
 import { formatLocation } from "@/domain/location";
+import { newestMapFirst } from "@/domain/map-order";
 import { MapCardBackdrop } from "@/components/community/map-card-backdrop";
 
 type SortOrder = "popular" | "places" | "newest";
@@ -33,7 +34,7 @@ export function DiscoverMaps({ maps }: { maps: ThemeMap[] }) {
           .includes(normalizedQuery)),
   );
   const results = [...filtered].sort((a, b) => {
-    if (sort === "newest") return maps.indexOf(b) - maps.indexOf(a);
+    if (sort === "newest") return newestMapFirst(a, b);
     if (sort === "places")
       return (
         b.place_count - a.place_count || b.follower_count - a.follower_count

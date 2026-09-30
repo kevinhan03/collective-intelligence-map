@@ -2,9 +2,8 @@ import Link from "next/link";
 import { MobileDiscovery } from "@/components/community/mobile-discovery";
 import { DesktopDiscovery } from "@/components/community/desktop-discovery";
 import { Globe2 } from "lucide-react";
-import { getInitialPlaces, getMaps } from "@/server/queries";
+import { getHomeLocationTerms, getMaps } from "@/server/queries";
 import { configured } from "@/lib/supabase/server";
-import { placeArea } from "@/domain/place-location";
 import { Badge } from "@/components/ui/badge";
 export default async function Home() {
   const maps = [...(await getMaps())].sort(
@@ -14,15 +13,7 @@ export default async function Home() {
       a.slug.localeCompare(b.slug),
   );
   const featuredMaps = maps.slice(0, 4);
-  const placesByMap = await Promise.all(maps.map(getInitialPlaces));
-  const locationTerms = Object.fromEntries(
-    maps.map((map, index) => [
-      map.id,
-      placesByMap[index]
-        .map((place) => `${place.address} ${placeArea(place.address)}`)
-        .join(" "),
-    ]),
-  );
+  const locationTerms = await getHomeLocationTerms(featuredMaps);
   return (
     <main id="main" className="page-wrap">
       <MobileDiscovery

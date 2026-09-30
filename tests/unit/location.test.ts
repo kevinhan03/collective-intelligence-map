@@ -2,17 +2,13 @@ import { expect, it } from "vitest";
 import { formatLocation } from "@/domain/location";
 import { placeArea } from "@/domain/place-location";
 it("formats city and country when they differ", () => {
-  expect(formatLocation({ city: "Tokyo", country: "JP" })).toBe(
-    "TOKYO, JAPAN",
-  );
+  expect(formatLocation({ city: "Tokyo", country: "JP" })).toBe("도쿄 · 일본");
 });
 it("collapses redundant city/country into a single name", () => {
-  expect(formatLocation({ city: "Korea", country: "KR" })).toBe("KOREA");
+  expect(formatLocation({ city: "Korea", country: "KR" })).toBe("한국");
 });
 it("falls back to the raw country code when unknown", () => {
-  expect(formatLocation({ city: "Paris", country: "FR" })).toBe(
-    "PARIS, FR",
-  );
+  expect(formatLocation({ city: "Paris", country: "FR" })).toBe("Paris · FR");
 });
 it("finds Korean search terms in English and Korean place addresses", () => {
   expect(placeArea("38 Sinheung-ro 20-gil, Yongsan-gu, Seoul, South Korea")).toBe("서울");

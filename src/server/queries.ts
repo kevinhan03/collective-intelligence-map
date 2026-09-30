@@ -16,6 +16,7 @@ import type {
 } from "@/domain/types";
 import { demoMap, demoPlaces } from "./demo";
 import { inBounds } from "@/domain/relevance";
+import { placeArea } from "@/domain/place-location";
 export const getViewer = cache(async (): Promise<Viewer | null> => {
   if (!configured()) return null;
   const client = await db();
@@ -140,6 +141,40 @@ async function cachedInitialPlaces(map: ThemeMap): Promise<MapPlace[]> {
 }
 
 export { cachedInitialPlaces as getInitialPlaces };
+
+export async function getHomeLocationTerms(maps: ThemeMap[]) {
+  "use cache";
+  if (process.env.NODE_ENV === "development") cacheLife("seconds");
+  else cacheLife({ stale: 300, revalidate: 300, expire: 3600 });
+  cacheTag("public-community");
+  if (!maps.length) return {};
+  if (!configured()) {
+    const terms = demoPlaces.map((place) => `${place.address} ${placeArea(place.address)}`).join(" ");
+    return Object.fromEntries(maps.map((map) => [map.id, terms]));
+  }
+
+  const client = publicDb();
+  const terms: Record<string, string[]> = Object.fromEntries(maps.map((map) => [map.id, []]));
+  // PostgREST caps response size. Read only map ID and address, in pages, so
+  // search keeps covering every public place as a map grows.
+  for (let offset = 0; ; offset += 500) {
+    const { data, error } = await client
+      .from("map_places")
+      .select("map_id,places!inner(address)")
+      .in("map_id", maps.map((map) => map.id))
+      .in("status", ["approved", "disputed"])
+      .eq("places.status", "active")
+      .order("id")
+      .range(offset, offset + 499);
+    if (error) throw new Error("홈 지역 검색 정보를 불러오지 못했습니다.");
+    for (const row of data ?? []) {
+      const address = row.places?.address;
+      if (address && terms[row.map_id]) terms[row.map_id].push(`${address} ${placeArea(address)}`);
+    }
+    if (!data || data.length < 500) break;
+  }
+  return Object.fromEntries(Object.entries(terms).map(([id, values]) => [id, values.join(" ")]));
+}
 
 async function readPlaces(map: ThemeMap, b: Bounds): Promise<MapPlace[]> {
   if (!configured()) return demoPlaces.filter((p) => inBounds(p.lat, p.lng, b));

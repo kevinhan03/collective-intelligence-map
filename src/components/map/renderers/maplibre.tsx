@@ -26,6 +26,7 @@ function boundsMatch(a: MapProps["bounds"], b: MapProps["bounds"]) {
 }
 
 export default function MapLibreMap(props: MapProps) {
+  const { places, selected, apiKey } = props;
   const container = useRef<HTMLDivElement>(null);
   const instance = useRef<maplibregl.Map | null>(null);
   const latest = useRef(props);
@@ -92,13 +93,13 @@ export default function MapLibreMap(props: MapProps) {
   useEffect(() => {
     const map = instance.current;
     if (!map) return;
-    const groups: { places: typeof props.places; x: number; y: number }[] = [];
-    props.places.forEach((place) => {
+    const groups: { places: typeof places; x: number; y: number }[] = [];
+    places.forEach((place) => {
       const point = map.project([place.lng, place.lat]);
       const nearby = groups.find(
         (group) =>
-          place.id !== props.selected &&
-          group.places.every((member) => member.id !== props.selected) &&
+          place.id !== selected &&
+          group.places.every((member) => member.id !== selected) &&
           Math.hypot(group.x - point.x, group.y - point.y) < 36,
       );
       if (nearby) nearby.places.push(place);
@@ -123,7 +124,7 @@ export default function MapLibreMap(props: MapProps) {
       );
       button.className = "map-marker";
       button.dataset.cluster = String(clustered);
-      button.dataset.selected = String(props.selected === p.id);
+      button.dataset.selected = String(selected === p.id);
       button.dataset.status = p.status;
       if (!clustered) {
         const votes = document.createElement("span");
@@ -154,7 +155,7 @@ export default function MapLibreMap(props: MapProps) {
         .addTo(map);
     });
     return () => markers.forEach((m) => m.remove());
-  }, [props.places, props.selected, props.apiKey, viewRevision]);
+  }, [places, selected, apiKey, viewRevision]);
   useEffect(() => {
     if (!props.focusRequest) return;
     const { places, selected, onFocusComplete } = latest.current;

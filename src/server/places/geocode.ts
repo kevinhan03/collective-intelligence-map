@@ -39,7 +39,8 @@ export async function geocodeAddress(address: string, map: ThemeMap) {
   url.searchParams.set("limit", "1");
   url.searchParams.set("fuzzyMatch", "false");
   url.searchParams.set("language", map.country === "JP" ? "ja" : "ko");
-  const site = process.env.NEXT_PUBLIC_SITE_URL ?? "https://collective-intelligence-map.vercel.app";
+  const site = process.env.NEXT_PUBLIC_SITE_URL;
+  if (!site) throw new HttpError("사이트 주소가 설정되지 않았습니다.", 503);
   const origin = new URL(site).origin;
   const result = await fetch(url, {
     signal: AbortSignal.timeout(7000),

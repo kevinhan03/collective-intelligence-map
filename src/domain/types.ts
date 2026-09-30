@@ -14,6 +14,7 @@ export type ThemeMap = {
   city: string;
   tags: string[];
   bounds: Bounds;
+  created_at: string;
   place_count: number;
   follower_count: number;
   contributor_count: number;

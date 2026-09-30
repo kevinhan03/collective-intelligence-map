@@ -3,12 +3,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { ArrowUpRight, MapPin, Search } from "lucide-react";
 import type { ThemeMap } from "@/domain/types";
-
-function regionName(map: ThemeMap) {
-  if (map.city.toLowerCase() === "korea") return "한국";
-  if (map.city.toLowerCase() === "tokyo") return "도쿄";
-  return map.city;
-}
+import { formatLocation } from "@/domain/location";
 
 export function MobileDiscovery({
   maps,
@@ -51,7 +46,7 @@ export function MobileDiscovery({
             <option value="">모든 지역</option>
             {regions.map((value) => (
               <option key={value} value={value}>
-                {regionName(maps.find((map) => `${map.country}|${map.city}` === value)!)}
+                {formatLocation(maps.find((map) => `${map.country}|${map.city}` === value)!)}
               </option>
             ))}
           </select>
@@ -98,7 +93,7 @@ export function MobileDiscovery({
           >
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>
-                {regionName(map)} · {map.country}
+                {formatLocation(map)}
               </span>
               <ArrowUpRight size={18} aria-hidden="true" />
             </div>

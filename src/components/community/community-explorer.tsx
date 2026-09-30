@@ -31,6 +31,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { MapCanvas } from "@/components/map/map-canvas";
+import { boundsForPlaces } from "@/domain/map-bounds";
 import { PlaceDetail } from "./place-detail";
 import { PlacePreview } from "./place-preview";
 import { PendingReview } from "./pending-review";
@@ -111,11 +112,16 @@ export function CommunityExplorer({
     [page, setPage] = useState(1),
     [showPending, setShowPending] = useState(false);
   const latest = useRef(0);
+  const hasInitialViewport = useRef(false);
   const openedPlaceId = useRef<string | null>(null);
   const searchTracked = useRef(false);
   const places = useMemo(
     () => loaded ?? initialPlaces.slice(0, 500),
     [initialPlaces, loaded],
+  );
+  const initialBounds = useMemo(
+    () => boundsForPlaces(initialPlaces.slice(0, 500), map.bounds),
+    [initialPlaces, map.bounds],
   );
   const isSaved = (id: string) =>
     savedOverrides[id] ?? myState.saves.includes(id);
@@ -151,6 +157,10 @@ export function CommunityExplorer({
       .slice(0, 5);
   }, [places, query]);
   const onBoundsChange = useCallback((b: Bounds) => {
+    if (!hasInitialViewport.current) {
+      hasInitialViewport.current = true;
+      return;
+    }
     setViewport((current) => {
       if (
         current &&
@@ -680,6 +690,11 @@ export function CommunityExplorer({
                           .join(" · ")}
                       </p>
                     )}
+                    {p.rationale && (
+                      <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground">
+                        {p.rationale}
+                      </p>
+                    )}
                   </div>
                   <button
                     aria-label={`${p.name} 상세 보기`}
@@ -789,7 +804,7 @@ export function CommunityExplorer({
           className="explorer-map relative min-w-0 min-h-[420px] lg:h-[calc(100dvh-250px)]"
         >
           <MapCanvas
-            places={[...visiblePlaces, ...pendingPlaces]}
+            places={[...filtered, ...pendingPlaces]}
             selected={selected}
             onSelect={(id) => {
               if (pendingPlaces.some((p) => p.id === id)) {
@@ -799,10 +814,15 @@ export function CommunityExplorer({
             }}
             onFocusComplete={(id) => setDetailId(id)}
             focusRequest={focusRequest}
-            bounds={map.bounds}
+            bounds={initialBounds}
             onBoundsChange={onBoundsChange}
             config={config}
           />
+          {config.provider === "maplibre" && places.length > 1 && (
+            <p className="pointer-events-none absolute bottom-20 left-4 z-10 rounded-full bg-card/90 px-3 py-2 text-xs text-foreground shadow-lg lg:bottom-4">
+              숫자 핀을 누르면 장소를 확대할 수 있어요.
+            </p>
+          )}
           {viewport && config.provider !== "preview" && (
             <Button
               className="search-area-button absolute top-5 left-1/2 -translate-x-1/2 rounded-full shadow-lg"

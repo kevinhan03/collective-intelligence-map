@@ -177,7 +177,6 @@ export function PlaceDetail({
               )}
             </p>
           )}
-          <PlaceChecks id={place.id} enabled={enabled} demo={demo} />
           <div className="flex justify-end border-y py-3">
             <Button
               variant="ghost"
@@ -315,6 +314,7 @@ export function PlaceDetail({
               </Button>
             </form>
           </section>
+          <PlaceChecks id={place.id} enabled={enabled} demo={demo} />
         </div>
         <div className="place-save-bar border-t bg-card p-4">
           {error && (

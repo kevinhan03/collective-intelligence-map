@@ -42,9 +42,19 @@ test("desktop header becomes solid after scrolling and restores at top", async (
   test.skip(isMobile);
   await page.setViewportSize({ width: 1440, height: 600 });
   await page.goto("/");
+  await expect(
+    page.getByRole("heading", { name: "Tokyo Fashion Store", exact: true }),
+  ).toBeVisible();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => document.documentElement.scrollHeight - window.innerHeight,
+      ),
+    )
+    .toBeGreaterThan(100);
   const header = page.locator(".glass-header");
   await expect(header).toHaveAttribute("data-scrolled", "false");
-  await page.evaluate(() => window.scrollTo(0, 250));
+  await page.evaluate(() => window.scrollTo(0, 100));
   await expect(header).toHaveAttribute("data-scrolled", "true");
   await expect(header).toHaveCSS("background-color", "rgb(23, 29, 37)");
   await page.evaluate(() => window.scrollTo(0, 0));

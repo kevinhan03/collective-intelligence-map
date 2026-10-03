@@ -24,6 +24,10 @@ http://localhost:3000 에서 확인합니다. Supabase 키가 없으면 **명시
 
 ## 검증
 
+Dependabot은 npm 업데이트를 매일 확인하고 PR을 생성합니다. `Dependency security` 워크플로는 6시간마다 운영 의존성을 검사하며 개발 의존성을 포함한 전체 보고서도 보관합니다. 업데이트 PR은 CI 검증 후 병합합니다.
+
+커밋 전 웹 CI 전체 검사는 `npm run check:ci`로 실행합니다. GitHub Actions도 같은 명령을 사용하며 운영 의존성 보안 검사, 타입·린트·단위 테스트·빌드·E2E를 포함합니다. 처음에는 `npx playwright install chromium`을 실행하세요. 보안 권고가 새로 등록되면 코드 변경 없이도 보안 검사가 실패할 수 있습니다.
+
 ```bash
 npm run typecheck
 npm run lint

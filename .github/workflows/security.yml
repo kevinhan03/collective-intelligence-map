@@ -1,0 +1,27 @@
+name: Dependency security
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Record all dependency findings
+        run: |
+          npm audit --json > dependency-audit.json || audit_status=$?
+          node -e 'const fs=require("fs"); const a=JSON.parse(fs.readFileSync("dependency-audit.json")); if (!a.metadata) throw new Error("Audit did not return a valid report"); fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, "### All dependency findings\n\n```json\n" + JSON.stringify(a.metadata.vulnerabilities, null, 2) + "\n```\n");'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dependency-audit
+          path: dependency-audit.json
+      - name: Check production dependencies
+        run: npm audit --omit=dev

@@ -23,17 +23,19 @@ export default async function Home() {
       />
       <div className="hidden lg:block">
         <section className="grid items-start gap-10 pb-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] xl:gap-16">
-          <div className="sticky top-5 flex h-[calc(100dvh-148px)] min-h-[520px] flex-col pt-5">
+          <div className="sticky top-5 flex h-[calc(100dvh-148px)] min-h-[520px] flex-col pt-5 lg:translate-x-[clamp(2rem,6vw,8rem)]">
             <Badge variant="secondary" className="mb-5 rounded-full px-3 py-1">
               <Globe2 size={12} />
               취향으로 연결되는 공개 지도
             </Badge>
-            <h1 className="text-[clamp(2.5rem,3.6vw,4rem)] leading-[1.22] font-semibold tracking-[-.055em]">
-              좋은 장소는,
-              <br />
-              <span className="xl:whitespace-nowrap">같은 취향의 사람들이</span>
-              <br />
-              <span className="text-primary">더 잘 아니까.</span>
+            <h1 className="font-heading text-[clamp(3rem,4.4vw,5.5rem)] leading-[1.22] font-black tracking-[-.085em] text-foreground">
+              <span className="block">좋은 장소는,</span>
+              <span className="block">
+                같은 <span className="text-[#f97316]">취향</span>의 사람들이
+              </span>
+              <span className="block">
+                더 잘 아니까.
+              </span>
             </h1>
             <p className="mt-5 max-w-lg text-sm leading-7 text-muted-foreground">
               별점만으로는 알 수 없는 장소의 이야기.
@@ -70,7 +72,7 @@ export default async function Home() {
               <div>
                 <p className="kicker mb-2">Find your community</p>
                 <h2 className="text-xl font-semibold tracking-tight xl:text-2xl">
-                  지금, 함께 만드는 지도
+                  함께 만드는 지도
                 </h2>
               </div>
               <Link

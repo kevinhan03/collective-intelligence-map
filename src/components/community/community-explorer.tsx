@@ -19,6 +19,7 @@ import {
   ThumbsDown,
   ThumbsUp,
   Users,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,6 +34,7 @@ import {
 import { MapCanvas } from "@/components/map/map-canvas";
 import { boundsForPlaces } from "@/domain/map-bounds";
 import { PlaceDetail } from "./place-detail";
+import { MobilePlaceCarousel } from "./mobile-place-carousel";
 import { PlacePreview } from "./place-preview";
 import { PendingReview } from "./pending-review";
 import { post } from "./api";
@@ -44,7 +46,7 @@ import {
   sortPlaces,
 } from "@/domain/relevance";
 import { formatLocation } from "@/domain/location";
-import { placeArea } from "@/domain/place-location";
+import { placeArea, placeCity } from "@/domain/place-location";
 import { loginHref } from "@/domain/login-return";
 import type {
   Bounds,
@@ -84,9 +86,20 @@ export function CommunityExplorer({
 }) {
   const mobile = useMobile();
   const [mobileView, setMobileView] = useState<"list" | "map">("map");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchInput = useRef<HTMLInputElement>(null);
+  const searchToggle = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (searchOpen) searchInput.current?.focus();
+  }, [searchOpen]);
+  const [failedSaveId, setFailedSaveId] = useState<string | null>(null);
+  const [region, setRegion] = useState("");
+  const infoTrigger = useRef<HTMLButtonElement>(null);
   const [infoOpen, setInfoOpen] = useState(false);
   const [previewId, setPreviewId] = useState<string | null>(null);
-  const [savedOverrides, setSavedOverrides] = useState<Record<string, boolean>>({});
+  const [savedOverrides, setSavedOverrides] = useState<Record<string, boolean>>(
+    {},
+  );
   const [saveNotice, setSaveNotice] = useState<{
     id: string;
     name: string;
@@ -128,15 +141,51 @@ export function CommunityExplorer({
   const filtered = useMemo(
     () =>
       sortPlaces(
-        places.filter((p) =>
-          `${p.name} ${p.category} ${p.rationale} ${p.address} ${placeArea(p.address)}`
-            .toLowerCase()
-            .includes(query.toLowerCase()),
+        places.filter(
+          (p) =>
+            (!mobile || !region || placeCity(p.address) === region) &&
+            `${p.name} ${p.category} ${p.rationale} ${p.address} ${placeArea(p.address)}`
+              .toLowerCase()
+              .includes(query.toLowerCase()),
         ),
         sort,
       ),
-    [places, query, sort],
+    [places, query, sort, region, mobile],
   );
+  const regions = useMemo(
+    () =>
+      [...new Set(places.map((p) => placeCity(p.address)))].sort((a, b) =>
+        a.localeCompare(b, "ko"),
+      ),
+    [places],
+  );
+  const firstPlaceId = filtered[0]?.id ?? null;
+  const activePreviewId = filtered.some((p) => p.id === previewId)
+    ? previewId
+    : firstPlaceId;
+  const mobileBounds = useMemo(
+    () =>
+      boundsForPlaces(
+        region ? filtered : filtered.filter((p) => p.id === activePreviewId),
+        map.bounds,
+      ),
+    [region, filtered, activePreviewId, map.bounds],
+  );
+  useEffect(() => {
+    if (!mobile || detailId) return;
+    const timer = window.setTimeout(() => {
+      setPreviewId(activePreviewId);
+      setSelected(activePreviewId);
+      if (activePreviewId && activePreviewId !== previewId && !region)
+        setFocusRequest((request) => request + 1);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [mobile, activePreviewId, detailId, previewId, region]);
+  const selectPreview = (id: string) => {
+    setSelected(id);
+    setPreviewId(id);
+    setFocusRequest((request) => request + 1);
+  };
   const visiblePlaces = useMemo(
     () => filtered.slice(0, page * 20),
     [filtered, page],
@@ -149,7 +198,9 @@ export function CommunityExplorer({
       kind: "장소",
     }));
     return suggestions
-      .filter((suggestion) => suggestion.term.toLowerCase().includes(normalized))
+      .filter((suggestion) =>
+        suggestion.term.toLowerCase().includes(normalized),
+      )
       .filter(
         (suggestion, index, all) =>
           all.findIndex((item) => item.term === suggestion.term) === index,
@@ -250,6 +301,7 @@ export function CommunityExplorer({
     const enabled = !isSaved(id);
     setBusy(true);
     setError("");
+    setFailedSaveId(null);
     try {
       await post("/api/community", { action: "save", id, enabled });
       setSavedOverrides((current) => ({ ...current, [id]: enabled }));
@@ -265,6 +317,7 @@ export function CommunityExplorer({
       router.refresh();
     } catch (e) {
       setError((e as Error).message);
+      setFailedSaveId(id);
     } finally {
       setBusy(false);
     }
@@ -276,6 +329,7 @@ export function CommunityExplorer({
         if (mobileView === "map") {
           setDetailId(null);
           setPreviewId(id);
+          setFocusRequest((request) => request + 1);
           trackCommunityEvent("place_preview_opened", {
             entry: "map_pin",
             provider: config.provider,
@@ -302,15 +356,17 @@ export function CommunityExplorer({
   useEffect(() => {
     const requestKey = requestedProposalId ?? requestedPlaceId;
     if (!requestKey || openedPlaceId.current === requestKey) return;
-    const mapPlace = [...places, ...pendingPlaces].find(
-      (place) => requestedProposalId ? place.id === requestedProposalId : place.place_id === requestedPlaceId,
+    const mapPlace = [...places, ...pendingPlaces].find((place) =>
+      requestedProposalId
+        ? place.id === requestedProposalId
+        : place.place_id === requestedPlaceId,
     );
     if (!mapPlace) return;
     const timer = window.setTimeout(() => {
       openedPlaceId.current = requestKey;
       setSelected(mapPlace.id);
       setFocusRequest((request) => request + 1);
-      setPreviewId(null);
+      setPreviewId(mapPlace.id);
       setDetailId(mapPlace.id);
       trackCommunityEvent("place_detail_opened", {
         entry: "deep_link",
@@ -318,7 +374,13 @@ export function CommunityExplorer({
       });
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [config.provider, pendingPlaces, places, requestedPlaceId, requestedProposalId]);
+  }, [
+    config.provider,
+    pendingPlaces,
+    places,
+    requestedPlaceId,
+    requestedProposalId,
+  ]);
   return (
     <main
       id="main"
@@ -330,7 +392,14 @@ export function CommunityExplorer({
         data-mobile-view={mobileView}
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="min-w-0">
+          <div className="map-hero-heading min-w-0">
+            <Link
+              href="/"
+              className="map-home-back lg:hidden"
+              aria-label="홈으로 돌아가기"
+            >
+              <ArrowLeft size={20} aria-hidden="true" />
+            </Link>
             <Link
               href="/"
               className="mb-1 flex items-center gap-1.5 text-xs text-muted-foreground"
@@ -340,7 +409,18 @@ export function CommunityExplorer({
             </Link>
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-xl font-semibold tracking-tight">
-                {map.title}
+                {mobile ? (
+                  <button
+                    ref={infoTrigger}
+                    className="map-title-button"
+                    aria-label={`${map.title} 지도 정보 보기`}
+                    onClick={() => setInfoOpen(true)}
+                  >
+                    {map.title}
+                  </button>
+                ) : (
+                  map.title
+                )}
               </h1>
               <span className="kicker">{formatLocation(map)}</span>
             </div>
@@ -349,18 +429,16 @@ export function CommunityExplorer({
             </p>
           </div>
           <Button
+            ref={searchToggle}
             className="map-info-trigger lg:hidden"
             variant="ghost"
             size="icon"
-            aria-label={`${map.title} 지도 정보 보기`}
+            aria-label="장소 검색 열기"
             onClick={() => {
-              setInfoOpen(true);
-              trackCommunityEvent("community_info_opened", {
-                provider: config.provider,
-              });
+              setSearchOpen((open) => !open);
             }}
           >
-            <Info size={19} />
+            <Search size={19} />
           </Button>
           <div className="map-hero-actions flex gap-2">
             <Button
@@ -405,6 +483,10 @@ export function CommunityExplorer({
         <DialogContent
           className="map-info-sheet top-auto bottom-0 max-w-none translate-y-0 rounded-b-none p-0 sm:max-w-none"
           showCloseButton={false}
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            infoTrigger.current?.focus();
+          }}
         >
           <div className="mx-auto mt-3 h-1.5 w-10 rounded-full bg-muted-foreground/40" />
           <DialogHeader className="gap-3 px-5 pt-5">
@@ -460,7 +542,10 @@ export function CommunityExplorer({
           </div>
         </DialogContent>
       </Dialog>
-      <div className="glass-toolbar explorer-toolbar flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3 md:px-9">
+      <div
+        data-search-open={searchOpen}
+        className="glass-toolbar explorer-toolbar flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3 md:px-9"
+      >
         <div className="search-sort-group flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:flex-nowrap">
           <div className="relative w-full sm:w-60">
             <Search
@@ -468,6 +553,7 @@ export function CommunityExplorer({
               size={14}
             />
             <Input
+              ref={searchInput}
               className="h-9 bg-background pl-9 text-xs"
               value={query}
               onChange={(e) => {
@@ -516,7 +602,7 @@ export function CommunityExplorer({
             )}
           </div>
           <div
-            className="sort-chip-group flex shrink-0 items-center gap-1 overflow-x-auto"
+            className="sort-chip-group hidden lg:flex shrink-0 items-center gap-1 overflow-x-auto"
             role="group"
             aria-label="장소 정렬"
           >
@@ -539,6 +625,59 @@ export function CommunityExplorer({
             ))}
           </div>
         </div>
+        <details className="mobile-map-filter-menu lg:hidden">
+          <summary>
+            필터{region || sort !== "relevance" ? " · 적용 중" : ""}
+          </summary>
+          <div className="mobile-explorer-filters">
+            <select
+              aria-label="장소 지역"
+              value={region}
+              onChange={(event) => {
+                setRegion(event.target.value);
+                setPage(1);
+                setPreviewId(null);
+                setSelected(null);
+              }}
+            >
+              <option value="">전체 지역</option>
+              {regions.map((city) => (
+                <option key={city} value={city}>
+                  {city}
+                </option>
+              ))}
+            </select>
+            <select
+              aria-label="장소 정렬"
+              value={sort}
+              onChange={(event) => {
+                setSort(event.target.value as Sort);
+                setPage(1);
+                setPreviewId(null);
+                trackCommunityEvent("place_sort_changed", {
+                  provider: config.provider,
+                  sort: event.target.value as Sort,
+                });
+              }}
+            >
+              {sortOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.value === "relevance" ? "종합 추천순" : option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </details>
+        <button
+          className="mobile-search-close lg:hidden"
+          aria-label="장소 검색 닫기"
+          onClick={() => {
+            setSearchOpen(false);
+            searchToggle.current?.focus();
+          }}
+        >
+          <X size={18} />
+        </button>
         <div
           className="mobile-view-switch flex rounded-xl border bg-card p-0.5 lg:hidden"
           role="group"
@@ -557,7 +696,7 @@ export function CommunityExplorer({
             }}
           >
             <List size={17} aria-hidden="true" />
-            <span className="sr-only">목록 보기</span>
+            <span>목록</span>
           </button>
           <button
             aria-label="지도 보기"
@@ -572,7 +711,7 @@ export function CommunityExplorer({
             }}
           >
             <MapIcon size={17} aria-hidden="true" />
-            <span className="sr-only">지도 보기</span>
+            <span>지도</span>
           </button>
         </div>
         {pendingPlaces.length > 0 && (
@@ -587,21 +726,37 @@ export function CommunityExplorer({
           </Button>
         )}
       </div>
+      {mobile && (truncated || loaded !== null) && (
+        <p className="px-4 py-2 text-sm text-muted-foreground" role="status">
+          현재 불러온 {places.length}곳에서 탐색 중
+          {truncated ? " · 일부 결과" : ""}
+        </p>
+      )}
       {error && (
         <p
           role="alert"
           className="bg-destructive/5 px-6 py-3 text-sm text-destructive"
         >
           {error}
+          {failedSaveId && (
+            <button
+              className="ml-3 underline"
+              disabled={busy}
+              onClick={() => void savePlace(failedSaveId)}
+            >
+              저장 다시 시도
+            </button>
+          )}
         </p>
       )}
       {saveNotice && (
         <div
           role="status"
-          className="fixed right-4 bottom-5 z-50 flex items-center gap-3 rounded-xl border bg-card px-4 py-3 text-sm shadow-xl"
+          className="save-notice fixed right-4 bottom-5 z-50 flex items-center gap-3 rounded-xl border bg-card px-4 py-3 text-sm shadow-xl"
         >
           <span>
-            {saveNotice.name} {saveNotice.enabled ? "저장했어요." : "저장 해제했어요."}
+            {saveNotice.name}{" "}
+            {saveNotice.enabled ? "저장했어요." : "저장 해제했어요."}
           </span>
           <button
             type="button"
@@ -709,7 +864,7 @@ export function CommunityExplorer({
                 </div>
                 <div className="mt-2 ml-8 flex items-center justify-between">
                   <div
-                    className="place-card-votes flex items-center gap-1.5"
+                    className="place-card-votes hidden lg:flex items-center gap-1.5"
                     aria-label={`${p.name} 주제 적합성 투표`}
                   >
                     <button
@@ -754,9 +909,7 @@ export function CommunityExplorer({
                   >
                     <Bookmark
                       size={15}
-                      fill={
-                        isSaved(p.id) ? "currentColor" : "none"
-                      }
+                      fill={isSaved(p.id) ? "currentColor" : "none"}
                     />
                   </button>
                 </div>
@@ -804,21 +957,25 @@ export function CommunityExplorer({
           className="explorer-map relative min-w-0 min-h-[420px] lg:h-[calc(100dvh-250px)]"
         >
           <MapCanvas
+            key={mobile ? `mobile-${region}` : "desktop"}
+            onFallback={mobile ? () => setMobileView("list") : undefined}
             places={[...filtered, ...pendingPlaces]}
-            selected={selected}
+            selected={mobile ? activePreviewId : selected}
             onSelect={(id) => {
               if (pendingPlaces.some((p) => p.id === id)) {
                 setSelected(id);
                 setShowPending(true);
               } else focusPlace(id);
             }}
-            onFocusComplete={(id) => setDetailId(id)}
+            onFocusComplete={(id) => {
+              if (!mobile) setDetailId(id);
+            }}
             focusRequest={focusRequest}
-            bounds={initialBounds}
+            bounds={mobile ? mobileBounds : initialBounds}
             onBoundsChange={onBoundsChange}
             config={config}
           />
-          {config.provider === "maplibre" && places.length > 1 && (
+          {!mobile && config.provider === "maplibre" && places.length > 1 && (
             <p className="pointer-events-none absolute bottom-20 left-4 z-10 rounded-full bg-card/90 px-3 py-2 text-xs text-foreground shadow-lg lg:bottom-4">
               숫자 핀을 누르면 장소를 확대할 수 있어요.
             </p>
@@ -833,7 +990,42 @@ export function CommunityExplorer({
               {busy ? "불러오는 중" : "이 지역에서 다시 찾기"}
             </Button>
           )}
-          {previewPlace ? (
+          {mobile ? (
+            filtered.length ? (
+              <MobilePlaceCarousel
+                onList={() => setMobileView("list")}
+                places={filtered}
+                activeId={activePreviewId}
+                onSelect={selectPreview}
+                onOpen={(id) => {
+                  setSelected(id);
+                  setDetailId(id);
+                }}
+                onSave={(id) => void savePlace(id)}
+                isSaved={isSaved}
+                disabled={demo || busy}
+              />
+            ) : (
+              <div className="mobile-map-empty" role="status">
+                <p>조건에 맞는 장소가 없어요.</p>
+                <button
+                  className="text-sm underline"
+                  onClick={() => setMobileView("list")}
+                >
+                  목록 보기
+                </button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setQuery("");
+                    setRegion("");
+                  }}
+                >
+                  검색 조건 초기화
+                </Button>
+              </div>
+            )
+          ) : previewPlace ? (
             <PlacePreview
               place={previewPlace}
               loginHref={loginHref(
@@ -891,6 +1083,7 @@ export function CommunityExplorer({
           saved={isSaved(detailId ?? "")}
           demo={demo}
           onChange={() => {
+            setSavedOverrides({});
             setLoaded(null);
             router.refresh();
           }}

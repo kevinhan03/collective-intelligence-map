@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { ArrowUpRight, Bookmark, Compass, Map as MapIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { MobileNavigation } from "@/components/mobile-navigation";
 import { getViewer } from "@/server/queries";
+import { ScrollHeader } from "./scroll-header";
 export async function SiteHeader() {
   const viewer = await getViewer();
   return (
-    <header className="glass-panel glass-header sticky top-3 z-30">
+    <ScrollHeader>
       <div className="mx-auto flex h-18 max-w-[1440px] items-center justify-between gap-4 px-5 md:px-9">
         <Link
           href="/"
@@ -40,7 +40,10 @@ export async function SiteHeader() {
           </Link>
           {viewer ? (
             <>
-              <Link href="/my-proposals" className="text-sm text-muted-foreground">
+              <Link
+                href="/my-proposals"
+                className="text-sm text-muted-foreground"
+              >
                 내 제안
               </Link>
               <Link
@@ -64,17 +67,7 @@ export async function SiteHeader() {
             </Button>
           )}
         </nav>
-        <div className="flex items-center gap-1 lg:hidden">
-          <Link
-            href="/saved"
-            aria-label="저장한 장소"
-            className="grid size-11 place-items-center rounded-xl text-muted-foreground hover:bg-secondary hover:text-foreground"
-          >
-            <Bookmark size={20} />
-          </Link>
-          <MobileNavigation />
-        </div>
       </div>
-    </header>
+    </ScrollHeader>
   );
 }

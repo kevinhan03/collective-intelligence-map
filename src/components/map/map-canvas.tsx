@@ -1,4 +1,5 @@
 "use client";
+import { MapErrorBoundary, MapFailure } from "./map-failure";
 import dynamic from "next/dynamic";
 import { MapPin } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -28,15 +29,19 @@ export function MapCanvas({
     observer.observe(container.current);
     return () => observer.disconnect();
   }, [compact]);
-  if (config.provider === "preview") return <Preview {...props} apiKey="" />;
+  if (config.provider === "preview")
+    return (
+      <MapErrorBoundary onFallback={props.onFallback}>
+        <Preview {...props} apiKey="" />
+      </MapErrorBoundary>
+    );
   if (!config.key)
     return (
       <div className="map-grid flex h-full min-h-[420px] flex-col items-center justify-center gap-4 p-8 text-center">
-        <MapPin className="text-primary" size={32} />
-        <p className="font-medium">지도 연결을 준비하고 있어요.</p>
-        <p className="max-w-xs text-sm leading-6 text-muted-foreground">
-          장소 목록에서 추천 근거와 검증을 확인할 수 있습니다.
-        </p>
+        <MapFailure
+          message="지도 연결을 준비하고 있어요."
+          onFallback={props.onFallback}
+        />
       </div>
     );
   const Renderer =
@@ -48,12 +53,14 @@ export function MapCanvas({
   return (
     <div ref={container} className="h-full min-h-[inherit]">
       {visible ? (
-        <Renderer
-          {...props}
-          apiKey={config.key}
-          mapId={config.mapId}
-          compact={compact}
-        />
+        <MapErrorBoundary onFallback={props.onFallback}>
+          <Renderer
+            {...props}
+            apiKey={config.key}
+            mapId={config.mapId}
+            compact={compact}
+          />
+        </MapErrorBoundary>
       ) : (
         <div className="map-grid flex h-full min-h-[420px] flex-col items-center justify-center gap-3 p-8 text-center">
           <MapPin className="text-primary" size={28} />

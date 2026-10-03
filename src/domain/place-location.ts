@@ -6,6 +6,7 @@ const cities: [RegExp, string][] = [
   [/대전|Daejeon/i, "대전"],
   [/광주|Gwangju/i, "광주"],
   [/울산|Ulsan/i, "울산"],
+  [/제주|Jeju/i, "제주"],
   [/수원|Suwon/i, "수원"],
   [/용인|Yongin/i, "용인"],
   [/도쿄|Tokyo|東京都/i, "도쿄"],
@@ -17,4 +18,8 @@ export function placeArea(address: string) {
   if (!city) return "";
   const district = address.match(/[가-힣]{2,8}(?:구|군|동)/)?.[0];
   return district && district !== city ? `${city} · ${district}` : city;
+}
+
+export function placeCity(address: string) {
+  return placeArea(address).split(" · ")[0] || "기타 지역";
 }

@@ -43,7 +43,7 @@ export function DesktopDiscovery({
           <li key={map.id}>
             <Link
               href={`/maps/${map.slug}`}
-              className="group relative flex h-full min-h-[182px] flex-col overflow-hidden rounded-2xl border border-white/20 bg-[#28323a] p-4 text-white shadow-lg transition-[border-color,transform,box-shadow] hover:-translate-y-0.5 hover:border-white/50 hover:shadow-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              className="group relative flex h-full min-h-[182px] flex-col overflow-hidden rounded-lg border border-white/20 bg-[#28323a] p-4 text-white shadow-lg transition-[border-color,transform,box-shadow] hover:-translate-y-0.5 hover:border-white/50 hover:shadow-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             >
               <MapCardBackdrop slug={map.slug} />
               <div

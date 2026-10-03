@@ -97,12 +97,12 @@ export function SavedPlaces({
   return (
     <main
       id="main"
-      className="mx-auto min-h-[calc(100dvh-96px)] max-w-[1440px] px-4 pb-6 sm:px-6 lg:px-8"
+      className="saved-page mx-auto min-h-[calc(100dvh-96px)] max-w-[1440px] px-4 pb-6 sm:px-6 lg:px-8"
     >
       <section className="glass-panel mt-5 overflow-hidden rounded-4xl px-5 py-5 sm:px-8 sm:py-8">
         <div className="flex flex-wrap items-end justify-between gap-5">
           <div>
-            <p className="kicker">Personal collection</p>
+            <p className="kicker hidden lg:block">Personal collection</p>
             <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
               저장한 장소
             </h1>
@@ -119,7 +119,7 @@ export function SavedPlaces({
       </section>
 
       <section className="mt-4 grid gap-4 lg:min-h-[calc(100dvh-270px)] lg:grid-cols-[minmax(270px,0.8fr)_minmax(0,1.5fr)_minmax(300px,0.9fr)]">
-        <aside className="glass-panel order-2 rounded-3xl p-4 lg:order-none lg:overflow-y-auto lg:p-5">
+        <aside className="glass-panel order-0 rounded-3xl p-4 lg:order-none lg:overflow-y-auto lg:p-5">
           <div className="flex items-center gap-2 text-sm font-medium">
             <SlidersHorizontal size={16} /> 내 컬렉션
           </div>
@@ -167,7 +167,7 @@ export function SavedPlaces({
               );
             })}
           </div>
-          <p className="mt-6 border-t pt-4 text-xs leading-5 text-muted-foreground">
+          <p className="mt-6 hidden border-t pt-4 text-xs leading-5 text-muted-foreground lg:block">
             저장은 개인 컬렉션입니다. 추천 근거와 검증은 각 주제 지도에서 공개로
             관리됩니다.
           </p>
@@ -311,7 +311,10 @@ export function SavedPlaces({
                 </p>
                 <div className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground">
                   <span className="flex min-w-0 items-center gap-1 truncate">
-                    <MapPin size={12} /> {[place.category, placeArea(place.address)].filter(Boolean).join(" · ")}
+                    <MapPin size={12} />{" "}
+                    {[place.category, placeArea(place.address)]
+                      .filter(Boolean)
+                      .join(" · ")}
                   </span>
                   <Link
                     className="text-primary hover:underline"
@@ -334,7 +337,17 @@ export function SavedPlaces({
             ))}
             {!filtered.length && (
               <div className="px-4 py-16 text-center text-sm text-muted-foreground">
-                조건에 맞는 저장 장소가 없어요.
+                <p>조건에 맞는 저장 장소가 없어요.</p>
+                <Button
+                  className="mt-4"
+                  variant="outline"
+                  onClick={() => {
+                    setQuery("");
+                    setMapId("all");
+                  }}
+                >
+                  검색 조건 초기화
+                </Button>
               </div>
             )}
           </div>

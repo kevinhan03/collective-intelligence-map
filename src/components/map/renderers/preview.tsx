@@ -30,11 +30,13 @@ export default function PreviewMap({ places, selected, onSelect }: MapProps) {
             top: `${78 - (p.lat - 35.655) * 2600}%`,
           }}
         >
-          <span className="map-pin-votes" aria-hidden="true">👍 {p.positive} · 👎 {p.negative}</span>
+          <span className="map-pin-votes" aria-hidden="true">
+            👍 {p.positive} · 👎 {p.negative}
+          </span>
           <span>{p.status === "pending" ? "···" : "✓"}</span>
         </button>
       ))}
-      <div className="absolute right-4 bottom-4 left-4 flex justify-between rounded-lg border bg-white/90 px-3 py-2 text-[10px] text-muted-foreground">
+      <div className="pointer-events-none absolute right-4 bottom-4 left-4 flex justify-between rounded-lg border bg-white/90 px-3 py-2 text-[10px] text-muted-foreground">
         <span>가상 장소 · 위치도 예시입니다</span>
         <span>실제 지도는 연결 후 표시</span>
       </div>

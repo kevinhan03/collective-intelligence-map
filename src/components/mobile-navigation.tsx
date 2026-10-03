@@ -1,21 +1,36 @@
 "use client";
+import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bookmark, Compass, Menu, MapPinPlus, UserRound } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Bookmark, Compass, UserRound, Menu } from "lucide-react";
 import {
   Dialog,
-  DialogClose,
+  DialogTrigger,
   DialogContent,
   DialogTitle,
-  DialogTrigger,
+  DialogDescription,
+  DialogClose,
 } from "@/components/ui/dialog";
-
 export function MobileNavigation() {
   const pathname = usePathname();
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const update = () =>
+      document.documentElement.style.setProperty(
+        "--mobile-viewport-height",
+        `${viewport.height}px`,
+      );
+    update();
+    viewport.addEventListener("resize", update);
+    return () => {
+      viewport.removeEventListener("resize", update);
+      document.documentElement.style.removeProperty("--mobile-viewport-height");
+    };
+  }, []);
   const links = [
     {
-      href: "/discover",
+      href: "/",
       label: "발견",
       icon: Compass,
       active:
@@ -30,45 +45,38 @@ export function MobileNavigation() {
       active: pathname === "/saved",
     },
     {
-      href: "/my-proposals",
-      label: "내 제안",
-      icon: MapPinPlus,
-      active: pathname === "/my-proposals",
-    },
-    {
       href: "/settings/profile",
       label: "내 정보",
       icon: UserRound,
-      active: pathname.startsWith("/settings/") || pathname === "/login",
+      active:
+        pathname.startsWith("/settings/") ||
+        pathname === "/login" ||
+        pathname === "/my-proposals",
     },
   ];
   return (
     <Dialog>
-      <DialogTrigger asChild>
-        <Button
-          className="lg:hidden"
-          variant="ghost"
-          size="icon"
-          aria-label="메뉴 열기"
-        >
-          <Menu size={21} />
-        </Button>
-      </DialogTrigger>
-      <DialogContent
-        className="!top-[calc(env(safe-area-inset-top)+68px)] !right-4 !left-auto !w-56 !translate-x-0 !translate-y-0 gap-1 rounded-2xl bg-card p-2 shadow-xl"
-        showCloseButton={false}
+      <DialogTrigger
+        className="mobile-menu-trigger lg:hidden"
+        aria-label="메뉴 열기"
       >
-        <DialogTitle className="sr-only">메뉴</DialogTitle>
-        <nav aria-label="모바일 주요 메뉴" className="grid gap-1">
+        <Menu size={22} />
+      </DialogTrigger>
+      <DialogContent className="mobile-menu-panel">
+        <DialogTitle>메뉴</DialogTitle>
+        <DialogDescription>
+          지도를 탐색하고 저장한 장소를 확인하세요.
+        </DialogDescription>
+        <nav className="grid gap-2" aria-label="모바일 주요 메뉴">
           {links.map(({ href, label, icon: Icon, active }) => (
             <DialogClose asChild key={href}>
               <Link
                 href={href}
+                className="flex min-h-12 items-center gap-3 rounded-xl px-3"
                 aria-current={active ? "page" : undefined}
-                className="flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground aria-[current=page]:bg-secondary aria-[current=page]:text-primary"
               >
-                <Icon size={18} aria-hidden="true" />
-                {label}
+                <Icon size={21} aria-hidden="true" />
+                <span>{label}</span>
               </Link>
             </DialogClose>
           ))}

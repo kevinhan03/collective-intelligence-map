@@ -35,8 +35,7 @@ export function AuthForm({ enabled, next }: { enabled: boolean; next: string }) 
         </p>
       )}
       <Button
-        variant="outline"
-        className="h-14 w-full text-base"
+        className="h-14 w-full bg-white text-base text-black hover:bg-gray-100"
         disabled={!enabled || busy}
         onClick={loginWithGoogle}
       >

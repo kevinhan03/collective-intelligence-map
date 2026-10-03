@@ -2,6 +2,7 @@ import type { Bounds, MapPlace } from "@/domain/types";
 export type MapProps = {
   places: MapPlace[];
   selected: string | null;
+  onFallback?: () => void;
   onSelect: (id: string) => void;
   onFocusComplete?: (id: string) => void;
   focusRequest?: number;

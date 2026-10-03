@@ -1,4 +1,5 @@
 "use client";
+import { MapFailure } from "../map-failure";
 import { useEffect, useRef, useState } from "react";
 import type { MapProps } from "../types";
 import MapLibreMap from "./maplibre";
@@ -47,7 +48,8 @@ function load(key: string) {
       };
       script.onload = () => {
         try {
-          if (!window.kakao?.maps) throw new Error("Kakao Maps SDK를 찾을 수 없습니다.");
+          if (!window.kakao?.maps)
+            throw new Error("Kakao Maps SDK를 찾을 수 없습니다.");
           window.kakao.maps.load(succeed);
         } catch (error) {
           fail(error instanceof Error ? error.message : "지도 로드 실패");
@@ -148,7 +150,10 @@ export default function KakaoMap(props: MapProps) {
       button.className = "map-pin";
       button.dataset.selected = String(selected === p.id);
       button.dataset.status = p.status;
-      button.setAttribute("aria-label", `${p.name} · 좋아요 ${p.positive} · 싫어요 ${p.negative}`);
+      button.setAttribute(
+        "aria-label",
+        `${p.name} · 좋아요 ${p.positive} · 싫어요 ${p.negative}`,
+      );
       const votes = document.createElement("span");
       votes.className = "map-pin-votes";
       votes.textContent = `👍 ${p.positive} · 👎 ${p.negative}`;
@@ -166,7 +171,13 @@ export default function KakaoMap(props: MapProps) {
     });
   }, [ready, places, selected]);
   useEffect(() => {
-    if (!ready || !map.current || !selected || focusRequest === 0 || !window.kakao)
+    if (
+      !ready ||
+      !map.current ||
+      !selected ||
+      focusRequest === 0 ||
+      !window.kakao
+    )
       return;
     const place = places.find((item) => item.id === selected);
     if (!place) return;
@@ -190,12 +201,9 @@ export default function KakaoMap(props: MapProps) {
     <div className="relative h-full min-h-[420px]">
       <div ref={el} className="absolute inset-0" />
       {error && (
-        <p
-          role="alert"
-          className="absolute inset-x-4 top-4 rounded bg-card p-4 text-sm"
-        >
-          {error}
-        </p>
+        <div className="absolute bottom-3 left-3 right-3 z-20">
+          <MapFailure message={error} onFallback={props.onFallback} />
+        </div>
       )}
     </div>
   );

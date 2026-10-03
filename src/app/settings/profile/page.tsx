@@ -15,6 +15,12 @@ export default async function Profile() {
           ? "초기 장소 제안·투표·댓글은 초대 기여자에게 열려 있습니다."
           : "관심 있는 장소의 이야기를 함께 만들어 주세요."}
       </p>
+      <Link
+        href="/my-proposals"
+        className="mb-5 flex min-h-11 items-center rounded-xl border px-4 lg:hidden"
+      >
+        내 제안 보기 →
+      </Link>
       <ProfileForm viewer={viewer} />
       <div className="mt-8 flex items-center justify-between border-t pt-5">
         <Link href={`/u/${viewer.handle}`} className="text-sm underline">

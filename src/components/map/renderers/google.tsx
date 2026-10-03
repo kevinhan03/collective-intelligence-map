@@ -1,4 +1,5 @@
 "use client";
+import { MapFailure } from "../map-failure";
 import { useEffect, useRef, useState } from "react";
 import type { MapProps } from "../types";
 let loaded: Promise<void> | undefined;
@@ -79,6 +80,7 @@ export default function GoogleMap({
   apiKey,
   places,
   selected,
+  onFallback,
   onSelect,
   onFocusComplete,
   focusRequest = 0,
@@ -175,7 +177,12 @@ export default function GoogleMap({
         icon: {
           path: google.maps.SymbolPath.CIRCLE,
           scale: selected === p.id ? 19 : 15,
-          fillColor: selected === p.id ? "#f97316" : p.status === "pending" ? "#d1d5db" : "#23614a",
+          fillColor:
+            selected === p.id
+              ? "#f97316"
+              : p.status === "pending"
+                ? "#d1d5db"
+                : "#23614a",
           fillOpacity: 1,
           strokeColor: "white",
           strokeWeight: 3,
@@ -254,12 +261,9 @@ export default function GoogleMap({
     >
       <div ref={el} className="absolute inset-0" />
       {error && (
-        <p
-          role="alert"
-          className="absolute inset-x-4 top-4 rounded bg-card p-4 text-sm"
-        >
-          {error}
-        </p>
+        <div className="absolute bottom-3 left-3 right-3 z-20">
+          <MapFailure message={error} onFallback={onFallback} />
+        </div>
       )}
     </div>
   );

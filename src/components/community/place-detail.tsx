@@ -1,4 +1,6 @@
 "use client";
+import { useMobile } from "@/hooks/use-mobile";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { PlacePanel } from "./place-panel";
 import { PlaceChecks } from "./place-checks";
@@ -37,6 +39,9 @@ export function PlaceDetail({
   onChange: () => void;
   demo: boolean;
 }) {
+  const mobile = useMobile();
+  const [savedOverride, setSavedOverride] = useState<boolean | null>(null);
+  const savedValue = savedOverride ?? saved;
   const [comments, setComments] = useState<Comment[]>([]),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
@@ -129,65 +134,71 @@ export function PlaceDetail({
               · 추천 근거
             </p>
           </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-semibold">이 주제에 맞나요?</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {total
-                  ? `${total}명 중 ${place.positive}명이 이 주제에 맞다고 했어요.`
-                  : "아직 검증이 없어요. 첫 경험을 더해 주세요."}
-              </p>
+          <ParticipationSection mobile={mobile} title="이 주제에 맞나요?">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold">이 주제에 맞나요?</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {total
+                    ? `${total}명 중 ${place.positive}명이 이 주제에 맞다고 했어요.`
+                    : "아직 검증이 없어요. 첫 경험을 더해 주세요."}
+                </p>
+              </div>
             </div>
-          </div>
-          <p className="text-xs leading-5 text-muted-foreground">
-            주제 적합성에 대한 의견이에요. 실제 방문 확인과는 별개예요.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant={vote === 1 ? "default" : "outline"}
-              disabled={!votingEnabled || busy}
-              onClick={() =>
-                act({ action: "vote", id: place.id, value: vote === 1 ? 0 : 1 })
-              }
-            >
-              <Check size={15} />
-              적합해요 {place.positive}
-            </Button>
-            <Button
-              variant={vote === -1 ? "default" : "outline"}
-              disabled={!votingEnabled || busy}
-              onClick={() =>
-                act({
-                  action: "vote",
-                  id: place.id,
-                  value: vote === -1 ? 0 : -1,
-                })
-              }
-            >
-              <ThumbsDown size={14} />
-              맞지 않아요 {place.negative}
-            </Button>
-          </div>
-          {!enabled && (
-            <p className="text-xs text-muted-foreground">
-              {demo ? (
-                "가상 예시에서는 참여 기능을 사용할 수 없습니다."
-              ) : (
-                "투표 외 저장·댓글·장소 제안에는 로그인이 필요합니다."
-              )}
+            <p className="text-xs leading-5 text-muted-foreground">
+              주제 적합성에 대한 의견이에요. 실제 방문 확인과는 별개예요.
             </p>
-          )}
-          <div className="flex justify-end border-y py-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={!enabled}
-              onClick={() => setReport(place.id)}
-            >
-              <Flag size={13} />
-              신고
-            </Button>
-          </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant={vote === 1 ? "default" : "outline"}
+                disabled={!votingEnabled || busy}
+                onClick={() =>
+                  act({
+                    action: "vote",
+                    id: place.id,
+                    value: vote === 1 ? 0 : 1,
+                  })
+                }
+              >
+                <Check size={15} />
+                적합해요 {place.positive}
+              </Button>
+              <Button
+                variant={vote === -1 ? "default" : "outline"}
+                disabled={!votingEnabled || busy}
+                onClick={() =>
+                  act({
+                    action: "vote",
+                    id: place.id,
+                    value: vote === -1 ? 0 : -1,
+                  })
+                }
+              >
+                <ThumbsDown size={14} />
+                맞지 않아요 {place.negative}
+              </Button>
+            </div>
+            {!enabled && (
+              <p className="text-xs text-muted-foreground">
+                {demo
+                  ? "가상 예시에서는 참여 기능을 사용할 수 없습니다."
+                  : "투표 외 저장·댓글·장소 제안에는 로그인이 필요합니다."}
+              </p>
+            )}
+          </ParticipationSection>
+          <ParticipationSection mobile={mobile} title="더 보기">
+            <div className="flex justify-end border-y py-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={!enabled}
+                onClick={() => setReport(place.id)}
+              >
+                <Flag size={13} />
+                신고
+              </Button>
+            </div>
+          </ParticipationSection>
           {report && (
             <form
               onSubmit={async (e) => {
@@ -233,7 +244,10 @@ export function PlaceDetail({
               </div>
             </form>
           )}
-          <section>
+          <ParticipationSection
+            mobile={mobile}
+            title={`이 장소에 대한 대화 ${comments.length}`}
+          >
             <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold">
               <MessageCircle size={15} />이 장소에 대한 대화{" "}
               <span className="text-muted-foreground">{comments.length}</span>
@@ -313,8 +327,10 @@ export function PlaceDetail({
                 댓글 남기기
               </Button>
             </form>
-          </section>
-          <PlaceChecks id={place.id} enabled={enabled} demo={demo} />
+          </ParticipationSection>
+          <ParticipationSection mobile={mobile} title="최근 방문·운영 정보">
+            <PlaceChecks id={place.id} enabled={enabled} demo={demo} />
+          </ParticipationSection>
         </div>
         <div className="place-save-bar border-t bg-card p-4">
           {error && (
@@ -332,15 +348,31 @@ export function PlaceDetail({
             ) : (
               <Button
                 className="h-12"
-                variant={saved ? "secondary" : "default"}
+                variant={savedValue ? "secondary" : "default"}
                 disabled={!enabled || busy}
-                aria-pressed={saved}
-                onClick={() =>
-                  act({ action: "save", id: place.id, enabled: !saved })
-                }
+                aria-pressed={savedValue}
+                onClick={async () => {
+                  if (
+                    await act({
+                      action: "save",
+                      id: place.id,
+                      enabled: !savedValue,
+                    })
+                  )
+                    setSavedOverride(!savedValue);
+                }}
               >
-                <Bookmark size={17} fill={saved ? "currentColor" : "none"} />
-                {demo ? "저장 불가" : busy ? "처리 중…" : saved ? "저장됨" : "저장하기"}
+                <Bookmark
+                  size={17}
+                  fill={savedValue ? "currentColor" : "none"}
+                />
+                {demo
+                  ? "저장 불가"
+                  : busy
+                    ? "처리 중…"
+                    : savedValue
+                      ? "저장됨"
+                      : "저장하기"}
               </Button>
             )}
             {demo ? (
@@ -358,5 +390,26 @@ export function PlaceDetail({
         </div>
       </aside>
     </PlacePanel>
+  );
+}
+
+function ParticipationSection({
+  mobile,
+  title,
+  children,
+}: {
+  mobile: boolean;
+  title: string;
+  children: ReactNode;
+}) {
+  if (!mobile) return <>{children}</>;
+  return (
+    <details className="participation-section border-t">
+      <summary className="flex min-h-12 cursor-pointer items-center justify-between py-3 font-semibold">
+        {title}
+        <span aria-hidden="true">＋</span>
+      </summary>
+      <div className="space-y-4 pb-4">{children}</div>
+    </details>
   );
 }

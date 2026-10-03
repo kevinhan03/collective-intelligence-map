@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
 import type { Viewer } from "@/domain/types";
@@ -38,6 +39,15 @@ export function HydrateViewer({ state }: { state: ViewerState }) {
   }, [state, setState]);
   return null;
 }
+const subscribeHydration = () => () => {};
 export function useViewerState() {
-  return useContext(Context).state;
+  const hydrated = useSyncExternalStore(
+    subscribeHydration,
+    () => true,
+    () => false,
+  );
+  const { state } = useContext(Context);
+  // Personalization may hydrate before a streamed consumer. Keep that consumer's
+  // first render consistent with the anonymous server shell.
+  return hydrated ? state : empty;
 }

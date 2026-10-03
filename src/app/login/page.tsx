@@ -25,9 +25,9 @@ export default async function Login({
     >
       <Card className="w-full max-w-md [--card-spacing:--spacing(12)]">
         <CardHeader className="gap-6 pb-12">
-          <p className="kicker mb-2">Your perspective matters</p>
+          <p className="kicker mb-2">Login</p>
           <CardTitle className="text-5xl leading-tight">
-            나의 발견을, 함께.
+            로그인 / 회원가입
           </CardTitle>
           <CardDescription className="text-base leading-8">
             좋아하는 지도를 팔로우하고 장소를 저장하세요.

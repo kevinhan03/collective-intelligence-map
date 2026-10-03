@@ -1,4 +1,5 @@
 "use client";
+import { MapFailure } from "../map-failure";
 import { useEffect, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -70,7 +71,10 @@ export default function MapLibreMap(props: MapProps) {
         south: v.getSouth(),
         north: v.getNorth(),
       };
-      if (lastReportedBounds.current && boundsMatch(lastReportedBounds.current, nextBounds)) {
+      if (
+        lastReportedBounds.current &&
+        boundsMatch(lastReportedBounds.current, nextBounds)
+      ) {
         return;
       }
       lastReportedBounds.current = nextBounds;
@@ -138,7 +142,9 @@ export default function MapLibreMap(props: MapProps) {
       const icon = document.createElement("span");
       icon.textContent = clustered
         ? String(group.places.length)
-        : p.status === "pending" ? "···" : "✓";
+        : p.status === "pending"
+          ? "···"
+          : "✓";
       icon.setAttribute("aria-hidden", "true");
       face.append(icon);
       button.append(face);
@@ -186,12 +192,9 @@ export default function MapLibreMap(props: MapProps) {
     <div className="relative h-full min-h-[420px]">
       <div ref={container} style={{ position: "absolute", inset: 0 }} />
       {error && (
-        <p
-          role="alert"
-          className="absolute bottom-8 left-3 bg-background p-2 text-sm"
-        >
-          지도를 불러오지 못했습니다. 장소 목록을 이용해 주세요.
-        </p>
+        <div className="absolute bottom-3 left-3 right-3 z-20">
+          <MapFailure onFallback={props.onFallback} />
+        </div>
       )}
     </div>
   );

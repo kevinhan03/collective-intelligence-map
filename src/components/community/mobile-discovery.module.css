@@ -18,6 +18,7 @@
   isolation: isolate;
   display: flex;
   align-items: center;
+  gap: 16px;
   width: 100%;
   min-height: 128px;
   aspect-ratio: 2.94;
@@ -47,6 +48,8 @@
     inset 0 0 42px 12px #080c10a6;
 }
 .storyCover h2 {
+  flex: 1;
+  min-width: 0;
   margin: 0;
   font-family: var(--font-suit), sans-serif;
   font-size: clamp(23px, 6.15vw, 32px);
@@ -54,6 +57,16 @@
   line-height: 1.32;
   letter-spacing: -0.04em;
   overflow-wrap: anywhere;
+  text-shadow: 0 2px 12px #0006;
+}
+.placeCount {
+  flex-shrink: 0;
+  font-family: var(--font-suit), sans-serif;
+  font-size: clamp(28px, 7.4vw, 38px);
+  font-weight: 400;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: #bdc4cd;
   text-shadow: 0 2px 12px #0006;
 }
 .story[data-expanded="true"] .storyCover {

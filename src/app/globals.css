@@ -609,6 +609,21 @@ button:not(:disabled),
   font-weight: 800;
   line-height: 1;
 }
+.map-pin > .map-pin-likes,
+.map-marker-face > .map-pin-likes {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  line-height: 1;
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
+.map-pin-likes svg {
+  width: 12px;
+  height: 12px;
+}
 .map-marker[data-cluster="true"] .map-marker-face {
   border-radius: 50%;
   background: #283d22;
@@ -1020,6 +1035,24 @@ button:not(:disabled),
     scrollbar-width: none;
     overscroll-behavior-x: contain;
   }
+  .mobile-place-controls {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .mobile-place-arrow {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    color: #f1f2ed;
+  }
+  .mobile-place-meta > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   .mobile-place-slide {
     flex: 0 0 100%;
     min-width: 0;
@@ -1207,7 +1240,7 @@ button:not(:disabled),
     height: 64px;
     padding-right: 72px;
   }
-  body:not(:has(.community-explorer))
+  body:has(.glass-header[data-map-route="false"])
     .page-wrap:not(:has([data-mobile-story-home])) {
     padding-top: calc(80px + env(safe-area-inset-top));
   }
@@ -1259,13 +1292,15 @@ button:not(:disabled),
   .community-explorer[data-mobile-view="map"] .map-hero h1 {
     max-width: calc(100vw - 220px);
   }
-  body:has(.community-explorer) .glass-header {
+  .glass-header[data-map-route="true"] {
     display: none;
   }
   .community-explorer[data-mobile-view="map"] {
     position: fixed;
     inset: 0;
-    height: 100dvh;
+    top: var(--map-viewport-top, 0px);
+    bottom: auto;
+    height: var(--map-viewport-height, 100dvh);
     overflow: hidden;
   }
   .community-explorer[data-mobile-view="map"] .map-hero {
@@ -1423,7 +1458,7 @@ button:not(:disabled),
   }
   .community-explorer[data-mobile-view="map"] .mobile-place-carousel {
     position: absolute;
-    bottom: calc(28px + env(safe-area-inset-bottom));
+    bottom: 10px;
     left: 12px;
     right: 12px;
     margin: 0;
@@ -1434,7 +1469,7 @@ button:not(:disabled),
   .community-explorer[data-mobile-view="map"]
     .mobile-place-carousel
     > div:first-child {
-    height: 36px;
+    height: 44px;
   }
   .community-explorer[data-mobile-view="map"] .mobile-place-slide {
     padding: 0 14px 12px;
@@ -1449,6 +1484,21 @@ button:not(:disabled),
   }
   .community-explorer[data-mobile-view="map"] .search-area-button {
     top: calc(64px + env(safe-area-inset-top));
+    min-height: 36px;
+    height: 36px;
+    padding: 0 12px;
+    gap: 6px;
+    font-size: 12px;
+    line-height: 1;
+  }
+  .community-explorer[data-mobile-view="map"] .search-area-button::after {
+    content: "";
+    position: absolute;
+    inset: -4px 0;
+  }
+  .community-explorer[data-mobile-view="map"] .search-area-button svg {
+    width: 14px;
+    height: 14px;
   }
   .community-explorer[data-mobile-view="map"]:has(
       .explorer-toolbar[data-search-open="true"]

@@ -88,6 +88,31 @@ export function CommunityExplorer({
   const [mobileView, setMobileView] = useState<"list" | "map">("map");
   const [searchOpen, setSearchOpen] = useState(false);
   const searchInput = useRef<HTMLInputElement>(null);
+  const explorerRoot = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    const updateViewport = () => {
+      const element = explorerRoot.current;
+      if (!element) return;
+      element.style.setProperty(
+        "--map-viewport-height",
+        `${viewport?.height ?? window.innerHeight}px`,
+      );
+      element.style.setProperty(
+        "--map-viewport-top",
+        `${viewport?.offsetTop ?? 0}px`,
+      );
+    };
+    updateViewport();
+    viewport?.addEventListener("resize", updateViewport);
+    viewport?.addEventListener("scroll", updateViewport);
+    window.addEventListener("resize", updateViewport);
+    return () => {
+      viewport?.removeEventListener("resize", updateViewport);
+      viewport?.removeEventListener("scroll", updateViewport);
+      window.removeEventListener("resize", updateViewport);
+    };
+  }, []);
   const searchToggle = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (searchOpen) searchInput.current?.focus();
@@ -383,6 +408,7 @@ export function CommunityExplorer({
   ]);
   return (
     <main
+      ref={explorerRoot}
       id="main"
       className="community-explorer mx-auto max-w-[1440px]"
       data-mobile-view={mobileView}

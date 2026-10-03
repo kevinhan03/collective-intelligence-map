@@ -1,5 +1,7 @@
 "use client";
 import type { MapProps } from "../types";
+import { ThumbsUp } from "lucide-react";
+import { pinCount } from "../pin-content";
 export default function PreviewMap({ places, selected, onSelect }: MapProps) {
   return (
     <div
@@ -23,17 +25,21 @@ export default function PreviewMap({ places, selected, onSelect }: MapProps) {
           className="map-pin"
           data-selected={selected === p.id}
           data-status={p.status}
-          aria-label={`${p.name} 지도에서 선택 · 좋아요 ${p.positive} · 싫어요 ${p.negative}`}
+          aria-label={`${p.name} 지도에서 선택 · 좋아요 ${p.positive}${p.status === "pending" ? " · 검토 대기" : ""}`}
           onClick={() => onSelect(p.id)}
           style={{
             left: `${18 + (p.lng - 139.69) * 1900}%`,
             top: `${78 - (p.lat - 35.655) * 2600}%`,
           }}
         >
-          <span className="map-pin-votes" aria-hidden="true">
-            👍 {p.positive} · 👎 {p.negative}
-          </span>
-          <span>{p.status === "pending" ? "···" : "✓"}</span>
+          {p.status === "pending" ? (
+            <span aria-hidden="true">···</span>
+          ) : (
+            <span className="map-pin-likes" aria-hidden="true">
+              <ThumbsUp />
+              {p.positive > 0 && <span>{pinCount(p.positive)}</span>}
+            </span>
+          )}
         </button>
       ))}
       <div className="pointer-events-none absolute right-4 bottom-4 left-4 flex justify-between rounded-lg border bg-white/90 px-3 py-2 text-[10px] text-muted-foreground">

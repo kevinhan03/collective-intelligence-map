@@ -48,6 +48,13 @@ export function MobileMapStory({
         <MapCardBackdrop slug={map.slug} />
         <span className={styles.coverShade} aria-hidden="true" />
         <h2>{map.title}</h2>
+        <span
+          className={styles.placeCount}
+          role="img"
+          aria-label={`장소 ${map.place_count.toLocaleString("ko-KR")}개`}
+        >
+          {map.place_count.toLocaleString("ko-KR")}
+        </span>
       </button>
       {expanded && (
         <button

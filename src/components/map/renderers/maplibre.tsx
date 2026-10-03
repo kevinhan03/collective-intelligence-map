@@ -5,6 +5,7 @@ import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { ensureMapLibreWorkerReady } from "./maplibre-worker";
 import type { MapProps } from "../types";
+import { appendPinLikes } from "../pin-content";
 
 // MapTiler's basemap includes POI symbols (shops, hotels and stations). They
 // are not places that this community has added, so keep the basemap's roads and
@@ -124,27 +125,18 @@ export default function MapLibreMap(props: MapProps) {
         "aria-label",
         clustered
           ? button.title
-          : `${p.name} · 좋아요 ${p.positive} · 싫어요 ${p.negative}${p.status === "pending" ? " · 검토 대기" : ""}`,
+          : `${p.name} · 좋아요 ${p.positive}${p.status === "pending" ? " · 검토 대기" : ""}`,
       );
       button.className = "map-marker";
       button.dataset.cluster = String(clustered);
       button.dataset.selected = String(selected === p.id);
       button.dataset.status = p.status;
-      if (!clustered) {
-        const votes = document.createElement("span");
-        votes.className = "map-marker-votes";
-        votes.textContent = `👍 ${p.positive} · 👎 ${p.negative}`;
-        votes.setAttribute("aria-hidden", "true");
-        button.append(votes);
-      }
       const face = document.createElement("span");
       face.className = "map-marker-face";
       const icon = document.createElement("span");
-      icon.textContent = clustered
-        ? String(group.places.length)
-        : p.status === "pending"
-          ? "···"
-          : "✓";
+      if (clustered) icon.textContent = String(group.places.length);
+      else if (p.status === "pending") icon.textContent = "···";
+      else appendPinLikes(icon, p.positive);
       icon.setAttribute("aria-hidden", "true");
       face.append(icon);
       button.append(face);

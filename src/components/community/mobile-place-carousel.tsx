@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef } from "react";
-import { Bookmark, List } from "lucide-react";
+import { Bookmark, ChevronLeft, ChevronRight, List } from "lucide-react";
 import type { MapPlace } from "@/domain/types";
 import { placeArea } from "@/domain/place-location";
 
@@ -32,11 +32,20 @@ export function MobilePlaceCarousel({
   const currentPlace = places[index];
   useEffect(() => {
     const element = track.current;
-    if (element)
+    if (!element) return;
+    const align = () => {
+      const first = element.children[0] as HTMLElement;
+      const slide = element.children[index] as HTMLElement;
+      if (!first || !slide) return;
       element.scrollTo({
-        left: index * element.clientWidth,
+        left: slide.offsetLeft - first.offsetLeft,
         behavior: "instant",
       });
+    };
+    align();
+    const observer = new ResizeObserver(align);
+    observer.observe(element);
+    return () => observer.disconnect();
   }, [index, places]);
   useEffect(
     () => () => {
@@ -46,19 +55,41 @@ export function MobilePlaceCarousel({
   );
   if (!places.length) return null;
   return (
-    <section className="mobile-place-carousel" aria-label="장소 미리보기">
+    <section
+      className="mobile-place-carousel"
+      data-multiple={places.length > 1}
+      aria-label="장소 미리보기"
+    >
       <div className="mobile-place-meta flex items-center justify-between px-4">
         <span className="text-sm text-muted-foreground" aria-live="polite">
           {placeArea(currentPlace.address) || "기타 지역"} · {index + 1} /{" "}
           {places.length}곳
         </span>
-        <button
-          onClick={onList}
-          aria-label="목록 보기"
-          className="mobile-place-list-button"
-        >
-          <List size={19} aria-hidden="true" />
-        </button>
+        <div className="mobile-place-controls">
+          <button
+            aria-label="이전 장소"
+            className="mobile-place-arrow"
+            disabled={index === 0}
+            onClick={() => onSelect(places[index - 1].id)}
+          >
+            <ChevronLeft size={20} aria-hidden="true" />
+          </button>
+          <button
+            aria-label="다음 장소"
+            className="mobile-place-arrow"
+            disabled={index === places.length - 1}
+            onClick={() => onSelect(places[index + 1].id)}
+          >
+            <ChevronRight size={20} aria-hidden="true" />
+          </button>
+          <button
+            onClick={onList}
+            aria-label="목록 보기"
+            className="mobile-place-list-button"
+          >
+            <List size={19} aria-hidden="true" />
+          </button>
+        </div>
       </div>
       <div
         ref={track}
@@ -68,7 +99,24 @@ export function MobilePlaceCarousel({
           timer.current = setTimeout(() => {
             const element = track.current;
             if (!element) return;
-            const next = Math.round(element.scrollLeft / element.clientWidth);
+            const first = element.children[0] as HTMLElement;
+            if (!first) return;
+            const next = Array.from(element.children).reduce(
+              (best, child, i, slides) => {
+                const distance = Math.abs(
+                  (child as HTMLElement).offsetLeft -
+                    first.offsetLeft -
+                    element.scrollLeft,
+                );
+                const bestDistance = Math.abs(
+                  (slides[best] as HTMLElement).offsetLeft -
+                    first.offsetLeft -
+                    element.scrollLeft,
+                );
+                return distance < bestDistance ? i : best;
+              },
+              0,
+            );
             if (places[next] && places[next].id !== activeId)
               onSelect(places[next].id);
           }, 120);

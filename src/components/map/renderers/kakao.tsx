@@ -1,4 +1,5 @@
 "use client";
+import { appendPinLikes } from "../pin-content";
 import { MapFailure } from "../map-failure";
 import { useEffect, useRef, useState } from "react";
 import type { MapProps } from "../types";
@@ -152,15 +153,11 @@ export default function KakaoMap(props: MapProps) {
       button.dataset.status = p.status;
       button.setAttribute(
         "aria-label",
-        `${p.name} · 좋아요 ${p.positive} · 싫어요 ${p.negative}`,
+        `${p.name} · 좋아요 ${p.positive}${p.status === "pending" ? " · 검토 대기" : ""}`,
       );
-      const votes = document.createElement("span");
-      votes.className = "map-pin-votes";
-      votes.textContent = `👍 ${p.positive} · 👎 ${p.negative}`;
-      votes.setAttribute("aria-hidden", "true");
-      button.append(votes);
       const span = document.createElement("span");
-      span.textContent = p.status === "pending" ? "···" : "✓";
+      if (p.status === "pending") span.textContent = "···";
+      else appendPinLikes(span, p.positive);
       button.append(span);
       button.onclick = () => handlers.current.onSelect(p.id);
       return new k.CustomOverlay({

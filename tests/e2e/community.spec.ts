@@ -1,4 +1,44 @@
 import { test, expect } from "@playwright/test";
+test("mobile logo stays visible after returning home from a map", async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(!isMobile);
+  await page.goto("/");
+  const logo = page.getByRole("link", { name: "Ting map 홈", exact: true });
+  await expect(logo).toBeVisible();
+  for (let i = 0; i < 2; i++) {
+    const card = page.getByRole("button", {
+      name: "Tokyo Fashion Store 미리보기",
+      exact: true,
+    });
+    await card.click();
+    await page
+      .getByRole("button", {
+        name: "Tokyo Fashion Store 전체 지도 열기",
+        exact: true,
+      })
+      .click();
+    await expect(page).toHaveURL(/\/maps\/tokyo-fashion/);
+    await expect(logo).toBeHidden();
+    await page
+      .getByRole("link", { name: "홈으로 돌아가기", exact: true })
+      .click();
+    await expect(page).toHaveURL("/");
+    await expect(logo).toBeVisible();
+    await page
+      .getByRole("button", {
+        name: "Tokyo Fashion Store 미리보기 닫기",
+        exact: true,
+      })
+      .click();
+  }
+  await page.goBack();
+  await expect(page).toHaveURL(/\/maps\/tokyo-fashion/);
+  await page.goForward();
+  await expect(page).toHaveURL("/");
+  await expect(logo).toBeVisible();
+});
 test("mobile home previews before navigation and search follows scroll direction", async ({
   page,
   isMobile,
@@ -405,7 +445,41 @@ for (const width of [360, 390, 430, 768, 1024, 1440]) {
       const carousel = page.getByRole("region", { name: "장소 미리보기" });
       await expect(carousel).toBeVisible();
       const cardBox = (await carousel.boundingBox())!;
-      expect(cardBox.y + cardBox.height).toBeLessThanOrEqual(900);
+      expect(900 - cardBox.y - cardBox.height).toBeCloseTo(10, 0);
+      const trackBox = (await carousel
+        .locator(".mobile-place-track")
+        .boundingBox())!;
+      const currentCard = (await carousel
+        .locator(".mobile-place-slide")
+        .first()
+        .boundingBox())!;
+      expect(currentCard.width).toBeCloseTo(trackBox.width, 0);
+      const initialTitle = await carousel.getByRole("heading").innerText();
+      await expect(
+        carousel.getByRole("button", { name: "이전 장소", exact: true }),
+      ).toBeDisabled();
+      await carousel
+        .getByRole("button", { name: "다음 장소", exact: true })
+        .click();
+      await expect(carousel.getByRole("heading")).not.toHaveText(initialTitle);
+      await carousel
+        .getByRole("button", { name: "이전 장소", exact: true })
+        .click();
+      await expect(carousel.getByRole("heading")).toHaveText(initialTitle);
+      await expect(
+        page.locator(".map-pin-votes, .map-marker-votes"),
+      ).toHaveCount(0);
+      await expect(
+        page.locator(".map-pin-likes").first().locator("svg"),
+      ).toBeVisible();
+      await page.setViewportSize({ width, height: 700 });
+      await expect
+        .poll(async () => {
+          const box = (await carousel.boundingBox())!;
+          return Math.round(700 - box.y - box.height);
+        })
+        .toBe(10);
+      await page.setViewportSize({ width, height: 900 });
       await expect(
         page.getByRole("navigation", { name: "모바일 주요 메뉴" }),
       ).toBeHidden();
@@ -546,7 +620,12 @@ test("mobile map load failure keeps list navigation available", async ({
   isMobile,
 }) => {
   test.skip(!isMobile);
-  await page.route("**/*renderers_preview*.js", (route) => route.abort());
+  await page.route("**/chunks/*.js", async (route) => {
+    const response = await route.fetch();
+    const body = await response.text();
+    if (body.includes("function PreviewMap(")) await route.abort();
+    else await route.fulfill({ response });
+  });
   await page.goto("/maps/tokyo-fashion");
   await expect(
     page.getByRole("button", { name: "목록으로 보기", exact: true }),

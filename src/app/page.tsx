@@ -13,11 +13,11 @@ export default async function Home() {
       a.slug.localeCompare(b.slug),
   );
   const featuredMaps = maps.slice(0, 4);
-  const locationTerms = await getHomeLocationTerms(featuredMaps);
+  const locationTerms = await getHomeLocationTerms(maps);
   return (
     <main id="main" className="page-wrap">
       <MobileDiscovery
-        maps={featuredMaps}
+        maps={maps}
         locationTerms={locationTerms}
         demo={!configured()}
       />

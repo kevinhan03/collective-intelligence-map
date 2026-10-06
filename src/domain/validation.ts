@@ -66,10 +66,16 @@ export const commandSchema = z.discriminatedUnion("action", [
     body: z.string().trim().min(2).max(2000),
   }),
   z.object({ action: z.literal("delete_comment"), id: z.uuid() }),
+  z.object({ action: z.literal("delete_photo"), id: z.uuid() }),
+  z.object({
+    action: z.literal("hide_photo"),
+    id: z.uuid(),
+    reason: z.string().trim().min(5).max(1000),
+  }),
   z.object({
     action: z.literal("report"),
     id: z.uuid(),
-    target: z.enum(["map_place", "comment"]),
+    target: z.enum(["map_place", "comment", "photo"]),
     reason: z.string().trim().min(5).max(1000),
   }),
   z.object({

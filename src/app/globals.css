@@ -529,7 +529,7 @@ button:not(:disabled),
   --map-pin-vote-offset: 35px;
   position: absolute;
   transform: translate(-50%, -50%);
-  border: 3px solid white;
+  border: 1.5px solid white;
   width: 32px;
   height: 32px;
   border-radius: 50% 50% 50% 6px;
@@ -595,7 +595,7 @@ button:not(:disabled),
   inset: 0;
   display: grid;
   place-items: center;
-  border: 3px solid white;
+  border: 1.5px solid white;
   border-radius: 50% 50% 50% 6px;
   background: #23614a;
   color: white;
@@ -617,12 +617,12 @@ button:not(:disabled),
   justify-content: center;
   gap: 1px;
   line-height: 1;
-  font-size: 9px;
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
 .map-pin-likes svg {
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
 }
 .map-marker[data-cluster="true"] .map-marker-face {
   border-radius: 50%;

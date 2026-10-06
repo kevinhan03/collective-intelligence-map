@@ -3,6 +3,7 @@ import { useMobile } from "@/hooks/use-mobile";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { PlacePanel } from "./place-panel";
+import { PlacePhotos } from "./place-photos";
 import { PlaceChecks } from "./place-checks";
 import { useEffect, useState } from "react";
 import {
@@ -51,7 +52,12 @@ export function PlaceDetail({
   useEffect(() => {
     if (!place) return;
     const close = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      if (
+        event.key === "Escape" &&
+        !event.defaultPrevented &&
+        !document.querySelector("[data-photo-dialog]")
+      )
+        onClose();
     };
     window.addEventListener("keydown", close);
     return () => window.removeEventListener("keydown", close);
@@ -122,6 +128,13 @@ export function PlaceDetail({
             )}
             <p className="text-sm text-muted-foreground">{place.address}</p>
           </header>
+          <PlacePhotos
+            key={place.place_id}
+            placeId={place.place_id}
+            viewer={viewer}
+            loginHref={loginHref}
+            demo={demo}
+          />
           <div className="rounded-xl bg-secondary/60 p-5">
             <p className="kicker mb-2">이 테마에 추천하는 이유</p>
             <p className="text-sm leading-7">{place.rationale}</p>

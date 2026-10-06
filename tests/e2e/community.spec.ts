@@ -147,11 +147,12 @@ test("discover community, filter venues, open context and protect participation"
         exact: true,
       })
       .click();
-  } else
+  } else {
+    await page.locator('summary[aria-label="Tokyo Fashion Store 미리보기"]').click();
     await page
-      .getByRole("link")
-      .filter({ has: page.getByRole("heading", { name: /Tokyo Fashion/ }) })
+      .getByRole("link", { name: /전체 지도 열기.*Tokyo Fashion/ })
       .click();
+  }
   await expect(
     page.getByRole("heading", { name: "Tokyo Fashion Store", exact: true }),
   ).toBeVisible();
@@ -203,6 +204,8 @@ test("discover community, filter venues, open context and protect participation"
     }),
   ).toBeVisible();
   await expect(page.getByText("이 테마에 추천하는 이유")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "방문자 사진", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "사진 추가", exact: true })).toBeDisabled();
   if (isMobile)
     await page
       .locator("summary")

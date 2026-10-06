@@ -13,7 +13,7 @@ if (!new URL(url).pathname.endsWith("_test"))
 const c = new pg.Client({ connectionString: url });
 await c.connect();
 try {
-  await c.query(`drop schema if exists public cascade; drop schema if exists private cascade; drop schema if exists auth cascade; drop schema if exists storage cascade; create schema public; create schema auth; create schema storage;
+  await c.query(`drop schema if exists supabase_migrations cascade; create schema supabase_migrations; create table supabase_migrations.schema_migrations(version text primary key,name text,statements text[]); drop schema if exists public cascade; drop schema if exists private cascade; drop schema if exists auth cascade; drop schema if exists storage cascade; create schema public; create schema auth; create schema storage;
 do $$ begin if not exists(select 1 from pg_roles where rolname='anon') then create role anon nologin; end if; if not exists(select 1 from pg_roles where rolname='authenticated') then create role authenticated nologin; end if; if not exists(select 1 from pg_roles where rolname='service_role') then create role service_role nologin bypassrls; end if; end $$;
 grant usage on schema public,auth,storage to anon,authenticated,service_role;
 create table auth.users(id uuid primary key);
@@ -23,7 +23,7 @@ create table storage.objects(id uuid primary key default gen_random_uuid(),bucke
 alter table storage.objects enable row level security;
 create function storage.foldername(text) returns text[] language sql immutable as $$ select string_to_array($1,'/') $$;`);
   for (const f of (await fs.readdir("supabase/migrations")).sort())
-    await c.query(await fs.readFile(`supabase/migrations/${f}`, "utf8"));
+    await c.query(await fs.readFile(f.endsWith("_place_photos.sql") ? "docs/sql/add-place-photos.sql" : `supabase/migrations/${f}`, "utf8"));
   await c.query(await fs.readFile("supabase/seed.sql", "utf8"));
   console.log("PASS: migrations and seed apply to PostgreSQL/PostGIS");
   const a = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
@@ -710,6 +710,210 @@ create function storage.foldername(text) returns text[] language sql immutable a
   } finally {
     await fs.rm(etlDir, { recursive: true, force: true });
   }
+
+  // Photos use canonical places, private storage and service-only publication.
+  const photoPlace = (
+    await c.query(
+      "select place_id from public.map_places where status='approved' limit 1",
+    )
+  ).rows[0].place_id;
+  const photoId = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+  const photoLease = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
+  async function reservePhoto(user, id = photoId, lease = photoLease) {
+    return as(user, () =>
+      c.query(
+        "select public.reserve_place_photo($1,$2,'Test photo',$3) result",
+        [id, photoPlace, lease],
+      ),
+    );
+  }
+  await reservePhoto(a);
+  assert.equal(
+    (
+      await as(
+        null,
+        () =>
+          c.query("select * from public.place_photos where id=$1", [photoId]),
+        "anon",
+      )
+    ).rowCount,
+    0,
+  );
+  await assert.rejects(() => reservePhoto(b));
+  await assert.rejects(() => reservePhoto(a));
+  await assert.rejects(() =>
+    as(a, () =>
+      c.query("select public.finish_place_photo($1,$2,100,100)", [
+        photoId,
+        photoLease,
+      ]),
+    ),
+  );
+  await as(
+    null,
+    () =>
+      c.query("select public.finish_place_photo($1,$2,100,100)", [
+        photoId,
+        photoLease,
+      ]),
+    "service_role",
+  );
+  assert.equal((await reservePhoto(a)).rows[0].result.status, "visible");
+  assert.equal(
+    (
+      await as(
+        null,
+        () =>
+          c.query("select * from public.place_photos where id=$1", [photoId]),
+        "anon",
+      )
+    ).rowCount,
+    1,
+  );
+  await assert.rejects(() =>
+    command(b, { action: "delete_photo", id: photoId }),
+  );
+  await assert.rejects(() =>
+    command(b, {
+      action: "hide_photo",
+      id: photoId,
+      reason: "Photo is unrelated",
+    }),
+  );
+  await command(b, {
+    action: "report",
+    target: "photo",
+    id: photoId,
+    reason: "Photo is unrelated",
+  });
+  const snapshot = (
+    await as(admin, () => c.query("select public.admin_snapshot() result"))
+  ).rows[0].result;
+  assert.ok(snapshot.reports.some((r) => r.photo_id === photoId));
+  await command(admin, {
+    action: "hide_photo",
+    id: photoId,
+    reason: "Photo is unrelated",
+  });
+  assert.equal(
+    (
+      await as(
+        null,
+        () =>
+          c.query("select * from public.place_photos where id=$1", [photoId]),
+        "anon",
+      )
+    ).rowCount,
+    0,
+  );
+  await command(a, { action: "delete_photo", id: photoId });
+  assert.equal(
+    (
+      await c.query(
+        "select cardinality(cleanup_paths) n from public.place_photos where id=$1",
+        [photoId],
+      )
+    ).rows[0].n,
+    2,
+  );
+  await c.query(
+    "update private.user_roles set suspended=true where user_id=$1",
+    [b],
+  );
+  await assert.rejects(() =>
+    reservePhoto(b, "ffffffff-ffff-4fff-8fff-ffffffffffff"),
+  );
+  await c.query(
+    "update private.user_roles set suspended=false where user_id=$1",
+    [b],
+  );
+  await c.query(
+    "insert into private.write_limits(user_id,bucket,period,count) values($1,'photo',date_trunc('hour',now()),20) on conflict(user_id,bucket,period) do update set count=20",
+    [b],
+  );
+  await assert.rejects(() =>
+    reservePhoto(b, "ffffffff-ffff-4fff-8fff-ffffffffffff"),
+  );
+  console.log(
+    "PASS: photo ownership, public RLS, retry locking, service-only publication, reports, moderation, cleanup, suspended accounts and hourly caps",
+  );
+
+  const mergeDestination = (
+    await c.query(
+      "insert into public.places(name,address,category,location,country,city,status) select 'Photo merge destination',address,category,location,country,city,'active' from public.places where id=$1 returning id",
+      [photoPlace],
+    )
+  ).rows[0].id;
+  await assert.rejects(() =>
+    as(a, () =>
+      c.query(
+        "select public.reserve_place_photo(gen_random_uuid(),$1,'Invisible',gen_random_uuid())",
+        [mergeDestination],
+      ),
+    ),
+  );
+  const sourceMap = (
+    await c.query(
+      "select map_id from public.map_places where place_id=$1 and status='approved' limit 1",
+      [photoPlace],
+    )
+  ).rows[0].map_id;
+  await c.query(
+    "insert into public.map_places(map_id,place_id,added_by,rationale,status) values($1,$2,$3,'Photo merge verification','approved')",
+    [sourceMap, mergeDestination, admin],
+  );
+  await command(admin, {
+    action: "merge",
+    id: photoPlace,
+    targetId: mergeDestination,
+    reason: "Merge photo test fixtures",
+  });
+  assert.equal(
+    (
+      await c.query("select place_id from public.place_photos where id=$1", [
+        photoId,
+      ])
+    ).rows[0].place_id,
+    mergeDestination,
+  );
+  const stalePhoto = "99999999-9999-4999-8999-999999999999";
+  await c.query(
+    "insert into public.place_photos(id,place_id,author_id,file_path,thumbnail_path,updated_at) values($1,$2,$3,'stale.webp','stale-thumb.webp',now()-interval '2 hours')",
+    [stalePhoto, mergeDestination, a],
+  );
+  await as(
+    null,
+    () => c.query("select public.expire_photo_uploads()"),
+    "service_role",
+  );
+  assert.equal(
+    (
+      await c.query("select status from public.place_photos where id=$1", [
+        stalePhoto,
+      ])
+    ).rows[0].status,
+    "deleted",
+  );
+  await as(
+    null,
+    () =>
+      c.query("select public.ack_photo_cleanup($1,array['stale.webp'])", [
+        stalePhoto,
+      ]),
+    "service_role",
+  );
+  assert.deepEqual(
+    (
+      await c.query(
+        "select cleanup_paths from public.place_photos where id=$1",
+        [stalePhoto],
+      )
+    ).rows[0].cleanup_paths,
+    ["stale-thumb.webp"],
+  );
+  console.log(
+    "PASS: invisible-place upload denial, canonical place merge and abandoned-upload expiry/cleanup acknowledgement",
+  );
 
   const functions = (
     await c.query(

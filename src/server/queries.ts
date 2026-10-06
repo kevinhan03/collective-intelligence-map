@@ -24,16 +24,39 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
     data: { user },
   } = await client.auth.getUser();
   if (!user) return null;
-  const [{ data: profile, error }, { data: role }] = await Promise.all([
+  const readProfile = () =>
     client
       .from("profiles")
       .select("handle,bio,avatar_path")
       .eq("id", user.id)
-      .single(),
+      .maybeSingle();
+  const [initialProfileResult, roleResult] = await Promise.all([
+    readProfile(),
     client.rpc("viewer_role"),
   ]);
-  if (error) throw new Error("프로필을 불러올 수 없습니다.");
-  return { id: user.id, ...profile, role: role ?? "member" } as Viewer;
+  let profileResult = initialProfileResult;
+  // Retry transport/server failures once, but not permission or schema errors.
+  if (
+    profileResult.error &&
+    (profileResult.status === 0 || profileResult.status >= 500)
+  ) {
+    profileResult = await readProfile();
+  }
+  if (profileResult.error || !profileResult.data) {
+    console.error("viewer_profile_unavailable", {
+      code: profileResult.error?.code ?? "profile_missing",
+      status: profileResult.status,
+    });
+    // Fail closed: public browsing stays available without a fabricated viewer.
+    return null;
+  }
+  if (roleResult.error)
+    console.error("viewer_role_unavailable", { code: roleResult.error.code });
+  return {
+    id: user.id,
+    ...profileResult.data,
+    role: roleResult.error ? "member" : (roleResult.data ?? "member"),
+  } as Viewer;
 });
 export const getMaps = cache(async (): Promise<ThemeMap[]> => {
   "use cache";
@@ -149,19 +172,26 @@ export async function getHomeLocationTerms(maps: ThemeMap[]) {
   cacheTag("public-community");
   if (!maps.length) return {};
   if (!configured()) {
-    const terms = demoPlaces.map((place) => `${place.address} ${placeArea(place.address)}`).join(" ");
+    const terms = demoPlaces
+      .map((place) => `${place.address} ${placeArea(place.address)}`)
+      .join(" ");
     return Object.fromEntries(maps.map((map) => [map.id, terms]));
   }
 
   const client = publicDb();
-  const terms: Record<string, string[]> = Object.fromEntries(maps.map((map) => [map.id, []]));
+  const terms: Record<string, string[]> = Object.fromEntries(
+    maps.map((map) => [map.id, []]),
+  );
   // PostgREST caps response size. Read only map ID and address, in pages, so
   // search keeps covering every public place as a map grows.
   for (let offset = 0; ; offset += 500) {
     const { data, error } = await client
       .from("map_places")
       .select("map_id,places!inner(address)")
-      .in("map_id", maps.map((map) => map.id))
+      .in(
+        "map_id",
+        maps.map((map) => map.id),
+      )
       .in("status", ["approved", "disputed"])
       .eq("places.status", "active")
       .order("id")
@@ -169,11 +199,14 @@ export async function getHomeLocationTerms(maps: ThemeMap[]) {
     if (error) throw new Error("홈 지역 검색 정보를 불러오지 못했습니다.");
     for (const row of data ?? []) {
       const address = row.places?.address;
-      if (address && terms[row.map_id]) terms[row.map_id].push(`${address} ${placeArea(address)}`);
+      if (address && terms[row.map_id])
+        terms[row.map_id].push(`${address} ${placeArea(address)}`);
     }
     if (!data || data.length < 500) break;
   }
-  return Object.fromEntries(Object.entries(terms).map(([id, values]) => [id, values.join(" ")]));
+  return Object.fromEntries(
+    Object.entries(terms).map(([id, values]) => [id, values.join(" ")]),
+  );
 }
 
 async function readPlaces(map: ThemeMap, b: Bounds): Promise<MapPlace[]> {
@@ -211,7 +244,10 @@ export async function getPendingPlaces(map: ThemeMap): Promise<MapPlace[]> {
   }
   return data as MapPlace[];
 }
-export async function getMapPlaceById(map: ThemeMap, id: string): Promise<MapPlace | null> {
+export async function getMapPlaceById(
+  map: ThemeMap,
+  id: string,
+): Promise<MapPlace | null> {
   if (!configured()) return null;
   const { data, error } = await publicDb().rpc("map_place_for_map", {
     m: map.id,

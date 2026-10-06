@@ -1,3 +1,4 @@
+import { cleanupPhoto } from "@/server/place-photos";
 import { productEvent } from "@/server/events";
 import { revalidateTag } from "next/cache";
 import { db } from "@/lib/supabase/server";
@@ -26,6 +27,13 @@ export async function POST(request: Request) {
     const client = await db();
     const { data, error } = await client.rpc("community_command", { payload });
     dbError(error);
+    if (payload.action === "delete_photo") {
+      try {
+        await cleanupPhoto(payload.id);
+      } catch {
+        console.error("photo_cleanup_pending", { photoId: payload.id });
+      }
+    }
     revalidateTag("public-community", { expire: 0 });
     if (
       ["vote", "save", "follow", "comment", "report"].includes(payload.action)

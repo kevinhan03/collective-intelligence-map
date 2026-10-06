@@ -8,12 +8,14 @@ type Event =
   | "follow"
   | "comment"
   | "report"
+  | "photo_upload"
   | "proposal"
   | "external_map_open";
 // Structured first-party operational events. No emails, search text or provider payloads.
 export function productEvent(
   event: Event,
   properties: {
+    placeId?: string;
     mapId?: string;
     mapPlaceId?: string;
     count?: number;

@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
@@ -37,6 +38,8 @@ type Report = {
   reason: string;
   map_place_id: string | null;
   comment_id: string | null;
+  photo_id: string | null;
+  photo_status?: string;
   created_at: string;
   body?: string;
   name?: string;
@@ -249,9 +252,23 @@ export function AdminConsole({ snapshot }: { snapshot: AdminSnapshot }) {
         {snapshot.reports.map((r) => (
           <article key={r.id} className="mb-4 rounded-lg border bg-card p-5">
             <p className="text-xs text-muted-foreground">
-              {r.comment_id ? "댓글 신고" : "장소 신고"} ·{" "}
-              {new Date(r.created_at).toLocaleDateString("ko-KR")}
+              {r.photo_id
+                ? "사진 신고"
+                : r.comment_id
+                  ? "댓글 신고"
+                  : "장소 신고"}{" "}
+              · {new Date(r.created_at).toLocaleDateString("ko-KR")}
             </p>
+            {r.photo_id && r.photo_status !== "deleted" && (
+              <Image
+                unoptimized
+                src={`/api/photos/${r.photo_id}/image?size=thumbnail&admin=1`}
+                alt="신고된 사진"
+                width={240}
+                height={180}
+                className="my-3 h-auto max-h-48 w-auto rounded object-contain"
+              />
+            )}
             {(r.body || r.name) && (
               <p className="my-3 rounded bg-secondary p-3 text-sm">
                 {r.body ?? r.name}
@@ -273,6 +290,21 @@ export function AdminConsole({ snapshot }: { snapshot: AdminSnapshot }) {
               >
                 처리 완료
               </Button>
+              {r.photo_id && r.photo_status === "visible" && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    setPending({
+                      action: "hide_photo",
+                      id: r.photo_id!,
+                      description: "신고된 사진을 모든 테마 지도에서 숨깁니다.",
+                    })
+                  }
+                >
+                  사진 숨기기
+                </Button>
+              )}
               {r.comment_id && (
                 <Button
                   size="sm"

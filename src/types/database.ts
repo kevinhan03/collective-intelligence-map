@@ -9,88 +9,45 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      search_query_aliases: {
+      anonymous_map_place_votes: {
         Row: {
-          country_code: string;
-          normalized_query: string;
-          japanese_queries: string[];
-          generator: string;
           created_at: string;
+          map_place_id: string;
+          token_hash: string;
           updated_at: string;
+          value: number;
         };
         Insert: {
-          country_code: string;
-          normalized_query: string;
-          japanese_queries?: string[];
-          generator?: string;
           created_at?: string;
+          map_place_id: string;
+          token_hash: string;
           updated_at?: string;
+          value: number;
         };
         Update: {
-          country_code?: string;
-          normalized_query?: string;
-          japanese_queries?: string[];
-          generator?: string;
           created_at?: string;
+          map_place_id?: string;
+          token_hash?: string;
           updated_at?: string;
+          value?: number;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "anonymous_map_place_votes_map_place_id_fkey";
+            columns: ["map_place_id"];
+            isOneToOne: false;
+            referencedRelation: "map_place_cards";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "anonymous_map_place_votes_map_place_id_fkey";
+            columns: ["map_place_id"];
+            isOneToOne: false;
+            referencedRelation: "map_places";
+            referencedColumns: ["id"];
+          },
+        ];
       };
-      our_search_places: {
-        Row: {
-          source: string;
-          source_id: string;
-          primary_name: string;
-          alternate_names: string[];
-          country_code: string;
-          region: string | null;
-          locality: string | null;
-          address: string;
-          latitude: number;
-          longitude: number;
-          category: string | null;
-          location: unknown;
-          search_text: string;
-          release: string;
-          imported_at: string;
-        };
-        Insert: {
-          source: string;
-          source_id: string;
-          primary_name: string;
-          alternate_names?: string[];
-          country_code: string;
-          region?: string | null;
-          locality?: string | null;
-          address?: string;
-          latitude: number;
-          longitude: number;
-          category?: string | null;
-          location?: never;
-          search_text: string;
-          release: string;
-          imported_at?: string;
-        };
-        Update: {
-          source?: string;
-          source_id?: string;
-          primary_name?: string;
-          alternate_names?: string[];
-          country_code?: string;
-          region?: string | null;
-          locality?: string | null;
-          address?: string;
-          latitude?: number;
-          longitude?: number;
-          category?: string | null;
-          location?: never;
-          search_text?: string;
-          release?: string;
-          imported_at?: string;
-        };
-        Relationships: [];
-      };
-
       comments: {
         Row: {
           author_id: string | null;
@@ -216,45 +173,6 @@ export type Database = {
           },
         ];
       };
-      anonymous_map_place_votes: {
-        Row: {
-          map_place_id: string;
-          token_hash: string;
-          value: number;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          map_place_id: string;
-          token_hash: string;
-          value: number;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          map_place_id?: string;
-          token_hash?: string;
-          value?: number;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "anonymous_map_place_votes_map_place_id_fkey";
-            columns: ["map_place_id"];
-            isOneToOne: false;
-            referencedRelation: "map_place_cards";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "anonymous_map_place_votes_map_place_id_fkey";
-            columns: ["map_place_id"];
-            isOneToOne: false;
-            referencedRelation: "map_places";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
       map_places: {
         Row: {
           added_by: string | null;
@@ -327,10 +245,125 @@ export type Database = {
           },
         ];
       };
+      our_search_places: {
+        Row: {
+          address: string;
+          alternate_names: string[];
+          category: string | null;
+          country_code: string;
+          imported_at: string;
+          latitude: number;
+          locality: string | null;
+          location: unknown;
+          longitude: number;
+          primary_name: string;
+          region: string | null;
+          release: string;
+          search_text: string;
+          source: string;
+          source_id: string;
+        };
+        Insert: {
+          address?: string;
+          alternate_names?: string[];
+          category?: string | null;
+          country_code: string;
+          imported_at?: string;
+          latitude: number;
+          locality?: string | null;
+          location?: unknown;
+          longitude: number;
+          primary_name: string;
+          region?: string | null;
+          release: string;
+          search_text: string;
+          source: string;
+          source_id: string;
+        };
+        Update: {
+          address?: string;
+          alternate_names?: string[];
+          category?: string | null;
+          country_code?: string;
+          imported_at?: string;
+          latitude?: number;
+          locality?: string | null;
+          location?: unknown;
+          longitude?: number;
+          primary_name?: string;
+          region?: string | null;
+          release?: string;
+          search_text?: string;
+          source?: string;
+          source_id?: string;
+        };
+        Relationships: [];
+      };
+      place_photos: {
+        Row: {
+          author_id: string | null;
+          caption: string;
+          cleanup_paths: string[];
+          created_at: string;
+          file_path: string;
+          height: number | null;
+          id: string;
+          lease: string | null;
+          place_id: string;
+          status: string;
+          thumbnail_path: string;
+          updated_at: string;
+          width: number | null;
+        };
+        Insert: {
+          author_id?: string | null;
+          caption?: string;
+          cleanup_paths?: string[];
+          created_at?: string;
+          file_path: string;
+          height?: number | null;
+          id: string;
+          lease?: string | null;
+          place_id: string;
+          status?: string;
+          thumbnail_path: string;
+          updated_at?: string;
+          width?: number | null;
+        };
+        Update: {
+          author_id?: string | null;
+          caption?: string;
+          cleanup_paths?: string[];
+          created_at?: string;
+          file_path?: string;
+          height?: number | null;
+          id?: string;
+          lease?: string | null;
+          place_id?: string;
+          status?: string;
+          thumbnail_path?: string;
+          updated_at?: string;
+          width?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "place_photos_author_id_fkey";
+            columns: ["author_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "place_photos_place_id_fkey";
+            columns: ["place_id"];
+            isOneToOne: false;
+            referencedRelation: "places";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       places: {
         Row: {
-          source_type: string;
-          region: string | null;
           address: string;
           category: string;
           city: string;
@@ -341,11 +374,11 @@ export type Database = {
           location: unknown;
           merged_into_id: string | null;
           name: string;
+          region: string | null;
+          source_type: string;
           status: string;
         };
         Insert: {
-          source_type?: string;
-          region?: string | null;
           address?: string;
           category?: string;
           city: string;
@@ -356,11 +389,11 @@ export type Database = {
           location: unknown;
           merged_into_id?: string | null;
           name: string;
+          region?: string | null;
+          source_type?: string;
           status?: string;
         };
         Update: {
-          source_type?: string;
-          region?: string | null;
           address?: string;
           category?: string;
           city?: string;
@@ -371,6 +404,8 @@ export type Database = {
           location?: unknown;
           merged_into_id?: string | null;
           name?: string;
+          region?: string | null;
+          source_type?: string;
           status?: string;
         };
         Relationships: [
@@ -423,6 +458,7 @@ export type Database = {
           created_at: string;
           id: string;
           map_place_id: string | null;
+          photo_id: string | null;
           reason: string;
           reporter_id: string | null;
           status: string;
@@ -432,6 +468,7 @@ export type Database = {
           created_at?: string;
           id?: string;
           map_place_id?: string | null;
+          photo_id?: string | null;
           reason: string;
           reporter_id?: string | null;
           status?: string;
@@ -441,6 +478,7 @@ export type Database = {
           created_at?: string;
           id?: string;
           map_place_id?: string | null;
+          photo_id?: string | null;
           reason?: string;
           reporter_id?: string | null;
           status?: string;
@@ -465,6 +503,13 @@ export type Database = {
             columns: ["map_place_id"];
             isOneToOne: false;
             referencedRelation: "map_places";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "reports_photo_id_fkey";
+            columns: ["photo_id"];
+            isOneToOne: false;
+            referencedRelation: "place_photos";
             referencedColumns: ["id"];
           },
           {
@@ -515,6 +560,33 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
+      };
+      search_query_aliases: {
+        Row: {
+          country_code: string;
+          created_at: string;
+          generator: string;
+          japanese_queries: string[];
+          normalized_query: string;
+          updated_at: string;
+        };
+        Insert: {
+          country_code: string;
+          created_at?: string;
+          generator?: string;
+          japanese_queries?: string[];
+          normalized_query: string;
+          updated_at?: string;
+        };
+        Update: {
+          country_code?: string;
+          created_at?: string;
+          generator?: string;
+          japanese_queries?: string[];
+          normalized_query?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
       };
       theme_maps: {
         Row: {
@@ -608,22 +680,25 @@ export type Database = {
       };
     };
     Functions: {
-      reserve_search_operation: { Args: { u: string; operation: string }; Returns: boolean };
-      search_overture_places: { Args: { m: string; q: string }; Returns: Json };
-      overture_place_details: {
-        Args: { m: string; external_id_value: string };
-        Returns: Json;
+      ack_photo_cleanup: {
+        Args: { p_id: string; p_paths: string[] };
+        Returns: undefined;
       };
-      place_check_summary: { Args: { m: string }; Returns: Json };
       admin_snapshot: { Args: never; Returns: Json };
       community_command: { Args: { payload: Json }; Returns: Json };
-      record_anonymous_vote: {
-        Args: { p_target: string; p_token_hash: string; p_value: number };
-        Returns: Json;
+      expire_photo_uploads: { Args: never; Returns: string[] };
+      fail_place_photo: {
+        Args: { p_id: string; p_lease: string };
+        Returns: undefined;
       };
-      merge_anonymous_votes: {
-        Args: { p_token_hash: string };
-        Returns: Json;
+      finish_place_photo: {
+        Args: {
+          p_height: number;
+          p_id: string;
+          p_lease: string;
+          p_width: number;
+        };
+        Returns: boolean;
       };
       finish_provider: {
         Args: { ms: number; r: string; result: string };
@@ -633,22 +708,42 @@ export type Database = {
         Args: { external_id_value: string; mp: string; p: string; u: string };
         Returns: undefined;
       };
+      map_pending_places: { Args: { m: string }; Returns: Json };
+      map_place_for_map: { Args: { m: string; target: string }; Returns: Json };
       map_places_in_bounds: {
         Args: { e: number; m: string; n: number; s: number; w: number };
         Returns: Json;
       };
-      map_pending_places: { Args: { m: string }; Returns: Json };
-      map_place_for_map: { Args: { m: string; target: string }; Returns: Json };
-      my_proposals: { Args: { page_num: number }; Returns: Json };
       map_stats: { Args: { m: string }; Returns: Json };
       map_stats_all: {
         Args: never;
         Returns: {
+          contributor_count: number;
+          follower_count: number;
           map_id: string;
           place_count: number;
-          follower_count: number;
-          contributor_count: number;
         }[];
+      };
+      merge_anonymous_votes: { Args: { p_token_hash: string }; Returns: Json };
+      my_proposals: { Args: { page_num: number }; Returns: Json };
+      overture_place_details: {
+        Args: { external_id_value: string; m: string };
+        Returns: Json;
+      };
+      pending_map_place: { Args: { m: string }; Returns: boolean };
+      place_check_summary: { Args: { m: string }; Returns: Json };
+      record_anonymous_vote: {
+        Args: { p_target: string; p_token_hash: string; p_value: number };
+        Returns: Json;
+      };
+      reserve_place_photo: {
+        Args: {
+          p_caption: string;
+          p_id: string;
+          p_lease: string;
+          p_place: string;
+        };
+        Returns: Json;
       };
       reserve_provider: {
         Args: {
@@ -661,6 +756,10 @@ export type Database = {
         };
         Returns: string;
       };
+      reserve_search_operation: {
+        Args: { operation: string; u: string };
+        Returns: boolean;
+      };
       resolve_provider: {
         Args: { external_id_value: string; p: string };
         Returns: string;
@@ -671,6 +770,7 @@ export type Database = {
       };
       saved_place_cards: { Args: never; Returns: Json };
       search_internal_places: { Args: { m: string; q: string }; Returns: Json };
+      search_overture_places: { Args: { m: string; q: string }; Returns: Json };
       submit_proposal: { Args: { payload: Json }; Returns: string };
       submit_proposal_result: { Args: { payload: Json }; Returns: Json };
       submit_resolved_proposal: {

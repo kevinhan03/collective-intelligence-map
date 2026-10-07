@@ -13,7 +13,6 @@ export default async function Home() {
       b.place_count - a.place_count ||
       a.slug.localeCompare(b.slug),
   );
-  const featuredMaps = maps.slice(0, 4);
   const locationTerms = await getHomeLocationTerms(maps);
   return (
     <main id="main" className="page-wrap">
@@ -91,7 +90,7 @@ export default async function Home() {
               </p>
             )}
             <DesktopDiscovery
-              maps={featuredMaps}
+              maps={maps}
               locationTerms={locationTerms}
             />
           </div>

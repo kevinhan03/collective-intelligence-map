@@ -81,7 +81,9 @@ test("desktop header becomes solid after scrolling and restores at top", async (
 }) => {
   test.skip(isMobile);
   await page.setViewportSize({ width: 1440, height: 600 });
-  await page.goto("/");
+  // Home reserves footer space even on short screens; use a naturally
+  // scrollable page to exercise the shared header behavior.
+  await page.goto("/discover");
   await expect(
     page.getByRole("heading", { name: "Tokyo Fashion Store", exact: true }),
   ).toBeVisible();
@@ -100,6 +102,34 @@ test("desktop header becomes solid after scrolling and restores at top", async (
   await page.evaluate(() => window.scrollTo(0, 0));
   await expect(header).toHaveAttribute("data-scrolled", "false");
 });
+
+for (const viewport of [
+  { width: 1024, height: 600 },
+  { width: 1280, height: 720 },
+  { width: 1366, height: 768 },
+  { width: 1440, height: 600 },
+  { width: 1536, height: 864 },
+]) {
+  test(`home footer fits the ${viewport.width}x${viewport.height} viewport`, async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(isMobile);
+    await page.setViewportSize(viewport);
+    await page.goto("/");
+    await expect(page.getByRole("link", { name: "로그인", exact: true })).toBeVisible();
+    await expect(page.getByText("작은 발견이 모여, 더 나은 선택으로.", { exact: true })).toHaveCount(1);
+    const footer = page.locator("footer");
+    const [panelBox, footerBox] = await Promise.all([
+      page.locator("#communities").boundingBox(),
+      footer.boundingBox(),
+    ]);
+    expect(panelBox!.y + panelBox!.height).toBeLessThan(footerBox!.y);
+    expect(footerBox!.y + footerBox!.height).toBeLessThanOrEqual(viewport.height);
+    await expect(footer.getByRole("link", { name: "이용약관" })).toBeInViewport();
+    await expect(footer.getByRole("link", { name: "개인정보 처리방침" })).toBeInViewport();
+  });
+}
 
 test("mobile map search is optional and closing restores focus", async ({
   page,

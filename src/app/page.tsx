@@ -60,9 +60,6 @@ export default async function Home() {
                   함께 검증하며 지도 완성
                 </li>
               </ol>
-              <p className="mt-5 text-xs text-muted-foreground">
-                작은 발견이 모여, 더 나은 선택으로.
-              </p>
             </div>
           </div>
           <div

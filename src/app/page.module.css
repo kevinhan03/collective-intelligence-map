@@ -16,7 +16,8 @@
   .home {
     box-sizing: border-box;
     display: flex;
-    height: max(calc(100dvh - 98px), 780px);
+    height: calc(100dvh - 98px);
+    min-height: 0;
     flex-direction: column;
   }
 
@@ -37,6 +38,15 @@
   .communities {
     height: 100%;
     min-height: 0;
+  }
+
+  .desktopIntro {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .desktopIntro > * {
+    flex-shrink: 0;
   }
 
   .footer {

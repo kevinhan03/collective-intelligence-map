@@ -623,16 +623,22 @@ test("mobile map load failure keeps list navigation available", async ({
   isMobile,
 }) => {
   test.skip(!isMobile);
+  let blockedMapChunk = false;
   await page.route("**/chunks/*.js", async (route) => {
     const response = await route.fetch();
     const body = await response.text();
-    if (body.includes("function PreviewMap(")) await route.abort();
-    else await route.fulfill({ response });
+    // Production minifies function names; this accessible label remains in
+    // the lazy map renderer and lets us fail its real network request.
+    if (body.includes("가상 장소 지도 미리보기")) {
+      blockedMapChunk = true;
+      await route.abort();
+    } else await route.fulfill({ response });
   });
   await page.goto("/maps/tokyo-fashion");
   await expect(
     page.getByRole("button", { name: "목록으로 보기", exact: true }),
   ).toBeVisible();
+  expect(blockedMapChunk).toBe(true);
   await page
     .getByRole("button", { name: "목록으로 보기", exact: true })
     .click();

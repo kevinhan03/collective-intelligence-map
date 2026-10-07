@@ -2,6 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: true,
+  workers: process.env.CI ? 2 : undefined,
   reporter: "list",
   use: { baseURL: "http://127.0.0.1:3100", trace: "retain-on-failure" },
   projects: [
@@ -12,10 +13,10 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "npm run dev:preview",
+    command: "npm run start:e2e",
     url: "http://127.0.0.1:3100",
     reuseExistingServer: false,
     env: { PORT: "3100", NEXT_TEST_BUILD: "true", NEXT_PUBLIC_SITE_URL: "http://127.0.0.1:3100" },
-    timeout: 120000,
+    timeout: 180000,
   },
 });

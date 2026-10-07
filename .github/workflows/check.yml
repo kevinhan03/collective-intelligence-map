@@ -1,8 +1,19 @@
 name: MVP checks
-on: [push, pull_request]
+run-name: Checks · ${{ github.head_ref || github.ref_name }} · ${{ github.event_name }}
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: checks-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
 jobs:
   web:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -20,6 +31,7 @@ jobs:
           if-no-files-found: ignore
   database:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     services:
       postgres:
         image: postgis/postgis:17-3.5

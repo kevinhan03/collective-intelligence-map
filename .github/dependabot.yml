@@ -3,11 +3,25 @@ updates:
   - package-ecosystem: npm
     directory: /
     schedule:
-      interval: daily
+      interval: weekly
+      day: monday
       time: "00:00"
       timezone: Asia/Seoul
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
+    ignore:
+      # Major upgrades require a compatibility change, not an isolated bump.
+      - dependency-name: "*"
+        update-types: [version-update:semver-major]
     groups:
+      react:
+        patterns:
+          - react
+          - react-dom
+          - "@types/react"
+          - "@types/react-dom"
+        update-types:
+          - minor
+          - patch
       nextjs:
         patterns:
           - next

@@ -19,6 +19,7 @@
     "check:secrets": "node scripts/check-secrets.mjs",
     "local:setup": "node scripts/setup-local.mjs",
     "dev:preview": "node scripts/dev-preview.mjs",
+    "start:e2e": "node scripts/start-e2e.mjs",
     "build:local": "node scripts/run-local.mjs build",
     "start:local": "node scripts/run-local.mjs start",
     "check:deployment": "node scripts/check-deployment.mjs",

@@ -29,6 +29,8 @@ Read `provider-policies.md`. Add REST secrets and separate restricted renderer k
 - `npm run test:e2e`: keyless desktop/mobile flow; Playwright requires `npx playwright install chromium`.
 - `npm run test:db`: isolated local PostgreSQL/PostGIS database named `*_test`; `TEST_DATABASE_URL` override. Script drops/recreates application schemas in that test database only. Auth/Storage schemas are a test harness; it does not claim to verify real GoTrue/Storage service behavior.
 - Live Supabase auth/E2E needs the local stack and local test env; keep test credentials isolated.
+- `npm run test:e2e` builds an isolated demo into `.next-e2e` and serves it with `next start`. It clears Supabase credentials for both build and runtime. CI uses two browser workers; failures retain traces. `dev:preview` remains available for interactive development.
+- CI runs once per PR and on `main` pushes. Newer runs cancel superseded checks on the same branch. Dependabot groups React/React DOM/types together and checks routine versions weekly. Major version upgrades require an explicit compatibility change. Security updates and the six-hour production audit remain enabled.
 - `npm run start`: production build smoke check. Vercel uses standard Next.js build detection; configure env at build time and runtime.
 
 ## Observability / maintenance

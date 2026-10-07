@@ -1539,3 +1539,80 @@ button:not(:disabled),
     padding-top: 64px;
   }
 }
+
+.location-button {
+  background: #202731;
+  color: #f1f2ed;
+}
+.current-location-marker {
+  width: 18px;
+  height: 18px;
+  border: 3px solid white;
+  border-radius: 50%;
+  background: #2684ff;
+  box-shadow: 0 0 0 7px #2684ff40;
+}
+.selected-station-marker {
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: #174c91;
+  color: white;
+  font-size: 12px;
+  box-shadow: 0 2px 8px #0005;
+}
+.visit-view-switch {
+  display: none;
+}
+@media (max-width: 1023px) {
+  .visit-view-switch {
+    display: flex;
+    align-items: center;
+    width: fit-content;
+    gap: 4px;
+    padding: 4px;
+    margin: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--card);
+    position: relative;
+    z-index: 26;
+  }
+  .community-explorer[data-mobile-view="list"] .visit-view-switch {
+    position: sticky;
+    top: 64px;
+  }
+  .visit-view-switch button {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 7px 10px;
+    min-height: 36px;
+    border-radius: 8px;
+    font-size: 12px;
+  }
+  .visit-view-switch button[aria-pressed="true"] {
+    background: var(--primary);
+    color: var(--primary-foreground);
+  }
+  .community-explorer[data-mobile-view="map"] .visit-view-switch {
+    position: absolute;
+    top: 64px;
+    left: 0;
+  }
+  .community-explorer[data-mobile-view="map"]:has(
+      .explorer-toolbar[data-search-open="true"]
+    )
+    .visit-view-switch {
+    top: auto;
+    bottom: 260px;
+  }
+  .community-explorer[data-mobile-view="map"] .location-button {
+    top: 160px;
+    right: 12px;
+    font-size: 12px;
+  }
+  .mobile-place-list-button {
+    width: auto;
+    padding: 0 8px;
+  }
+}

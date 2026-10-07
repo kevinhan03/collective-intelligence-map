@@ -24,7 +24,8 @@
     "start:local": "node scripts/run-local.mjs start",
     "check:deployment": "node scripts/check-deployment.mjs",
     "test:photos:live": "node scripts/test-place-photos-live.mjs",
-    "photos:cleanup": "node scripts/cleanup-place-photos.mjs"
+    "photos:cleanup": "node scripts/cleanup-place-photos.mjs",
+    "stations:collect": "node scripts/stations/import.mjs"
   },
   "dependencies": {
     "@sun-typeface/suit": "2.0.5",

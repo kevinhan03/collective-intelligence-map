@@ -25,7 +25,7 @@ export default function PreviewMap({ places, selected, onSelect }: MapProps) {
           className="map-pin"
           data-selected={selected === p.id}
           data-status={p.status}
-          aria-label={`${p.name} 지도에서 선택 · 좋아요 ${p.positive}${p.status === "pending" ? " · 검토 대기" : ""}`}
+          aria-label={`${p.name} 지도에서 선택 · 주제 추천 ${p.positive}${p.status === "pending" ? " · 검토 대기" : ""}`}
           onClick={() => onSelect(p.id)}
           style={{
             left: `${18 + (p.lng - 139.69) * 1900}%`,

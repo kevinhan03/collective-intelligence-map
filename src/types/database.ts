@@ -9,6 +9,61 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      rail_station_regions: {
+        Row: {
+          id: string;
+          bounds: unknown;
+          revision: string;
+          updated_at: string | null;
+        };
+        Insert: {
+          id: string;
+          bounds: unknown;
+          revision?: string;
+          updated_at?: string | null;
+        };
+        Update: {
+          bounds?: unknown;
+          revision?: string;
+          updated_at?: string | null;
+        };
+        Relationships: [];
+      };
+      rail_stations: {
+        Row: {
+          id: string;
+          region_id: string;
+          name: string;
+          local_name: string;
+          kind: string;
+          lat: number;
+          lng: number;
+          location: unknown;
+          source: string;
+          updated_at: string;
+        };
+        Insert: {
+          id: string;
+          region_id: string;
+          name: string;
+          local_name: string;
+          kind: string;
+          lat: number;
+          lng: number;
+          source?: string;
+          updated_at?: string;
+        };
+        Update: {
+          name?: string;
+          local_name?: string;
+          kind?: string;
+          lat?: number;
+          lng?: number;
+          source?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       anonymous_map_place_votes: {
         Row: {
           created_at: string;
@@ -680,6 +735,11 @@ export type Database = {
       };
     };
     Functions: {
+      nearby_rail_stations: { Args: { p: string }; Returns: Json };
+      replace_rail_station_region: {
+        Args: { r: string; stations: Json };
+        Returns: undefined;
+      };
       ack_photo_cleanup: {
         Args: { p_id: string; p_paths: string[] };
         Returns: undefined;

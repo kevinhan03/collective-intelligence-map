@@ -181,7 +181,7 @@ export default function GoogleMap({
       const marker = new google.maps.Marker({
         map: map.current,
         position: { lat: p.lat, lng: p.lng },
-        title: `${p.name} · 좋아요 ${p.positive}${p.status === "pending" ? " · 검토 대기" : ""}`,
+        title: `${p.name} · 주제 추천 ${p.positive}${p.status === "pending" ? " · 검토 대기" : ""}`,
         icon: {
           url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
           scaledSize: new google.maps.Size(size, (size * 50) / 44),

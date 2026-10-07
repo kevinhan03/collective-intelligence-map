@@ -104,3 +104,14 @@
   outline: 2px solid var(--primary);
   outline-offset: -4px;
 }
+
+.heading {
+  flex: 1;
+  min-width: 0;
+}
+.metadata {
+  margin-top: 6px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #c3cbd4;
+}

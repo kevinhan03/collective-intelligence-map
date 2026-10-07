@@ -54,7 +54,26 @@ export type Viewer = {
   bio: string;
   avatar_path: string | null;
 };
-export type Sort = "relevance" | "newest" | "verified" | "controversial" | "popular";
+export type Sort =
+  | "relevance"
+  | "newest"
+  | "verified"
+  | "controversial"
+  | "popular"
+  | "distance";
+export type RailStation = {
+  id: string;
+  name: string;
+  local_name: string;
+  kind: "subway" | "train";
+  lat: number;
+  lng: number;
+  distance_m: number;
+};
+export type NearbyStations = {
+  status: "ready" | "unsupported" | "preparing";
+  stations: RailStation[];
+};
 export type RendererConfig = {
   provider: "google" | "kakao" | "maplibre" | "preview";
   key: string;

@@ -1,4 +1,5 @@
 import type { Bounds, MapPlace, Sort } from "./types";
+import { distanceMeters, type Coordinate } from "./visit";
 export function wilson(positive: number, negative: number) {
   const n = positive + negative;
   if (!n) return 0;
@@ -17,12 +18,18 @@ export function controversy(positive: number, negative: number) {
   return total * (Math.min(positive, negative) / Math.max(positive, negative));
 }
 export function isNew(place: MapPlace) {
-  return Date.now() - new Date(place.created_at).getTime() < 1000 * 60 * 60 * 48;
+  return (
+    Date.now() - new Date(place.created_at).getTime() < 1000 * 60 * 60 * 48
+  );
 }
 export function isControversial(place: MapPlace) {
   const total = place.positive + place.negative;
   if (total < 5) return false;
-  return Math.min(place.positive, place.negative) / Math.max(place.positive, place.negative) >= 0.5;
+  return (
+    Math.min(place.positive, place.negative) /
+      Math.max(place.positive, place.negative) >=
+    0.5
+  );
 }
 export function isVerified(place: MapPlace) {
   return (
@@ -31,18 +38,26 @@ export function isVerified(place: MapPlace) {
     wilson(place.positive, place.negative) >= 0.7
   );
 }
-export function sortPlaces(places: MapPlace[], sort: Sort) {
+export function sortPlaces(
+  places: MapPlace[],
+  sort: Sort,
+  origin?: Coordinate | null,
+) {
   return [...places].sort((a, b) => {
     const score =
-      sort === "newest"
-        ? b.created_at.localeCompare(a.created_at)
-        : sort === "verified"
-          ? (b.last_verified_at ?? "").localeCompare(a.last_verified_at ?? "")
-          : sort === "controversial"
-            ? controversy(b.positive, b.negative) - controversy(a.positive, a.negative)
-            : sort === "popular"
-              ? b.positive - a.positive
-              : wilson(b.positive, b.negative) - wilson(a.positive, a.negative);
+      sort === "distance" && origin
+        ? distanceMeters(origin, a) - distanceMeters(origin, b)
+        : sort === "newest"
+          ? b.created_at.localeCompare(a.created_at)
+          : sort === "verified"
+            ? (b.last_verified_at ?? "").localeCompare(a.last_verified_at ?? "")
+            : sort === "controversial"
+              ? controversy(b.positive, b.negative) -
+                controversy(a.positive, a.negative)
+              : sort === "popular"
+                ? b.positive - a.positive
+                : wilson(b.positive, b.negative) -
+                  wilson(a.positive, a.negative);
     return score || a.id.localeCompare(b.id);
   });
 }

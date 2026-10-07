@@ -23,7 +23,14 @@ create table storage.objects(id uuid primary key default gen_random_uuid(),bucke
 alter table storage.objects enable row level security;
 create function storage.foldername(text) returns text[] language sql immutable as $$ select string_to_array($1,'/') $$;`);
   for (const f of (await fs.readdir("supabase/migrations")).sort())
-    await c.query(await fs.readFile(f.endsWith("_place_photos.sql") ? "docs/sql/add-place-photos.sql" : `supabase/migrations/${f}`, "utf8"));
+    await c.query(
+      await fs.readFile(
+        f.endsWith("_place_photos.sql")
+          ? "docs/sql/add-place-photos.sql"
+          : `supabase/migrations/${f}`,
+        "utf8",
+      ),
+    );
   await c.query(await fs.readFile("supabase/seed.sql", "utf8"));
   console.log("PASS: migrations and seed apply to PostgreSQL/PostGIS");
   const a = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
@@ -61,14 +68,42 @@ create function storage.foldername(text) returns text[] language sql immutable a
       ]),
     );
   }
-  await assert.rejects(() => as(a, () => c.query("select public.reserve_search_operation($1,'gemini')", [a])));
-  for (let i=0;i<31;i++) {
-    const result = await as(null, () => c.query("select public.reserve_search_operation($1,'gemini') allowed", [a]), "service_role");
-    assert.equal(result.rows[0].allowed, i<30);
+  await assert.rejects(() =>
+    as(a, () =>
+      c.query("select public.reserve_search_operation($1,'gemini')", [a]),
+    ),
+  );
+  for (let i = 0; i < 31; i++) {
+    const result = await as(
+      null,
+      () =>
+        c.query("select public.reserve_search_operation($1,'gemini') allowed", [
+          a,
+        ]),
+      "service_role",
+    );
+    assert.equal(result.rows[0].allowed, i < 30);
   }
-  await c.query("update private.search_operation_limits set count=1000 where scope='global' and operation='gemini'");
-  assert.equal((await as(null, () => c.query("select public.reserve_search_operation($1,'gemini') allowed", [b]), "service_role")).rows[0].allowed, false);
-  console.log("PASS: service-only search reservations enforce per-user and global caps");
+  await c.query(
+    "update private.search_operation_limits set count=1000 where scope='global' and operation='gemini'",
+  );
+  assert.equal(
+    (
+      await as(
+        null,
+        () =>
+          c.query(
+            "select public.reserve_search_operation($1,'gemini') allowed",
+            [b],
+          ),
+        "service_role",
+      )
+    ).rows[0].allowed,
+    false,
+  );
+  console.log(
+    "PASS: service-only search reservations enforce per-user and global caps",
+  );
   const proposal = {
     mapId: map,
     name: "Test independent boutique",
@@ -130,19 +165,21 @@ create function storage.foldername(text) returns text[] language sql immutable a
   await as(
     null,
     () =>
-      c.query(
-        "select public.record_anonymous_vote($1,$2,$3::smallint)",
-        [pid, anonymousTokenHash, 1],
-      ),
+      c.query("select public.record_anonymous_vote($1,$2,$3::smallint)", [
+        pid,
+        anonymousTokenHash,
+        1,
+      ]),
     "service_role",
   );
   await as(
     null,
     () =>
-      c.query(
-        "select public.record_anonymous_vote($1,$2,$3::smallint)",
-        [pid, anonymousTokenHash, -1],
-      ),
+      c.query("select public.record_anonymous_vote($1,$2,$3::smallint)", [
+        pid,
+        anonymousTokenHash,
+        -1,
+      ]),
     "service_role",
   );
   assert.equal(
@@ -169,10 +206,11 @@ create function storage.foldername(text) returns text[] language sql immutable a
   await as(
     null,
     () =>
-      c.query(
-        "select public.record_anonymous_vote($1,$2,$3::smallint)",
-        [pid, anonymousTokenHash, 0],
-      ),
+      c.query("select public.record_anonymous_vote($1,$2,$3::smallint)", [
+        pid,
+        anonymousTokenHash,
+        0,
+      ]),
     "service_role",
   );
   console.log(
@@ -454,6 +492,7 @@ create function storage.foldername(text) returns text[] language sql immutable a
   ).rows[0].data;
   assert.equal(checks.visited, 0);
   assert.equal(checks.open, 1);
+  assert.ok(checks.last_open_checked_at);
   await assert.rejects(
     command(member, { action: "verify_place", id: pending, kind: "visited" }),
   );
@@ -914,6 +953,116 @@ create function storage.foldername(text) returns text[] language sql immutable a
   console.log(
     "PASS: invisible-place upload denial, canonical place merge and abandoned-upload expiry/cleanup acknowledgement",
   );
+
+  // Canonical station query: PostGIS radius, public visibility and service-only writes.
+  await c.query("begin");
+  try {
+    const placeId = "22222222-2222-4222-8222-222222222223";
+    const mapPlaceId = "22222222-2222-4222-8222-222222222224";
+    await c.query(
+      "insert into public.places(id,name,address,category,location,country,city,status) values($1,'Station test','Tokyo','test',extensions.st_setsrid(extensions.st_makepoint(139.7,35.66),4326),'JP','Tokyo','active')",
+      [placeId],
+    );
+    await c.query(
+      "insert into public.map_places(id,map_id,place_id,added_by,rationale,status) values($1,$2,$3,$4,'Station test','approved')",
+      [mapPlaceId, map, placeId, a],
+    );
+    assert.equal(
+      (
+        await c.query("select public.nearby_rail_stations($1) result", [
+          placeId,
+        ])
+      ).rows[0].result.status,
+      "preparing",
+    );
+    const stations = [0, 1, 2, 3, 4].map((i) => ({
+      id: `test:station:${i}`,
+      name: `Station ${i}`,
+      local_name: `Station ${i}`,
+      kind: i % 2 ? "train" : "subway",
+      lat: 35.66 + i * 0.001,
+      lng: 139.7,
+    }));
+    stations.push({
+      id: "test:distant",
+      name: "Distant",
+      local_name: "Distant",
+      kind: "train",
+      lat: 35.69,
+      lng: 139.7,
+    });
+    await c.query(
+      "select public.replace_rail_station_region('tokyo',$1::jsonb)",
+      [JSON.stringify(stations)],
+    );
+    const beforeRevision = (
+      await c.query(
+        "select revision from public.rail_station_regions where id='tokyo'",
+      )
+    ).rows[0].revision;
+    await c.query("savepoint bad_snapshot");
+    await assert.rejects(() =>
+      c.query("select public.replace_rail_station_region('tokyo',$1::jsonb)", [
+        JSON.stringify([{ ...stations[0], kind: "bus" }]),
+      ]),
+    );
+    await c.query("rollback to savepoint bad_snapshot");
+    assert.equal(
+      (
+        await c.query(
+          "select revision from public.rail_station_regions where id='tokyo'",
+        )
+      ).rows[0].revision,
+      beforeRevision,
+    );
+    await c.query("set local role anon");
+    const result = (
+      await c.query("select public.nearby_rail_stations($1) result", [placeId])
+    ).rows[0].result;
+    assert.equal(result.status, "ready");
+    assert.equal(result.stations.length, 3);
+    assert.equal(result.stations[0].distance_m, 0);
+    assert.ok(
+      result.stations[1].distance_m > 100 &&
+        result.stations[1].distance_m < 120,
+    );
+    assert.ok(result.stations[2].distance_m > result.stations[1].distance_m);
+    await c.query("reset role");
+    for (const role of ["anon", "authenticated"]) {
+      await c.query("savepoint write_denied");
+      await c.query(`set local role ${role}`);
+      await assert.rejects(() =>
+        c.query(
+          "select public.replace_rail_station_region('tokyo',$1::jsonb)",
+          [JSON.stringify(stations)],
+        ),
+      );
+      await c.query("rollback to savepoint write_denied");
+      await c.query("savepoint write_denied");
+      await c.query(`set local role ${role}`);
+      await assert.rejects(() => c.query("delete from public.rail_stations"));
+      await c.query("rollback to savepoint write_denied");
+    }
+    await c.query(
+      "update public.map_places set status='archived' where id=$1",
+      [mapPlaceId],
+    );
+    await c.query("set local role anon");
+    assert.equal(
+      (
+        await c.query("select public.nearby_rail_stations($1) result", [
+          placeId,
+        ])
+      ).rows[0].result,
+      null,
+    );
+    await c.query("reset role");
+    console.log(
+      "PASS: station radius/limit/order, public visibility, RLS and atomic invalid snapshot rollback",
+    );
+  } finally {
+    await c.query("rollback");
+  }
 
   const functions = (
     await c.query(

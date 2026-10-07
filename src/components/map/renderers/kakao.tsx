@@ -153,7 +153,7 @@ export default function KakaoMap(props: MapProps) {
       button.dataset.status = p.status;
       button.setAttribute(
         "aria-label",
-        `${p.name} · 좋아요 ${p.positive}${p.status === "pending" ? " · 검토 대기" : ""}`,
+        `${p.name} · 주제 추천 ${p.positive}${p.status === "pending" ? " · 검토 대기" : ""}`,
       );
       const span = document.createElement("span");
       if (p.status === "pending") span.textContent = "···";

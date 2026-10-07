@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { Bookmark, ChevronUp, ThumbsDown, ThumbsUp, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { MapPlace } from "@/domain/types";
+import { NearbyStationInfo } from "./nearby-stations";
+import type { MapPlace, RailStation } from "@/domain/types";
 import { placeArea } from "@/domain/place-location";
 
 export function PlacePreview({
@@ -18,6 +19,7 @@ export function PlacePreview({
   onOpenDetail,
   onVote,
   onSave,
+  onStationSelect,
 }: {
   place: MapPlace;
   saved: boolean;
@@ -30,6 +32,7 @@ export function PlacePreview({
   onOpenDetail: () => void;
   onVote: (value: 1 | -1) => void;
   onSave: () => void;
+  onStationSelect: (station: RailStation) => void;
 }) {
   const total = place.positive + place.negative;
   return (
@@ -56,6 +59,13 @@ export function PlacePreview({
           <X size={18} />
         </Button>
       </div>
+      <NearbyStationInfo
+        key={place.place_id}
+        place={place}
+        compact
+        demo={demo}
+        onSelect={onStationSelect}
+      />
       <p className="mt-2 line-clamp-2 text-sm leading-5 text-muted-foreground">
         {place.rationale}
       </p>

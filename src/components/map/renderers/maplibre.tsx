@@ -137,7 +137,7 @@ export default function MapLibreMap(props: MapProps) {
         "aria-label",
         clustered
           ? button.title
-          : `${p.name} · 좋아요 ${p.positive}${p.status === "pending" ? " · 검토 대기" : ""}`,
+          : `${p.name} · 주제 추천 ${p.positive}${p.status === "pending" ? " · 검토 대기" : ""}`,
       );
       button.className = "map-marker";
       button.dataset.cluster = String(clustered);
@@ -167,7 +167,7 @@ export default function MapLibreMap(props: MapProps) {
     return () => markers.forEach((m) => m.remove());
   }, [places, selected, apiKey, viewRevision]);
   useEffect(() => {
-    if (!props.focusRequest) return;
+    if (!props.focusRequest || props.stationFocus) return;
     const { places, selected, onFocusComplete } = latest.current;
     const p = places.find((place) => place.id === selected);
     const map = instance.current;
@@ -191,7 +191,48 @@ export default function MapLibreMap(props: MapProps) {
       map.off("moveend", onArrival);
       if (modalTimer) clearTimeout(modalTimer);
     };
-  }, [props.focusRequest]);
+  }, [props.focusRequest, props.stationFocus]);
+  useEffect(() => {
+    const map = instance.current;
+    const point = props.userLocation;
+    if (!map || !point || loadedStyle !== apiKey) return;
+    const element = document.createElement("span");
+    element.className = "current-location-marker";
+    element.setAttribute("role", "img");
+    element.setAttribute("aria-label", "현재 위치");
+    const marker = new maplibregl.Marker({ element })
+      .setLngLat([point.lng, point.lat])
+      .addTo(map);
+    map.flyTo({ center: [point.lng, point.lat], zoom: 14, essential: true });
+    return () => {
+      marker.remove();
+    };
+  }, [props.userLocation, loadedStyle, apiKey]);
+  useEffect(() => {
+    const map = instance.current;
+    const focus = props.stationFocus;
+    if (!map || !focus || loadedStyle !== apiKey) return;
+    const element = document.createElement("span");
+    element.className = "selected-station-marker";
+    element.textContent = `🚉 ${focus.station.name}`;
+    element.setAttribute("role", "img");
+    element.setAttribute("aria-label", `선택 역 ${focus.station.name}`);
+    const marker = new maplibregl.Marker({ element })
+      .setLngLat([focus.station.lng, focus.station.lat])
+      .addTo(map);
+    const bounds = new maplibregl.LngLatBounds(
+      [focus.place.lng, focus.place.lat],
+      [focus.place.lng, focus.place.lat],
+    );
+    bounds.extend([focus.station.lng, focus.station.lat]);
+    map.fitBounds(bounds, {
+      padding: { top: 100, left: 70, right: 70, bottom: 280 },
+      maxZoom: 16,
+    });
+    return () => {
+      marker.remove();
+    };
+  }, [props.stationFocus, loadedStyle, apiKey]);
   return (
     <div className="relative h-full min-h-[420px]">
       <div ref={container} style={{ position: "absolute", inset: 0 }} />

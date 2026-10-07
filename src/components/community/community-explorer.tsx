@@ -1,4 +1,10 @@
 "use client";
+import { ShareButton } from "./share-button";
+import {
+  distanceMeters,
+  formatDistance,
+  type Coordinate,
+} from "@/domain/visit";
 import { useMobile } from "@/hooks/use-mobile";
 import { useViewerState } from "./viewer-state";
 import Link from "next/link";
@@ -49,6 +55,7 @@ import { formatLocation } from "@/domain/location";
 import { placeArea, placeCity } from "@/domain/place-location";
 import { loginHref } from "@/domain/login-return";
 import type {
+  RailStation,
   Bounds,
   MapPlace,
   RendererConfig,
@@ -57,6 +64,7 @@ import type {
   Viewer,
 } from "@/domain/types";
 const sortOptions: { value: Sort; label: string }[] = [
+  { value: "distance", label: "가까운 순" },
   { value: "relevance", label: "추천순" },
   { value: "newest", label: "최신순" },
   { value: "controversial", label: "논쟁중" },
@@ -85,7 +93,69 @@ export function CommunityExplorer({
   demo: boolean;
 }) {
   const mobile = useMobile();
+  const [userLocation, setUserLocation] = useState<Coordinate | null>(null);
+  const [stationFocus, setStationFocus] = useState<{
+    station: RailStation;
+    place: Coordinate;
+  } | null>(null);
+  const [locating, setLocating] = useState(false);
+  const locationRequest = useRef(0);
+  function locate(nextSort?: Sort) {
+    if (!navigator.geolocation) {
+      setError("이 브라우저에서는 위치 확인을 지원하지 않아요.");
+      return;
+    }
+    const request = ++locationRequest.current;
+    setLocating(true);
+    setError("");
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        if (request !== locationRequest.current) return;
+        setLocating(false);
+        setStationFocus(null);
+        setUserLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        });
+        if (nextSort) {
+          setSort(nextSort);
+          setPage(1);
+        }
+      },
+      () => {
+        if (request !== locationRequest.current) return;
+        setLocating(false);
+        setError(
+          "위치를 확인하지 못했어요. 위치 권한을 확인한 뒤 내 위치 버튼으로 다시 시도해 주세요.",
+        );
+      },
+      { timeout: 10000, maximumAge: 60000, enableHighAccuracy: false },
+    );
+  }
+  function changeSort(value: Sort) {
+    if (value === "distance" && !userLocation) {
+      locate(value);
+      return;
+    }
+    setSort(value);
+    setPage(1);
+  }
+  function selectStation(station: RailStation, place: MapPlace) {
+    setStationFocus({ station, place: { lat: place.lat, lng: place.lng } });
+    setDetailId(null);
+    if (mobile) changeView("map");
+  }
+
   const [mobileView, setMobileView] = useState<"list" | "map">("map");
+  const listScroll = useRef(0);
+  function changeView(view: "list" | "map") {
+    if (mobileView === "list") listScroll.current = window.scrollY;
+    setMobileView(view);
+    if (view === "list")
+      requestAnimationFrame(() =>
+        window.scrollTo({ top: listScroll.current, behavior: "instant" }),
+      );
+  }
   const [searchOpen, setSearchOpen] = useState(false);
   const searchInput = useRef<HTMLInputElement>(null);
   const explorerRoot = useRef<HTMLElement>(null);
@@ -174,8 +244,9 @@ export function CommunityExplorer({
               .includes(query.toLowerCase()),
         ),
         sort,
+        userLocation ?? undefined,
       ),
-    [places, query, sort, region, mobile],
+    [places, query, sort, region, mobile, userLocation],
   );
   const regions = useMemo(
     () =>
@@ -207,6 +278,7 @@ export function CommunityExplorer({
     return () => window.clearTimeout(timer);
   }, [mobile, activePreviewId, detailId, previewId, region]);
   const selectPreview = (id: string) => {
+    setStationFocus(null);
     setSelected(id);
     setPreviewId(id);
     setFocusRequest((request) => request + 1);
@@ -349,6 +421,7 @@ export function CommunityExplorer({
   };
   const focusPlace = useCallback(
     (id: string) => {
+      setStationFocus(null);
       setSelected(id);
       if (mobile) {
         if (mobileView === "map") {
@@ -470,6 +543,13 @@ export function CommunityExplorer({
           </Button>
           <div className="map-hero-actions flex gap-2">
             <Button
+              variant="outline"
+              aria-label={`${map.title} 지도 정보 보기`}
+              onClick={() => setInfoOpen(true)}
+            >
+              <Info size={14} /> 지도 정보
+            </Button>
+            <Button
               variant={myState.followed ? "secondary" : "outline"}
               disabled={busy}
               onClick={toggleFollow}
@@ -531,6 +611,7 @@ export function CommunityExplorer({
                 </Button>
               </DialogClose>
             </div>
+            <ShareButton path={`/maps/${map.slug}`} title={map.title} />
             <DialogDescription className="text-sm leading-6">
               {map.description}
             </DialogDescription>
@@ -570,6 +651,45 @@ export function CommunityExplorer({
           </div>
         </DialogContent>
       </Dialog>
+      <div
+        className="visit-view-switch flex rounded-xl border bg-card p-0.5 lg:hidden"
+        role="group"
+        aria-label="장소 보기 방식"
+      >
+        <button
+          aria-label="목록 보기"
+          aria-pressed={mobileView === "list"}
+          aria-controls="explorer-list"
+          onClick={() => {
+            changeView("list");
+            trackCommunityEvent("community_view_changed", {
+              provider: config.provider,
+              view: "list",
+            });
+          }}
+        >
+          <List size={17} aria-hidden="true" />
+          <span>목록</span>
+        </button>
+        <button
+          aria-label="지도 보기"
+          aria-pressed={mobileView === "map"}
+          aria-controls="explorer-map"
+          onClick={() => {
+            changeView("map");
+            trackCommunityEvent("community_view_changed", {
+              provider: config.provider,
+              view: "map",
+            });
+          }}
+        >
+          <MapIcon size={17} aria-hidden="true" />
+          <span>지도</span>
+        </button>
+        <span className="px-2 text-xs text-muted-foreground">
+          {filtered.length}곳
+        </span>
+      </div>
       <div
         data-search-open={searchOpen}
         className="glass-toolbar explorer-toolbar flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3 md:px-9"
@@ -641,7 +761,7 @@ export function CommunityExplorer({
                 className="sort-chip"
                 aria-pressed={sort === option.value}
                 onClick={() => {
-                  setSort(option.value);
+                  changeSort(option.value);
                   trackCommunityEvent("place_sort_changed", {
                     provider: config.provider,
                     sort: option.value,
@@ -679,7 +799,7 @@ export function CommunityExplorer({
               aria-label="장소 정렬"
               value={sort}
               onChange={(event) => {
-                setSort(event.target.value as Sort);
+                changeSort(event.target.value as Sort);
                 setPage(1);
                 setPreviewId(null);
                 trackCommunityEvent("place_sort_changed", {
@@ -706,42 +826,6 @@ export function CommunityExplorer({
         >
           <X size={18} />
         </button>
-        <div
-          className="mobile-view-switch flex rounded-xl border bg-card p-0.5 lg:hidden"
-          role="group"
-          aria-label="장소 보기 방식"
-        >
-          <button
-            aria-label="목록 보기"
-            aria-pressed={mobileView === "list"}
-            aria-controls="explorer-list"
-            onClick={() => {
-              setMobileView("list");
-              trackCommunityEvent("community_view_changed", {
-                provider: config.provider,
-                view: "list",
-              });
-            }}
-          >
-            <List size={17} aria-hidden="true" />
-            <span>목록</span>
-          </button>
-          <button
-            aria-label="지도 보기"
-            aria-pressed={mobileView === "map"}
-            aria-controls="explorer-map"
-            onClick={() => {
-              setMobileView("map");
-              trackCommunityEvent("community_view_changed", {
-                provider: config.provider,
-                view: "map",
-              });
-            }}
-          >
-            <MapIcon size={17} aria-hidden="true" />
-            <span>지도</span>
-          </button>
-        </div>
         {pendingPlaces.length > 0 && (
           <Button
             size="sm"
@@ -837,6 +921,12 @@ export function CommunityExplorer({
                 data-selected={selected === p.id}
                 className="place-glass-card group cursor-pointer p-3 transition-colors"
               >
+                {userLocation && (
+                  <p className="mb-1 text-xs text-muted-foreground">
+                    내 위치에서 직선거리{" "}
+                    {formatDistance(distanceMeters(userLocation, p))}
+                  </p>
+                )}
                 <div className="flex items-start gap-2">
                   <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-secondary text-[11px] font-semibold text-primary">
                     {i + 1}
@@ -965,7 +1055,9 @@ export function CommunityExplorer({
                 </Button>
               )}
               <Button asChild variant="outline" className="mt-5">
-                <Link href={`/maps/${map.slug}/submit`} prefetch={false}>장소 제안하기</Link>
+                <Link href={`/maps/${map.slug}/submit`} prefetch={false}>
+                  장소 제안하기
+                </Link>
               </Button>
             </div>
           )}
@@ -986,7 +1078,9 @@ export function CommunityExplorer({
         >
           <MapCanvas
             key={mobile ? `mobile-${region}` : "desktop"}
-            onFallback={mobile ? () => setMobileView("list") : undefined}
+            onFallback={mobile ? () => changeView("list") : undefined}
+            userLocation={userLocation}
+            stationFocus={stationFocus}
             places={[...filtered, ...pendingPlaces]}
             selected={mobile ? activePreviewId : selected}
             onSelect={(id) => {
@@ -1003,6 +1097,15 @@ export function CommunityExplorer({
             onBoundsChange={onBoundsChange}
             config={config}
           />
+          <Button
+            variant="outline"
+            className="location-button absolute top-28 right-3 z-20 shadow-lg"
+            disabled={locating}
+            onClick={() => locate()}
+          >
+            <MapPin size={14} />
+            {locating ? "위치 확인 중…" : "내 위치"}
+          </Button>
           {!mobile && config.provider === "maplibre" && places.length > 1 && (
             <p className="pointer-events-none absolute bottom-20 left-4 z-10 rounded-full bg-card/90 px-3 py-2 text-xs text-foreground shadow-lg lg:bottom-4">
               숫자 핀을 누르면 장소를 확대할 수 있어요.
@@ -1021,7 +1124,11 @@ export function CommunityExplorer({
           {mobile ? (
             filtered.length ? (
               <MobilePlaceCarousel
-                onList={() => setMobileView("list")}
+                demo={demo}
+                userLocation={userLocation}
+                onStationSelect={(station, place) =>
+                  selectStation(station, place)
+                }
                 places={filtered}
                 activeId={activePreviewId}
                 onSelect={selectPreview}
@@ -1037,8 +1144,9 @@ export function CommunityExplorer({
               <div className="mobile-map-empty" role="status">
                 <p>조건에 맞는 장소가 없어요.</p>
                 <button
+                  aria-label="빈 결과를 목록으로 보기"
                   className="text-sm underline"
-                  onClick={() => setMobileView("list")}
+                  onClick={() => changeView("list")}
                 >
                   목록 보기
                 </button>
@@ -1055,6 +1163,9 @@ export function CommunityExplorer({
             )
           ) : previewPlace ? (
             <PlacePreview
+              onStationSelect={(station) =>
+                selectStation(station, previewPlace)
+              }
               place={previewPlace}
               loginHref={loginHref(
                 `/maps/${map.slug}?place=${encodeURIComponent(previewPlace.place_id)}`,
@@ -1097,6 +1208,10 @@ export function CommunityExplorer({
         </section>
         <PlaceDetail
           key={detailId ?? "closed"}
+          sharePath={`/maps/${map.slug}${selectedPlace ? `?place=${encodeURIComponent(selectedPlace.place_id)}` : ""}`}
+          onStationSelect={(station) => {
+            if (selectedPlace) selectStation(station, selectedPlace);
+          }}
           place={selectedPlace}
           loginHref={loginHref(
             `/maps/${map.slug}${selectedPlace ? `?place=${encodeURIComponent(selectedPlace.place_id)}` : ""}`,

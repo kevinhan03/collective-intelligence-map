@@ -12,10 +12,12 @@ export function PlaceChecks({
   id,
   enabled,
   demo,
+  onChange,
 }: {
   id: string;
   enabled: boolean;
   demo: boolean;
+  onChange?: () => void;
 }) {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [busy, setBusy] = useState(false);
@@ -58,6 +60,7 @@ export function PlaceChecks({
                   kind,
                 });
                 setRevision((v) => v + 1);
+                onChange?.();
                 setMessage("확인해 주셔서 고마워요.");
               } catch (e) {
                 setMessage((e as Error).message);

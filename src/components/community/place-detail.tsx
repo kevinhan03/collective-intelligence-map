@@ -5,6 +5,9 @@ import Link from "next/link";
 import { PlacePanel } from "./place-panel";
 import { PlacePhotos } from "./place-photos";
 import { PlaceChecks } from "./place-checks";
+import { ShareButton } from "./share-button";
+import { NearbyStationInfo } from "./nearby-stations";
+import { OperationSummary } from "./operation-summary";
 import { useEffect, useState } from "react";
 import {
   Bookmark,
@@ -18,7 +21,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import type { Comment, MapPlace, Viewer } from "@/domain/types";
+import type { Comment, MapPlace, Viewer, RailStation } from "@/domain/types";
 import { placeArea } from "@/domain/place-location";
 import { post } from "./api";
 export function PlaceDetail({
@@ -30,6 +33,8 @@ export function PlaceDetail({
   saved,
   onChange,
   demo,
+  sharePath,
+  onStationSelect,
 }: {
   place: MapPlace | null;
   onClose: () => void;
@@ -39,7 +44,10 @@ export function PlaceDetail({
   saved: boolean;
   onChange: () => void;
   demo: boolean;
+  sharePath: string;
+  onStationSelect: (station: RailStation) => void;
 }) {
+  const [checksRevision, setChecksRevision] = useState(0);
   const mobile = useMobile();
   const [savedOverride, setSavedOverride] = useState<boolean | null>(null);
   const savedValue = savedOverride ?? saved;
@@ -127,6 +135,19 @@ export function PlaceDetail({
               </p>
             )}
             <p className="text-sm text-muted-foreground">{place.address}</p>
+            <OperationSummary
+              key={place.id}
+              id={place.id}
+              demo={demo}
+              revision={checksRevision}
+            />
+            <NearbyStationInfo
+              key={place.place_id}
+              place={place}
+              demo={demo}
+              onSelect={onStationSelect}
+            />
+            <ShareButton path={sharePath} title={place.name} />
           </header>
           <PlacePhotos
             key={place.place_id}
@@ -342,7 +363,12 @@ export function PlaceDetail({
             </form>
           </ParticipationSection>
           <ParticipationSection mobile={mobile} title="최근 방문·운영 정보">
-            <PlaceChecks id={place.id} enabled={enabled} demo={demo} />
+            <PlaceChecks
+              id={place.id}
+              enabled={enabled}
+              demo={demo}
+              onChange={() => setChecksRevision((v) => v + 1)}
+            />
           </ParticipationSection>
         </div>
         <div className="place-save-bar border-t bg-card p-4">

@@ -1,5 +1,10 @@
-import type { Bounds, MapPlace } from "@/domain/types";
+import type { Bounds, MapPlace, RailStation } from "@/domain/types";
 export type MapProps = {
+  userLocation?: { lat: number; lng: number } | null;
+  stationFocus?: {
+    station: RailStation;
+    place: { lat: number; lng: number };
+  } | null;
   places: MapPlace[];
   selected: string | null;
   onFallback?: () => void;

@@ -1,3 +1,4 @@
+import { homeMapFirst } from "@/domain/map-order";
 import Link from "next/link";
 import { MobileDiscovery } from "@/components/community/mobile-discovery";
 import { DesktopDiscovery } from "@/components/community/desktop-discovery";
@@ -7,12 +8,7 @@ import { configured } from "@/lib/supabase/server";
 import { Badge } from "@/components/ui/badge";
 import styles from "./page.module.css";
 export default async function Home() {
-  const maps = [...(await getMaps())].sort(
-    (a, b) =>
-      b.follower_count - a.follower_count ||
-      b.place_count - a.place_count ||
-      a.slug.localeCompare(b.slug),
-  );
+  const maps = [...(await getMaps())].sort(homeMapFirst);
   const locationTerms = await getHomeLocationTerms(maps);
   return (
     <main id="main" className={`page-wrap ${styles.home}`}>
@@ -22,21 +18,25 @@ export default async function Home() {
         demo={!configured()}
       />
       <div className={`hidden ${styles.desktop}`}>
-        <section className={`${styles.desktopSection} grid items-start gap-10 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] xl:gap-16`}>
-          <div className={`${styles.intro} ${styles.desktopIntro} flex min-w-0 flex-col pt-5`}>
+        <section
+          className={`${styles.desktopSection} grid items-start gap-10 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] xl:gap-16`}
+        >
+          <div
+            className={`${styles.intro} ${styles.desktopIntro} flex min-w-0 flex-col pt-5`}
+          >
             <Badge variant="secondary" className="mb-5 rounded-full px-3 py-1">
               <Globe2 size={12} />
               취향으로 연결되는 공개 지도
             </Badge>
-            <h1 className={`${styles.headline} font-heading font-black tracking-[-.085em] text-foreground`}>
+            <h1
+              className={`${styles.headline} font-heading font-black tracking-[-.085em] text-foreground`}
+            >
               <span className="block">좋은 장소는,</span>
               <span className="block">
                 같은 <span className="text-[#f97316]">취향</span>의
               </span>
               <span>사람들이</span>
-              <span className="block">
-                더 잘 아니까.
-              </span>
+              <span className="block">더 잘 아니까.</span>
             </h1>
             <p className="mt-5 max-w-lg text-sm leading-7 text-muted-foreground">
               별점만으로는 알 수 없는 장소의 이야기.
@@ -87,18 +87,21 @@ export default async function Home() {
                 추천·검증 데이터가 아닙니다.
               </p>
             )}
-            <DesktopDiscovery
-              maps={maps}
-              locationTerms={locationTerms}
-            />
+            <DesktopDiscovery maps={maps} locationTerms={locationTerms} />
           </div>
         </section>
       </div>
-      <footer className={`${styles.footer} mt-14 flex justify-between border-t pt-5 text-xs text-muted-foreground`}>
+      <footer
+        className={`${styles.footer} mt-14 flex justify-between border-t pt-5 text-xs text-muted-foreground`}
+      >
         <span>작은 발견이 모여, 더 나은 선택으로.</span>
         <div className="flex gap-4">
-          <Link href="/terms" prefetch={false}>이용약관</Link>
-          <Link href="/privacy" prefetch={false}>개인정보 처리방침</Link>
+          <Link href="/terms" prefetch={false}>
+            이용약관
+          </Link>
+          <Link href="/privacy" prefetch={false}>
+            개인정보 처리방침
+          </Link>
         </div>
       </footer>
     </main>

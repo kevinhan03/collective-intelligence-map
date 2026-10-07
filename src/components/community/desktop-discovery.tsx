@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowUpRight, Search } from "lucide-react";
 import type { ThemeMap } from "@/domain/types";
 import { formatLocation } from "@/domain/location";
 import { MapCardBackdrop } from "@/components/community/map-card-backdrop";
+import { mapTheme } from "@/domain/map-order";
 import styles from "./desktop-discovery.module.css";
 
 export function DesktopDiscovery({
@@ -17,6 +18,25 @@ export function DesktopDiscovery({
   locationTerms: Record<string, string>;
 }) {
   const [query, setQuery] = useState("");
+  const list = useRef<HTMLOListElement>(null);
+  const [moreBelow, setMoreBelow] = useState(false);
+  useEffect(() => {
+    const element = list.current;
+    if (!element) return;
+    const update = () =>
+      setMoreBelow(
+        element.scrollHeight > element.clientHeight + element.scrollTop + 4,
+      );
+    const observer = new ResizeObserver(update);
+    observer.observe(element);
+    Array.from(element.children).forEach((child) => observer.observe(child));
+    element.addEventListener("scroll", update, { passive: true });
+    update();
+    return () => {
+      observer.disconnect();
+      element.removeEventListener("scroll", update);
+    };
+  }, [query, maps]);
   const router = useRouter();
   const [expandedMapId, setExpandedMapId] = useState<string | null>(null);
   const results = maps.filter((map) =>
@@ -42,7 +62,7 @@ export function DesktopDiscovery({
           />
         </label>
       </div>
-      <ol className={styles.cards}>
+      <ol ref={list} className={styles.cards}>
         {results.map((map) => (
           <li key={map.id} className={styles.card}>
             <details
@@ -66,15 +86,34 @@ export function DesktopDiscovery({
               >
                 <MapCardBackdrop slug={map.slug} />
                 <span className={styles.shade} aria-hidden="true" />
-                <h3 className={styles.title}>{map.title}</h3>
+                <div className={styles.heading}>
+                  <h3 className={styles.title}>{map.title}</h3>
+                  <p className={styles.metadata}>
+                    {formatLocation(map)} · {mapTheme(map)}
+                  </p>
+                </div>
                 <span className={styles.count}>
-                  {map.place_count.toLocaleString("ko-KR")}
-                  <span className={styles.unit}>곳</span>
+                  {map.place_count ? (
+                    <>
+                      {map.place_count.toLocaleString("ko-KR")}
+                      <span className={styles.unit}>곳</span>
+                    </>
+                  ) : (
+                    <span className="text-xs">첫 장소 모집 중</span>
+                  )}
                 </span>
               </summary>
               <div className={styles.description}>
                 <p className={styles.location}>{formatLocation(map)}</p>
                 <p className={styles.body}>{map.description}</p>
+                {!map.place_count && (
+                  <Link
+                    className="inline-block py-3 text-sm text-primary underline"
+                    href={`/maps/${map.slug}/submit`}
+                  >
+                    첫 장소 제안하기
+                  </Link>
+                )}
                 <p className={styles.followers}>
                   팔로워 {map.follower_count.toLocaleString("ko-KR")}명
                 </p>
@@ -91,6 +130,11 @@ export function DesktopDiscovery({
           </li>
         ))}
       </ol>
+      {moreBelow && (
+        <p className="pt-2 text-center text-xs text-muted-foreground">
+          아래로 스크롤해 더 많은 지도를 확인하세요 ↓
+        </p>
+      )}
       {results.length === 0 && (
         <p
           role="status"

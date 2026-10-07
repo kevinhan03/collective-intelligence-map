@@ -3,6 +3,7 @@ import { z } from "zod";
 import { db, configured } from "@/lib/supabase/server";
 
 import { productEvent } from "@/server/events";
+import { directionsUrl } from "@/domain/visit";
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -28,8 +29,6 @@ export async function GET(
     mapId: place.map_id,
     mapPlaceId: place.id,
   });
-  const target = new URL("https://www.google.com/maps/search/");
-  target.searchParams.set("api", "1");
-  target.searchParams.set("query", `${place.lat},${place.lng}`);
+  const target = directionsUrl({ lat: place.lat, lng: place.lng });
   return NextResponse.redirect(target, 303);
 }

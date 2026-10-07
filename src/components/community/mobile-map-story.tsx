@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowUpRight, X } from "lucide-react";
 import type { ThemeMap } from "@/domain/types";
+import { mapTheme } from "@/domain/map-order";
 import { formatLocation } from "@/domain/location";
 import { MapCardBackdrop } from "./map-card-backdrop";
 import styles from "./mobile-discovery.module.css";
@@ -53,13 +54,22 @@ export function MobileMapStory({
       >
         <MapCardBackdrop slug={map.slug} />
         <span className={styles.coverShade} aria-hidden="true" />
-        <h2>{map.title}</h2>
+        <h2 aria-label={map.title}>
+          {map.title}
+          <small className="mt-2 block text-xs font-normal">
+            {formatLocation(map)} · {mapTheme(map)}
+          </small>
+        </h2>
         <span
           className={styles.placeCount}
           role="img"
           aria-label={`장소 ${map.place_count.toLocaleString("ko-KR")}개`}
         >
-          {map.place_count.toLocaleString("ko-KR")}
+          {map.place_count ? (
+            map.place_count.toLocaleString("ko-KR")
+          ) : (
+            <small className="text-xs">첫 장소 모집 중</small>
+          )}
         </span>
       </button>
       {expanded && (
@@ -89,12 +99,24 @@ export function MobileMapStory({
                 <span className={styles.metaDivider}>|</span> 장소{" "}
                 {map.place_count}곳
               </span>
-              <Link href={href} prefetch={false} aria-label={`${map.title} 전체 지도 열기`}>
+              <Link
+                href={href}
+                prefetch={false}
+                aria-label={`${map.title} 전체 지도 열기`}
+              >
                 <ArrowUpRight size={27} strokeWidth={1.5} aria-hidden="true" />
               </Link>
             </div>
             <div className={styles.previewDescription}>
               <p>{map.description}</p>
+              {!map.place_count && (
+                <Link
+                  href={`${href}/submit`}
+                  className="inline-block py-3 text-sm text-primary underline"
+                >
+                  첫 장소 제안하기
+                </Link>
+              )}
               <p className={styles.followers}>
                 팔로워 {map.follower_count.toLocaleString("ko-KR")}명
               </p>

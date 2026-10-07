@@ -1,7 +1,13 @@
 "use client";
 import { useEffect, useRef } from "react";
-import { Bookmark, ChevronLeft, ChevronRight, List } from "lucide-react";
-import type { MapPlace } from "@/domain/types";
+import { Bookmark, ChevronLeft, ChevronRight } from "lucide-react";
+import { NearbyStationInfo } from "./nearby-stations";
+import {
+  distanceMeters,
+  formatDistance,
+  type Coordinate,
+} from "@/domain/visit";
+import type { MapPlace, RailStation } from "@/domain/types";
 import { placeArea } from "@/domain/place-location";
 
 export function MobilePlaceCarousel({
@@ -12,7 +18,9 @@ export function MobilePlaceCarousel({
   onSave,
   isSaved,
   disabled,
-  onList,
+  demo,
+  userLocation,
+  onStationSelect,
 }: {
   places: MapPlace[];
   activeId: string | null;
@@ -21,7 +29,9 @@ export function MobilePlaceCarousel({
   onSave: (id: string) => void;
   isSaved: (id: string) => boolean;
   disabled: boolean;
-  onList: () => void;
+  demo: boolean;
+  userLocation: Coordinate | null;
+  onStationSelect: (station: RailStation, place: MapPlace) => void;
 }) {
   const track = useRef<HTMLDivElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -82,13 +92,6 @@ export function MobilePlaceCarousel({
           >
             <ChevronRight size={20} aria-hidden="true" />
           </button>
-          <button
-            onClick={onList}
-            aria-label="목록 보기"
-            className="mobile-place-list-button"
-          >
-            <List size={19} aria-hidden="true" />
-          </button>
         </div>
       </div>
       <div
@@ -131,6 +134,20 @@ export function MobilePlaceCarousel({
             aria-hidden={i !== index}
           >
             <h2 className="truncate text-lg font-semibold">{place.name}</h2>
+            {userLocation && (
+              <p className="text-xs text-muted-foreground">
+                직선거리 {formatDistance(distanceMeters(userLocation, place))}
+              </p>
+            )}
+            {i === index && (
+              <NearbyStationInfo
+                key={place.place_id}
+                place={place}
+                compact
+                demo={demo}
+                onSelect={(station) => onStationSelect(station, place)}
+              />
+            )}
             <p className="mt-1 line-clamp-2 text-base leading-6 text-muted-foreground">
               {place.rationale}
             </p>

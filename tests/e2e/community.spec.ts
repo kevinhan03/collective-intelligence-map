@@ -425,6 +425,15 @@ for (const width of [360, 390, 430, 768, 1024, 1440, 1920]) {
         return [...range.getClientRects()].some((rect) => rect.right > panel.left);
       });
       expect(overlapsPanel).toBe(false);
+
+      const panel = page.locator("#communities");
+      const footer = page.locator("footer");
+      const [panelBox, footerBox] = await Promise.all([
+        panel.boundingBox(),
+        footer.boundingBox(),
+      ]);
+      expect(panelBox!.y + panelBox!.height).toBeLessThan(footerBox!.y);
+      expect(footerBox!.y + footerBox!.height).toBeLessThanOrEqual(900);
     }
     await page.screenshot({ path: testInfo.outputPath(`home-${width}.png`) });
     if (mobile) {

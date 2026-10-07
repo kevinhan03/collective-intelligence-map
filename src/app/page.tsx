@@ -15,15 +15,15 @@ export default async function Home() {
   );
   const locationTerms = await getHomeLocationTerms(maps);
   return (
-    <main id="main" className="page-wrap">
+    <main id="main" className={`page-wrap ${styles.home}`}>
       <MobileDiscovery
         maps={maps}
         locationTerms={locationTerms}
         demo={!configured()}
       />
-      <div className="hidden lg:block">
-        <section className="grid items-start gap-10 pb-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] xl:gap-16">
-          <div className={`${styles.intro} sticky top-5 flex h-[calc(100dvh-148px)] min-h-[520px] min-w-0 flex-col pt-5`}>
+      <div className={`hidden ${styles.desktop}`}>
+        <section className={`${styles.desktopSection} grid items-start gap-10 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] xl:gap-16`}>
+          <div className={`${styles.intro} ${styles.desktopIntro} flex min-w-0 flex-col pt-5`}>
             <Badge variant="secondary" className="mb-5 rounded-full px-3 py-1">
               <Globe2 size={12} />
               취향으로 연결되는 공개 지도
@@ -67,7 +67,7 @@ export default async function Home() {
           </div>
           <div
             id="communities"
-            className="flex h-[calc(100dvh-148px)] min-h-[520px] min-w-0 flex-col overflow-hidden rounded-[2rem] border border-white/15 bg-black/25 p-5 shadow-2xl backdrop-blur-xl xl:p-7"
+            className={`${styles.communities} flex min-w-0 flex-col overflow-hidden rounded-[2rem] border border-white/15 bg-black/25 p-5 shadow-2xl backdrop-blur-xl xl:p-7`}
           >
             <div className="mb-5 flex items-end justify-between gap-3">
               <div>
@@ -96,7 +96,7 @@ export default async function Home() {
           </div>
         </section>
       </div>
-      <footer className="mt-14 flex justify-between border-t pt-5 text-xs text-muted-foreground">
+      <footer className={`${styles.footer} mt-14 flex justify-between border-t pt-5 text-xs text-muted-foreground`}>
         <span>작은 발견이 모여, 더 나은 선택으로.</span>
         <div className="flex gap-4">
           <Link href="/terms">이용약관</Link>

@@ -153,9 +153,11 @@ test("discover community, filter venues, open context and protect participation"
       .getByRole("link", { name: /전체 지도 열기.*Tokyo Fashion/ })
       .click();
   }
-  await expect(
-    page.getByRole("heading", { name: "Tokyo Fashion Store", exact: true }),
-  ).toBeVisible();
+  // The mobile heading contains a button named "지도 정보 보기". Its
+  // accessible name can include that action; the displayed map title is stable.
+  const mapHeading = page.getByRole("heading", { level: 1 });
+  await expect(mapHeading).toBeVisible();
+  await expect(mapHeading).toHaveText("Tokyo Fashion Store");
   if (isMobile) {
     await expect(page.getByRole("region", { name: "장소 지도" })).toBeVisible();
     await page.getByRole("button", { name: "목록 보기", exact: true }).click();

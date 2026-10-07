@@ -16,6 +16,7 @@ export function DesktopDiscovery({
   locationTerms: Record<string, string>;
 }) {
   const [query, setQuery] = useState("");
+  const [expandedMapId, setExpandedMapId] = useState<string | null>(null);
   const results = maps.filter((map) =>
     `${map.title} ${map.description} ${map.city} ${map.country} ${map.tags.join(" ")} ${locationTerms[map.id] ?? ""}`
       .toLowerCase()
@@ -42,7 +43,20 @@ export function DesktopDiscovery({
       <ol className={styles.cards}>
         {results.map((map) => (
           <li key={map.id} className={styles.card}>
-            <details className={styles.preview}>
+            <details
+              className={styles.preview}
+              open={expandedMapId === map.id}
+              onToggle={(event) => {
+                if (event.currentTarget.open) {
+                  setExpandedMapId(map.id);
+                  return;
+                }
+
+                setExpandedMapId((currentMapId) =>
+                  currentMapId === map.id ? null : currentMapId,
+                );
+              }}
+            >
               <summary
                 className={`${styles.cover} group`}
                 aria-label={`${map.title} 미리보기`}

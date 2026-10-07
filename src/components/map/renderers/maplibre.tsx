@@ -8,11 +8,19 @@ import { ensureMapLibreWorkerReady } from "./maplibre-worker";
 import type { MapProps } from "../types";
 import { appendPinLikes } from "../pin-content";
 
-// Keep station names/icons for access information, while hiding unrelated POIs.
+// Keep subway/train station names and icons, excluding bus and tram stops.
 function hideBasemapPoiLayers(map: maplibregl.Map) {
   for (const layer of map.getStyle().layers ?? []) {
     if (layer.type !== "symbol" || layer["source-layer"] !== "poi") continue;
-    if (layer.id === "Station") continue;
+    if (layer.id === "Station") {
+      map.setFilter(layer.id, [
+        "all",
+        ["==", "class", "railway"],
+        ["in", "subclass", "station", "subway"],
+        ["has", "name"],
+      ]);
+      continue;
+    }
     map.setLayoutProperty(layer.id, "visibility", "none");
   }
 }

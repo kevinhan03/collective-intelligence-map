@@ -1,0 +1,13 @@
+.intro {
+  container-type: inline-size;
+}
+
+.headline {
+  font-size: clamp(2.5rem, 12cqw, 4.75rem);
+  line-height: 1.22;
+}
+
+.headline > span {
+  display: block;
+  white-space: nowrap;
+}

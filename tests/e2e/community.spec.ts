@@ -399,7 +399,7 @@ test("mobile theme entry and saved-place deep links open the intended context", 
   await expect(page.getByRole("dialog")).toBeHidden();
 });
 
-for (const width of [360, 390, 430, 768, 1024, 1440]) {
+for (const width of [360, 390, 430, 768, 1024, 1440, 1920]) {
   test(`responsive discovery and map controls at ${width}px`, async ({
     page,
     isMobile,
@@ -416,6 +416,16 @@ for (const width of [360, 390, 430, 768, 1024, 1440]) {
         () => document.documentElement.scrollWidth <= innerWidth,
       ),
     ).toBe(true);
+    if (!mobile) {
+      // Text can overlap the neighboring panel without overflowing the page.
+      const overlapsPanel = await page.getByRole("heading", { level: 1 }).evaluate((heading) => {
+        const panel = document.getElementById("communities")!.getBoundingClientRect();
+        const range = document.createRange();
+        range.selectNodeContents(heading);
+        return [...range.getClientRects()].some((rect) => rect.right > panel.left);
+      });
+      expect(overlapsPanel).toBe(false);
+    }
     await page.screenshot({ path: testInfo.outputPath(`home-${width}.png`) });
     if (mobile) {
       const rows = page.locator("[data-mobile-story-home] article");

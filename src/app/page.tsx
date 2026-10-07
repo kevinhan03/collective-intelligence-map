@@ -5,6 +5,7 @@ import { Globe2 } from "lucide-react";
 import { getHomeLocationTerms, getMaps } from "@/server/queries";
 import { configured } from "@/lib/supabase/server";
 import { Badge } from "@/components/ui/badge";
+import styles from "./page.module.css";
 export default async function Home() {
   const maps = [...(await getMaps())].sort(
     (a, b) =>
@@ -23,16 +24,17 @@ export default async function Home() {
       />
       <div className="hidden lg:block">
         <section className="grid items-start gap-10 pb-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] xl:gap-16">
-          <div className="sticky top-5 flex h-[calc(100dvh-148px)] min-h-[520px] flex-col pt-5 lg:translate-x-[clamp(2rem,6vw,8rem)]">
+          <div className={`${styles.intro} sticky top-5 flex h-[calc(100dvh-148px)] min-h-[520px] min-w-0 flex-col pt-5`}>
             <Badge variant="secondary" className="mb-5 rounded-full px-3 py-1">
               <Globe2 size={12} />
               취향으로 연결되는 공개 지도
             </Badge>
-            <h1 className="font-heading text-[clamp(3rem,4.4vw,5.5rem)] leading-[1.22] font-black tracking-[-.085em] text-foreground">
+            <h1 className={`${styles.headline} font-heading font-black tracking-[-.085em] text-foreground`}>
               <span className="block">좋은 장소는,</span>
               <span className="block">
-                같은 <span className="text-[#f97316]">취향</span>의 사람들이
+                같은 <span className="text-[#f97316]">취향</span>의
               </span>
+              <span>사람들이</span>
               <span className="block">
                 더 잘 아니까.
               </span>

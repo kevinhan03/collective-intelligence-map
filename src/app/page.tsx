@@ -78,6 +78,7 @@ export default async function Home() {
               </div>
               <Link
                 href="/discover"
+                prefetch={false}
                 className="shrink-0 text-xs text-primary hover:underline"
               >
                 전체 지도 {maps.length}개 보기 →
@@ -99,8 +100,8 @@ export default async function Home() {
       <footer className={`${styles.footer} mt-14 flex justify-between border-t pt-5 text-xs text-muted-foreground`}>
         <span>작은 발견이 모여, 더 나은 선택으로.</span>
         <div className="flex gap-4">
-          <Link href="/terms">이용약관</Link>
-          <Link href="/privacy">개인정보 처리방침</Link>
+          <Link href="/terms" prefetch={false}>이용약관</Link>
+          <Link href="/privacy" prefetch={false}>개인정보 처리방침</Link>
         </div>
       </footer>
     </main>

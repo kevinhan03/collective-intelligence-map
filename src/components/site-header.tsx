@@ -10,6 +10,7 @@ export async function SiteHeader() {
       <div className="mx-auto flex h-18 max-w-[1440px] items-center justify-between gap-4 px-5 md:px-9">
         <Link
           href="/"
+          prefetch={false}
           className="flex items-center gap-2.5"
           aria-label="Ting map 홈"
         >
@@ -26,6 +27,7 @@ export async function SiteHeader() {
         >
           <Link
             href="/discover"
+            prefetch={false}
             className="hidden items-center gap-2 text-sm font-medium sm:flex"
           >
             <Compass size={16} />
@@ -33,6 +35,7 @@ export async function SiteHeader() {
           </Link>
           <Link
             href="/saved"
+            prefetch={false}
             className="flex items-center gap-2 text-sm text-muted-foreground"
           >
             <Bookmark size={16} />
@@ -42,25 +45,27 @@ export async function SiteHeader() {
             <>
               <Link
                 href="/my-proposals"
+                prefetch={false}
                 className="text-sm text-muted-foreground"
               >
                 내 제안
               </Link>
               <Link
                 href="/settings/profile"
+                prefetch={false}
                 className="rounded-full bg-secondary px-3 py-2 text-xs font-medium"
               >
                 @{viewer.handle}
               </Link>
               {viewer.role === "admin" && (
-                <Link href="/admin/moderation" className="text-xs">
+                <Link href="/admin/moderation" prefetch={false} className="text-xs">
                   관리
                 </Link>
               )}
             </>
           ) : (
             <Button asChild size="sm">
-              <Link href="/login">
+              <Link href="/login" prefetch={false}>
                 로그인
                 <ArrowUpRight size={14} />
               </Link>

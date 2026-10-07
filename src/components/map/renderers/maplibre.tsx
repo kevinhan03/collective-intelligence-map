@@ -1,5 +1,6 @@
 "use client";
 import { MapFailure } from "../map-failure";
+import { MapLoading } from "../map-loading";
 import { useEffect, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -7,12 +8,11 @@ import { ensureMapLibreWorkerReady } from "./maplibre-worker";
 import type { MapProps } from "../types";
 import { appendPinLikes } from "../pin-content";
 
-// MapTiler's basemap includes POI symbols (shops, hotels and stations). They
-// are not places that this community has added, so keep the basemap's roads and
-// labels while removing only its POI symbol layers.
+// Keep station names/icons for access information, while hiding unrelated POIs.
 function hideBasemapPoiLayers(map: maplibregl.Map) {
   for (const layer of map.getStyle().layers ?? []) {
     if (layer.type !== "symbol" || layer["source-layer"] !== "poi") continue;
+    if (layer.id === "Station") continue;
     map.setLayoutProperty(layer.id, "visibility", "none");
   }
 }
@@ -34,6 +34,7 @@ export default function MapLibreMap(props: MapProps) {
   const latest = useRef(props);
   const lastReportedBounds = useRef<MapProps["bounds"] | null>(null);
   const [error, setError] = useState(false);
+  const [loadedStyle, setLoadedStyle] = useState<string | null>(null);
   const [viewRevision, setViewRevision] = useState(0);
   useEffect(() => {
     latest.current = props;
@@ -46,7 +47,7 @@ export default function MapLibreMap(props: MapProps) {
     try {
       map = new maplibregl.Map({
         container: container.current,
-        style: props.apiKey,
+        style: apiKey,
         bounds: [
           [b.west, b.south],
           [b.east, b.north],
@@ -60,7 +61,10 @@ export default function MapLibreMap(props: MapProps) {
     }
     instance.current = map;
     map.addControl(new maplibregl.NavigationControl(), "top-right");
-    map.on("load", () => hideBasemapPoiLayers(map));
+    map.on("load", () => {
+      hideBasemapPoiLayers(map);
+      setLoadedStyle(apiKey);
+    });
     map.on("error", () => setError(true));
     map.on("idle", () => setError(false));
     map.on("moveend", () => {
@@ -94,7 +98,7 @@ export default function MapLibreMap(props: MapProps) {
       map.remove();
       instance.current = null;
     };
-  }, [props.apiKey]);
+  }, [apiKey]);
   useEffect(() => {
     const map = instance.current;
     if (!map) return;
@@ -183,6 +187,11 @@ export default function MapLibreMap(props: MapProps) {
   return (
     <div className="relative h-full min-h-[420px]">
       <div ref={container} style={{ position: "absolute", inset: 0 }} />
+      {loadedStyle !== apiKey && !error && (
+        <div className="absolute inset-0 z-10">
+          <MapLoading />
+        </div>
+      )}
       {error && (
         <div className="absolute bottom-3 left-3 right-3 z-20">
           <MapFailure onFallback={props.onFallback} />

@@ -72,6 +72,7 @@ export function MobileNavigation() {
             <DialogClose asChild key={href}>
               <Link
                 href={href}
+                prefetch={false}
                 className="flex min-h-12 items-center gap-3 rounded-xl px-3"
                 aria-current={active ? "page" : undefined}
               >

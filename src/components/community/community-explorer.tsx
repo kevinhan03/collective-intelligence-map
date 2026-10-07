@@ -421,6 +421,7 @@ export function CommunityExplorer({
           <div className="map-hero-heading min-w-0">
             <Link
               href="/"
+              prefetch={false}
               className="map-home-back lg:hidden"
               aria-label="홈으로 돌아가기"
             >
@@ -428,6 +429,7 @@ export function CommunityExplorer({
             </Link>
             <Link
               href="/"
+              prefetch={false}
               className="mb-1 flex items-center gap-1.5 text-xs text-muted-foreground"
             >
               <ArrowLeft size={13} />
@@ -476,7 +478,7 @@ export function CommunityExplorer({
               {myState.followed ? "팔로우 중" : "팔로우"}
             </Button>
             <Button asChild>
-              <Link href={`/maps/${map.slug}/submit`}>
+              <Link href={`/maps/${map.slug}/submit`} prefetch={false}>
                 <Plus size={15} />
                 장소 제안
               </Link>
@@ -560,7 +562,7 @@ export function CommunityExplorer({
               {myState.followed ? "팔로우 중" : "팔로우"}
             </Button>
             <Button asChild>
-              <Link href={`/maps/${map.slug}/submit`}>
+              <Link href={`/maps/${map.slug}/submit`} prefetch={false}>
                 <Plus size={15} />
                 장소 제안
               </Link>
@@ -963,7 +965,7 @@ export function CommunityExplorer({
                 </Button>
               )}
               <Button asChild variant="outline" className="mt-5">
-                <Link href={`/maps/${map.slug}/submit`}>장소 제안하기</Link>
+                <Link href={`/maps/${map.slug}/submit`} prefetch={false}>장소 제안하기</Link>
               </Button>
             </div>
           )}
@@ -1084,6 +1086,7 @@ export function CommunityExplorer({
               </div>
               <Link
                 href={`/maps/${map.slug}/submit`}
+                prefetch={false}
                 className="absolute right-4 bottom-16 z-10 hidden min-h-11 items-center gap-1.5 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-lg max-lg:inline-flex"
               >
                 <Plus size={16} aria-hidden="true" />

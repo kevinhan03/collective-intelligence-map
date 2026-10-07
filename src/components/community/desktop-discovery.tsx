@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ArrowUpRight, Search } from "lucide-react";
 import type { ThemeMap } from "@/domain/types";
@@ -16,6 +17,7 @@ export function DesktopDiscovery({
   locationTerms: Record<string, string>;
 }) {
   const [query, setQuery] = useState("");
+  const router = useRouter();
   const [expandedMapId, setExpandedMapId] = useState<string | null>(null);
   const results = maps.filter((map) =>
     `${map.title} ${map.description} ${map.city} ${map.country} ${map.tags.join(" ")} ${locationTerms[map.id] ?? ""}`
@@ -49,6 +51,7 @@ export function DesktopDiscovery({
               onToggle={(event) => {
                 if (event.currentTarget.open) {
                   setExpandedMapId(map.id);
+                  router.prefetch(`/maps/${map.slug}`);
                   return;
                 }
 
@@ -77,6 +80,7 @@ export function DesktopDiscovery({
                 </p>
                 <Link
                   href={`/maps/${map.slug}`}
+                  prefetch={false}
                   className="inline-flex min-h-9 items-center gap-1.5 text-sm font-medium text-primary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                 >
                   전체 지도 열기<span className="sr-only"> · {map.title}</span>

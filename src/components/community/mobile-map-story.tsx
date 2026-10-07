@@ -43,7 +43,13 @@ export function MobileMapStory({
         aria-expanded={expanded}
         aria-controls={`map-preview-${map.id}`}
         aria-label={`${map.title} ${expanded ? "전체 지도 열기" : "미리보기"}`}
-        onClick={() => (expanded ? router.push(href) : onExpand())}
+        onClick={() => {
+          if (expanded) router.push(href);
+          else {
+            onExpand();
+            router.prefetch(href);
+          }
+        }}
       >
         <MapCardBackdrop slug={map.slug} />
         <span className={styles.coverShade} aria-hidden="true" />
@@ -83,7 +89,7 @@ export function MobileMapStory({
                 <span className={styles.metaDivider}>|</span> 장소{" "}
                 {map.place_count}곳
               </span>
-              <Link href={href} aria-label={`${map.title} 전체 지도 열기`}>
+              <Link href={href} prefetch={false} aria-label={`${map.title} 전체 지도 열기`}>
                 <ArrowUpRight size={27} strokeWidth={1.5} aria-hidden="true" />
               </Link>
             </div>

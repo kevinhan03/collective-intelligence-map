@@ -93,7 +93,7 @@ export function MobileDiscovery({
           </button>
         </div>
       )}
-      <Link href="/discover" className={styles.allMaps}>
+      <Link href="/discover" prefetch={false} className={styles.allMaps}>
         전체 지도 보기 <ArrowUpRight size={18} aria-hidden="true" />
       </Link>
       {demo && (

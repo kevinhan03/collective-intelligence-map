@@ -74,9 +74,6 @@ export function NearbyStationInfo({
     );
   return (
     <section aria-label="가까운 지하철·기차역" className="space-y-2">
-      {!compact && (
-        <h3 className="text-sm font-semibold">가까운 지하철·기차역</h3>
-      )}
       {(compact ? result.stations.slice(0, 1) : result.stations).map(
         (station) => (
           <div

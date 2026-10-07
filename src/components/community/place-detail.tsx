@@ -17,10 +17,12 @@ import { useEffect, useState } from "react";
 import {
   Bookmark,
   Check,
+  ChevronDown,
   ExternalLink,
   Flag,
   MessageCircle,
   ThumbsDown,
+  TrainFront,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -154,12 +156,29 @@ export function PlaceDetail({
               demo={demo}
               revision={checksRevision}
             />
-            <NearbyStationInfo
-              key={place.place_id}
-              place={place}
-              demo={demo}
-              onSelect={onStationSelect}
-            />
+            {!demo && (
+              <details
+                key={place.place_id}
+                className="station-disclosure group/stations rounded-xl border px-3"
+              >
+                <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-sm font-semibold [&::-webkit-details-marker]:hidden">
+                  <TrainFront size={16} aria-hidden="true" />
+                  <span className="flex-1">가까운 지하철·기차역</span>
+                  <ChevronDown
+                    size={16}
+                    aria-hidden="true"
+                    className="transition-transform group-open/stations:rotate-180"
+                  />
+                </summary>
+                <div className="pb-3">
+                  <NearbyStationInfo
+                    place={place}
+                    demo={demo}
+                    onSelect={onStationSelect}
+                  />
+                </div>
+              </details>
+            )}
             <ShareButton path={sharePath} title={place.name} />
           </header>
           <PlacePhotos

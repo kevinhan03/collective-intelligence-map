@@ -52,7 +52,7 @@ for (const failureCode of [1, 3]) {
   });
 }
 
-test("location success adds straight-line distances without losing mobile search", async ({
+test("location success keeps distances in detail and preserves mobile search", async ({
   page,
   context,
   isMobile,
@@ -64,7 +64,7 @@ test("location success adds straight-line distances without losing mobile search
   if (isMobile) {
     await expect(
       page.locator('.mobile-place-slide[aria-hidden="false"]'),
-    ).toContainText("직선거리");
+    ).not.toContainText("직선거리");
     await page.getByRole("button", { name: "목록 보기", exact: true }).click();
     const search = page.getByRole("textbox", {
       name: "이 맵의 장소 검색",
@@ -82,7 +82,17 @@ test("location success adds straight-line distances without losing mobile search
       .getByRole("region", { name: "장소 목록" })
       .getByRole("article")
       .first(),
-  ).toContainText("직선거리");
+  ).not.toContainText("직선거리");
+  await page
+    .getByRole("region", { name: "장소 목록" })
+    .getByRole("article")
+    .first()
+    .getByRole("button")
+    .first()
+    .click();
+  await expect(page.locator(".place-detail-panel")).toContainText(
+    "내 위치에서 직선거리",
+  );
 });
 
 test("map sharing copies a map-only URL", async ({ page }) => {

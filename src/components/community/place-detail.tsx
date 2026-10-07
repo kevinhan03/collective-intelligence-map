@@ -1,4 +1,9 @@
 "use client";
+import {
+  distanceMeters,
+  formatDistance,
+  type Coordinate,
+} from "@/domain/visit";
 import { useMobile } from "@/hooks/use-mobile";
 import type { ReactNode } from "react";
 import Link from "next/link";
@@ -26,6 +31,7 @@ import { placeArea } from "@/domain/place-location";
 import { post } from "./api";
 export function PlaceDetail({
   place,
+  userLocation,
   onClose,
   viewer,
   loginHref,
@@ -37,6 +43,7 @@ export function PlaceDetail({
   onStationSelect,
 }: {
   place: MapPlace | null;
+  userLocation: Coordinate | null;
   onClose: () => void;
   viewer: Viewer | null;
   loginHref: string;
@@ -135,6 +142,12 @@ export function PlaceDetail({
               </p>
             )}
             <p className="text-sm text-muted-foreground">{place.address}</p>
+            {userLocation && (
+              <p className="text-xs text-muted-foreground">
+                내 위치에서 직선거리{" "}
+                {formatDistance(distanceMeters(userLocation, place))}
+              </p>
+            )}
             <OperationSummary
               key={place.id}
               id={place.id}

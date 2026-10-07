@@ -67,7 +67,9 @@ export function NearbyStationInfo({
   if (!result.stations.length)
     return (
       <p className="text-xs text-muted-foreground">
-        직선거리 2km 안에 등록된 지하철·기차역이 없어요.
+        {compact
+          ? "가까운 지하철·기차역이 없어요."
+          : "직선거리 2km 안에 등록된 지하철·기차역이 없어요."}
       </p>
     );
   return (
@@ -87,8 +89,10 @@ export function NearbyStationInfo({
               disabled={!onSelect}
               className="inline-flex min-h-9 items-center gap-1.5 text-left text-primary disabled:text-muted-foreground"
             >
-              <TrainFront size={14} aria-hidden="true" /> {station.name} ·
-              직선거리 {formatDistance(station.distance_m)}
+              <TrainFront size={14} aria-hidden="true" /> {station.name}
+              {!compact && (
+                <> · 직선거리 {formatDistance(station.distance_m)}</>
+              )}
             </button>
             {!compact && (
               <a

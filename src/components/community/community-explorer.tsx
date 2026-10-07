@@ -1,10 +1,6 @@
 "use client";
 import { ShareButton } from "./share-button";
-import {
-  distanceMeters,
-  formatDistance,
-  type Coordinate,
-} from "@/domain/visit";
+import type { Coordinate } from "@/domain/visit";
 import { useMobile } from "@/hooks/use-mobile";
 import { useViewerState } from "./viewer-state";
 import Link from "next/link";
@@ -93,6 +89,7 @@ export function CommunityExplorer({
   demo: boolean;
 }) {
   const mobile = useMobile();
+  const [pinHintOpen, setPinHintOpen] = useState(true);
   const [userLocation, setUserLocation] = useState<Coordinate | null>(null);
   const [stationFocus, setStationFocus] = useState<{
     station: RailStation;
@@ -921,12 +918,6 @@ export function CommunityExplorer({
                 data-selected={selected === p.id}
                 className="place-glass-card group cursor-pointer p-3 transition-colors"
               >
-                {userLocation && (
-                  <p className="mb-1 text-xs text-muted-foreground">
-                    내 위치에서 직선거리{" "}
-                    {formatDistance(distanceMeters(userLocation, p))}
-                  </p>
-                )}
                 <div className="flex items-start gap-2">
                   <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-secondary text-[11px] font-semibold text-primary">
                     {i + 1}
@@ -1106,11 +1097,22 @@ export function CommunityExplorer({
             <MapPin size={14} />
             {locating ? "위치 확인 중…" : "내 위치"}
           </Button>
-          {!mobile && config.provider === "maplibre" && places.length > 1 && (
-            <p className="pointer-events-none absolute bottom-20 left-4 z-10 rounded-full bg-card/90 px-3 py-2 text-xs text-foreground shadow-lg lg:bottom-4">
-              숫자 핀을 누르면 장소를 확대할 수 있어요.
-            </p>
-          )}
+          {!mobile &&
+            config.provider === "maplibre" &&
+            places.length > 1 &&
+            pinHintOpen && (
+              <div className="absolute bottom-20 left-4 z-10 rounded-full bg-card/90 px-4 py-3 text-xs text-foreground shadow-lg lg:bottom-4">
+                숫자 핀을 누르면 장소를 확대할 수 있어요.
+                <button
+                  type="button"
+                  aria-label="숫자 핀 안내 닫기"
+                  onClick={() => setPinHintOpen(false)}
+                  className="absolute -right-2 -top-2 grid size-7 place-items-center rounded-full border bg-card text-foreground shadow-sm hover:bg-secondary focus-visible:outline-2 focus-visible:outline-primary"
+                >
+                  <X size={14} aria-hidden="true" />
+                </button>
+              </div>
+            )}
           {viewport && config.provider !== "preview" && (
             <Button
               className="search-area-button absolute top-5 left-1/2 -translate-x-1/2 rounded-full shadow-lg"
@@ -1125,7 +1127,6 @@ export function CommunityExplorer({
             filtered.length ? (
               <MobilePlaceCarousel
                 demo={demo}
-                userLocation={userLocation}
                 onStationSelect={(station, place) =>
                   selectStation(station, place)
                 }
@@ -1192,9 +1193,6 @@ export function CommunityExplorer({
             />
           ) : (
             <>
-              <div className="absolute bottom-15 left-5 rounded-lg border bg-card/95 px-3 py-2 text-[10px] text-muted-foreground">
-                순위는 별점이 아닌, 이 주제에 대한 추천 의견입니다.
-              </div>
               <Link
                 href={`/maps/${map.slug}/submit`}
                 prefetch={false}
@@ -1207,6 +1205,7 @@ export function CommunityExplorer({
           )}
         </section>
         <PlaceDetail
+          userLocation={userLocation}
           key={detailId ?? "closed"}
           sharePath={`/maps/${map.slug}${selectedPlace ? `?place=${encodeURIComponent(selectedPlace.place_id)}` : ""}`}
           onStationSelect={(station) => {

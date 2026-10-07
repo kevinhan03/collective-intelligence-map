@@ -48,7 +48,7 @@
     "@playwright/test": "1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/google.maps": "3.66.2",
-    "@types/node": "24.13.3",
+    "@types/node": "26.6.4",
     "@types/pg": "8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",

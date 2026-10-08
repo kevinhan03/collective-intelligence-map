@@ -1186,8 +1186,10 @@ button:not(:disabled),
     padding: calc(68px + env(safe-area-inset-top)) 8px 24px;
   }
   .page-wrap:has([data-mobile-story-home]) > footer {
-    margin: 0 12px;
-    padding-bottom: 72px;
+    width: calc(100% - 40px);
+    margin: 12px 20px 0;
+    gap: 8px;
+    padding-block: 10px 12px;
   }
   :root {
     --mobile-nav-height: 0px;

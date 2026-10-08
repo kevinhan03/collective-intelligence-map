@@ -12,6 +12,13 @@
   white-space: nowrap;
 }
 
+.footer {
+  width: 100%;
+  max-width: 1120px;
+  margin: 20px auto 0;
+  padding-top: 10px;
+}
+
 @media (width >= 1024px) {
   .home {
     box-sizing: border-box;
@@ -31,7 +38,7 @@
   .desktopSection {
     min-height: 0;
     flex: 1;
-    padding-bottom: 20px;
+    padding-bottom: 12px;
   }
 
   .desktopIntro,

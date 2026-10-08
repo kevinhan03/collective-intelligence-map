@@ -92,10 +92,10 @@ export default async function Home() {
         </section>
       </div>
       <footer
-        className={`${styles.footer} mt-14 flex justify-between border-t pt-5 text-xs text-muted-foreground`}
+        className={`${styles.footer} flex justify-between border-t text-xs text-muted-foreground`}
       >
         <span>작은 발견이 모여, 더 나은 선택으로.</span>
-        <div className="flex gap-4">
+        <div className="flex gap-3">
           <Link href="/terms" prefetch={false}>
             이용약관
           </Link>

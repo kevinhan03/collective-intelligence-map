@@ -50,6 +50,7 @@
   .desktopIntro {
     overflow-y: auto;
     overscroll-behavior: contain;
+    padding-inline-start: clamp(24px, 2.5vw, 56px);
   }
 
   .desktopIntro > * {

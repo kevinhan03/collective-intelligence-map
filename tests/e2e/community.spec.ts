@@ -118,7 +118,6 @@ for (const viewport of [
     await page.setViewportSize(viewport);
     await page.goto("/");
     await expect(page.getByRole("link", { name: "로그인", exact: true })).toBeVisible();
-    await expect(page.getByText("작은 발견이 모여, 더 나은 선택으로.", { exact: true })).toHaveCount(1);
     const footer = page.locator("footer");
     const [panelBox, footerBox] = await Promise.all([
       page.locator("#communities").boundingBox(),

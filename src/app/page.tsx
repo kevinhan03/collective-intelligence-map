@@ -95,7 +95,7 @@ export default async function Home() {
         className={`${styles.footer} flex justify-between border-t text-xs text-muted-foreground`}
       >
         <span>작은 발견이 모여, 더 나은 선택으로.</span>
-        <div className="flex gap-3">
+        <div className="flex gap-2">
           <Link href="/terms" prefetch={false}>
             이용약관
           </Link>

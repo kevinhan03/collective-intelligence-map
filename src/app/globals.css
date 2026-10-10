@@ -254,6 +254,7 @@ select {
   border-color: rgb(255 255 255 / 10%);
 }
 .place-list {
+  scrollbar-width: none;
   background: rgb(36 44 55 / 28%);
   border: 1px solid var(--glass-stroke);
   border-radius: 20px;
@@ -262,6 +263,9 @@ select {
     inset 0 1px 0 var(--glass-highlight);
   backdrop-filter: blur(28px);
   padding: 0;
+}
+.place-list::-webkit-scrollbar {
+  display: none;
 }
 .place-list-heading {
   background: rgb(35 42 51 / 94%);

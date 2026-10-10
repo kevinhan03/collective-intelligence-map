@@ -136,7 +136,7 @@ test("mobile map search is optional and closing restores focus", async ({
 }) => {
   test.skip(!isMobile);
   await page.goto("/maps/tokyo-fashion");
-  const search = page.getByRole("textbox", { name: "이 맵의 장소 검색" });
+  const search = page.getByRole("combobox", { name: "이 맵의 장소 검색" });
   const trigger = page.getByRole("button", { name: "장소 검색 열기" });
   await expect(search).toBeHidden();
   await trigger.click();
@@ -203,7 +203,7 @@ test("discover community, filter venues, open context and protect participation"
   if (isMobile)
     await page.getByRole("button", { name: "장소 검색 열기" }).click();
   await page
-    .getByRole("textbox", { name: "이 맵의 장소 검색" })
+    .getByRole("combobox", { name: "이 맵의 장소 검색" })
     .fill("Second Chapter");
   await expect(
     page.getByRole("option", { name: /Second Chapter/ }),
@@ -245,7 +245,7 @@ test("discover community, filter venues, open context and protect participation"
   await expect(page.getByRole("button", { name: "적합해요 0" })).toBeDisabled();
   await page.keyboard.press("Escape");
   await page
-    .getByRole("textbox", { name: "이 맵의 장소 검색" })
+    .getByRole("combobox", { name: "이 맵의 장소 검색" })
     .fill("not-a-place");
   if (isMobile) {
     await page.getByRole("button", { name: "목록 보기", exact: true }).click();
@@ -253,7 +253,7 @@ test("discover community, filter venues, open context and protect participation"
   await expect(
     page.getByRole("heading", { name: "아직 발견된 장소가 없어요." }),
   ).toBeVisible();
-  await page.getByRole("textbox", { name: "이 맵의 장소 검색" }).fill("");
+  await page.getByRole("combobox", { name: "이 맵의 장소 검색" }).fill("");
   if (isMobile) {
     await page.getByRole("button", { name: "지도 보기", exact: true }).click();
     await expect(
@@ -345,7 +345,7 @@ test("mobile view switching preserves scroll position and detail returns focus",
   expect(mapBox?.height).toBeGreaterThan((viewport?.height ?? 0) * 0.5);
   await expect(
     page.getByText(
-      "도쿄의 패션을 발견하는 사람들의 공개 지도. 독립 편집숍부터 빈티지 아카이브까지, 함께 추천하고 검증합니다.",
+      "도쿄 곳곳에 있는 패션 매장들을 모아둔 지도입니다. 잘 알려진 유명 매장부터 숨겨진 로컬 숍까지, 도쿄에서 쇼핑할 만한 곳들을 함께 찾아보고 공유해 보세요.",
     ),
   ).toBeHidden();
   await page
@@ -477,11 +477,11 @@ for (const width of [360, 390, 430, 768, 1024, 1440, 1920]) {
     await page.goto("/maps/tokyo-fashion");
     if (mobile) {
       await expect(
-        page.getByRole("textbox", { name: "이 맵의 장소 검색" }),
+        page.getByRole("combobox", { name: "이 맵의 장소 검색" }),
       ).toBeHidden();
       await page.getByRole("button", { name: "장소 검색 열기" }).click();
     }
-    const search = page.getByRole("textbox", { name: "이 맵의 장소 검색" });
+    const search = page.getByRole("combobox", { name: "이 맵의 장소 검색" });
     await expect(search).toBeVisible();
     if (mobile) {
       const searchBox = (await search.boundingBox())!;

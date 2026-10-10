@@ -38,12 +38,12 @@ for (const failureCode of [1, 3]) {
         page.getByRole("combobox", { name: "장소 정렬" }),
       ).toHaveValue("newest");
     } else {
-      await page.getByRole("button", { name: "최신순", exact: true }).click();
+      await page.getByRole("button", { name: "최근 추가순", exact: true }).click();
       await page
         .getByRole("button", { name: "가까운 순", exact: true })
         .click();
       await expect(
-        page.getByRole("button", { name: "최신순", exact: true }),
+        page.getByRole("button", { name: "최근 추가순", exact: true }),
       ).toHaveAttribute("aria-pressed", "true");
     }
     await expect(
@@ -66,7 +66,7 @@ test("location success keeps distances in detail and preserves mobile search", a
       page.locator('.mobile-place-slide[aria-hidden="false"]'),
     ).not.toContainText("직선거리");
     await page.getByRole("button", { name: "목록 보기", exact: true }).click();
-    const search = page.getByRole("textbox", {
+    const search = page.getByRole("combobox", {
       name: "이 맵의 장소 검색",
       exact: true,
     });

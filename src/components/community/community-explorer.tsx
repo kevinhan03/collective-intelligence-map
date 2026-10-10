@@ -1,11 +1,27 @@
 "use client";
 import { ShareButton } from "./share-button";
 import type { Coordinate } from "@/domain/visit";
+import { formatDistance } from "@/domain/visit";
+import { useMapSearch } from "@/hooks/use-map-search";
+import {
+  localMapSearch,
+  suggestionLabels,
+  type SearchStation,
+  type SearchSuggestion,
+  type SearchPlace,
+} from "@/domain/map-search";
 import { useMobile } from "@/hooks/use-mobile";
 import { useViewerState } from "./viewer-state";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ArrowLeft,
   ArrowUpRight,
@@ -60,12 +76,9 @@ import type {
   Viewer,
 } from "@/domain/types";
 const sortOptions: { value: Sort; label: string }[] = [
-  { value: "distance", label: "가까운 순" },
   { value: "relevance", label: "추천순" },
-  { value: "newest", label: "최신순" },
-  { value: "controversial", label: "논쟁중" },
-  { value: "verified", label: "최근 확인순" },
-  { value: "popular", label: "추천 많은 순" },
+  { value: "distance", label: "가까운 순" },
+  { value: "newest", label: "최근 추가순" },
 ];
 export function CommunityExplorer({
   map,
@@ -109,6 +122,7 @@ export function CommunityExplorer({
       (position) => {
         if (request !== locationRequest.current) return;
         setLocating(false);
+        setRestoreBounds(null);
         setStationFocus(null);
         setUserLocation({
           lat: position.coords.latitude,
@@ -216,6 +230,20 @@ export function CommunityExplorer({
     [truncated, setTruncated] = useState(initialPlaces.length > 500),
     [page, setPage] = useState(1),
     [showPending, setShowPending] = useState(false);
+  const [searchStation, setSearchStation] = useState<SearchStation | null>(
+    null,
+  );
+  const [searchStationHighlighted, setSearchStationHighlighted] =
+    useState(false);
+  const [composing, setComposing] = useState(false);
+  const [suggestOpen, setSuggestOpen] = useState(false);
+  const [suggestIndex, setSuggestIndex] = useState(-1);
+  const [openedSearchPlace, setOpenedSearchPlace] = useState<MapPlace | null>(
+    null,
+  );
+  const [restoreBounds, setRestoreBounds] = useState<Bounds | null>(null);
+  const browsingBounds = useRef<Bounds | null>(null);
+  const wasSearching = useRef(false);
   const latest = useRef(0);
   const hasInitialViewport = useRef(false);
   const openedPlaceId = useRef<string | null>(null);
@@ -224,6 +252,45 @@ export function CommunityExplorer({
     () => loaded ?? initialPlaces.slice(0, 500),
     [initialPlaces, loaded],
   );
+  const searchArgs = useMemo(
+    () => ({
+      q: query,
+      stationId: searchStation?.id,
+      region,
+      sort,
+      offset: 0,
+      lat: sort === "distance" ? userLocation?.lat : undefined,
+      lng: sort === "distance" ? userLocation?.lng : undefined,
+    }),
+    [
+      query,
+      searchStation?.id,
+      region,
+      sort,
+      userLocation?.lat,
+      userLocation?.lng,
+    ],
+  );
+  const search = useMapSearch(map.id, searchArgs, places, composing);
+  const saveBrowsingBounds = useEffectEvent(() => {
+    browsingBounds.current = viewport;
+    latest.current++;
+    setBusy(false);
+  });
+  useEffect(() => {
+    if (search.active && !wasSearching.current) saveBrowsingBounds();
+    if (!search.active && wasSearching.current) {
+      const timer = setTimeout(() => {
+        setRestoreBounds(browsingBounds.current);
+        setStationFocus(null);
+        setPreviewId(null);
+        setSelected(null);
+      }, 0);
+      wasSearching.current = false;
+      return () => clearTimeout(timer);
+    }
+    wasSearching.current = search.active;
+  }, [search.active]);
   const initialBounds = useMemo(
     () => boundsForPlaces(initialPlaces.slice(0, 500), map.bounds),
     [initialPlaces, map.bounds],
@@ -232,18 +299,29 @@ export function CommunityExplorer({
     savedOverrides[id] ?? myState.saves.includes(id);
   const filtered = useMemo(
     () =>
-      sortPlaces(
-        places.filter(
-          (p) =>
-            (!mobile || !region || placeCity(p.address) === region) &&
-            `${p.name} ${p.category} ${p.rationale} ${p.address} ${placeArea(p.address)}`
-              .toLowerCase()
-              .includes(query.toLowerCase()),
-        ),
-        sort,
-        userLocation ?? undefined,
-      ),
-    [places, query, sort, region, mobile, userLocation],
+      search.active
+        ? (search.result?.items ??
+          (search.error ? search.previous?.items : null) ??
+          localMapSearch(places, searchArgs).items)
+        : sortPlaces(
+            places.filter(
+              (p) => !mobile || !region || placeCity(p.address) === region,
+            ),
+            sort,
+            userLocation ?? undefined,
+          ),
+    [
+      search.active,
+      search.result,
+      search.error,
+      search.previous,
+      places,
+      searchArgs,
+      mobile,
+      region,
+      sort,
+      userLocation,
+    ],
   );
   const regions = useMemo(
     () =>
@@ -275,32 +353,41 @@ export function CommunityExplorer({
     return () => window.clearTimeout(timer);
   }, [mobile, activePreviewId, detailId, previewId, region]);
   const selectPreview = (id: string) => {
+    setRestoreBounds(null);
+    setSearchStationHighlighted(false);
+    setOpenedSearchPlace(filtered.find((p) => p.id === id) ?? null);
     setStationFocus(null);
     setSelected(id);
     setPreviewId(id);
     setFocusRequest((request) => request + 1);
   };
   const visiblePlaces = useMemo(
-    () => filtered.slice(0, page * 20),
-    [filtered, page],
+    () => (search.active ? filtered : filtered.slice(0, page * 20)),
+    [filtered, page, search.active],
   );
-  const searchSuggestions = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
-    if (!normalized) return [];
-    const suggestions = places.map((place) => ({
-      term: place.name,
-      kind: "장소",
-    }));
-    return suggestions
-      .filter((suggestion) =>
-        suggestion.term.toLowerCase().includes(normalized),
-      )
-      .filter(
-        (suggestion, index, all) =>
-          all.findIndex((item) => item.term === suggestion.term) === index,
-      )
-      .slice(0, 5);
-  }, [places, query]);
+  const searchSuggestions =
+    search.result?.suggestions ??
+    localMapSearch(places, searchArgs).suggestions;
+  const resultCount = search.active
+    ? (search.result?.total ?? filtered.length)
+    : filtered.length;
+  function clearSearch() {
+    setQuery("");
+    setSearchStation(null);
+    setSuggestOpen(false);
+    setPage(1);
+  }
+  function chooseSuggestion(suggestion: SearchSuggestion) {
+    if (suggestion.station) {
+      setSearchStation(suggestion.station);
+      setSearchStationHighlighted(true);
+      setQuery("");
+    } else setQuery(suggestion.term);
+    setSuggestOpen(false);
+    setSuggestIndex(-1);
+    setPage(1);
+    searchInput.current?.focus();
+  }
   const onBoundsChange = useCallback((b: Bounds) => {
     if (!hasInitialViewport.current) {
       hasInitialViewport.current = true;
@@ -320,7 +407,7 @@ export function CommunityExplorer({
     });
   }, []);
   async function searchArea() {
-    if (!viewport) return;
+    if (!viewport || search.active) return;
     const requestId = ++latest.current;
     setBusy(true);
     setError("");
@@ -342,9 +429,16 @@ export function CommunityExplorer({
     }
   }
   const selectedPlace =
-    [...places, ...pendingPlaces].find((p) => p.id === detailId) ?? null;
+    [
+      ...filtered,
+      ...places,
+      ...pendingPlaces,
+      ...(openedSearchPlace ? [openedSearchPlace] : []),
+    ].find((p) => p.id === detailId) ?? null;
   const previewPlace =
-    [...places, ...pendingPlaces].find((p) => p.id === previewId) ?? null;
+    [...filtered, ...places, ...pendingPlaces].find(
+      (p) => p.id === previewId,
+    ) ?? null;
   const toggleFollow = async () => {
     if (!viewer) {
       router.push(loginHref(`/maps/${map.slug}`));
@@ -418,6 +512,9 @@ export function CommunityExplorer({
   };
   const focusPlace = useCallback(
     (id: string) => {
+      setRestoreBounds(null);
+      setSearchStationHighlighted(false);
+      setOpenedSearchPlace(filtered.find((p) => p.id === id) ?? null);
       setStationFocus(null);
       setSelected(id);
       if (mobile) {
@@ -446,7 +543,7 @@ export function CommunityExplorer({
       setDetailId((current) => (current ? id : null));
       setFocusRequest((request) => request + 1);
     },
-    [config.provider, mobile, mobileView],
+    [config.provider, mobile, mobileView, filtered],
   );
   useEffect(() => {
     const requestKey = requestedProposalId ?? requestedPlaceId;
@@ -522,7 +619,7 @@ export function CommunityExplorer({
               </h1>
               <span className="kicker">{formatLocation(map)}</span>
             </div>
-            <p className="map-hero-description mt-1 line-clamp-2 md:line-clamp-1 max-w-2xl text-xs leading-5 text-muted-foreground">
+            <p className="map-hero-description mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">
               {map.description}
             </p>
           </div>
@@ -684,7 +781,7 @@ export function CommunityExplorer({
           <span>지도</span>
         </button>
         <span className="px-2 text-xs text-muted-foreground">
-          {filtered.length}곳
+          {resultCount}곳
         </span>
       </div>
       <div
@@ -699,11 +796,67 @@ export function CommunityExplorer({
             />
             <Input
               ref={searchInput}
-              className="h-9 bg-background pl-9 text-xs"
+              className="h-9 bg-background pl-9 pr-10 text-xs"
               value={query}
+              maxLength={100}
+              role="combobox"
+              aria-autocomplete="list"
+              aria-expanded={suggestOpen && searchSuggestions.length > 0}
+              aria-controls={
+                suggestOpen && searchSuggestions.length > 0
+                  ? "map-search-suggestions"
+                  : undefined
+              }
+              aria-activedescendant={
+                suggestOpen &&
+                suggestIndex >= 0 &&
+                suggestIndex < searchSuggestions.length
+                  ? `map-search-option-${suggestIndex}`
+                  : undefined
+              }
+              onFocus={() => setSuggestOpen(true)}
+              onBlur={() => setSuggestOpen(false)}
+              onCompositionStart={() => setComposing(true)}
+              onCompositionEnd={() => setComposing(false)}
+              onKeyDown={(event) => {
+                if (event.nativeEvent.isComposing || composing) return;
+                if (event.key === "Escape") {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  setSuggestOpen(false);
+                  setSuggestIndex(-1);
+                } else if (
+                  event.key === "ArrowDown" ||
+                  event.key === "ArrowUp"
+                ) {
+                  event.preventDefault();
+                  setSuggestOpen(true);
+                  setSuggestIndex((i) =>
+                    searchSuggestions.length
+                      ? i < 0
+                        ? event.key === "ArrowDown"
+                          ? 0
+                          : searchSuggestions.length - 1
+                        : (i +
+                            (event.key === "ArrowDown" ? 1 : -1) +
+                            searchSuggestions.length) %
+                          searchSuggestions.length
+                      : -1,
+                  );
+                } else if (
+                  event.key === "Enter" &&
+                  suggestOpen &&
+                  searchSuggestions[suggestIndex]
+                ) {
+                  event.preventDefault();
+                  chooseSuggestion(searchSuggestions[suggestIndex]);
+                }
+              }}
               onChange={(e) => {
                 const value = e.target.value;
                 setQuery(value);
+                setSuggestOpen(true);
+                setSuggestIndex(-1);
                 setPage(1);
                 if (value.trim() && !searchTracked.current) {
                   searchTracked.current = true;
@@ -712,26 +865,38 @@ export function CommunityExplorer({
                   });
                 }
               }}
-              placeholder="이 맵의 장소 검색"
+              placeholder="장소·지역·분류·역 검색"
               aria-label="이 맵의 장소 검색"
             />
-            {searchSuggestions.length > 0 && (
+            {search.active && (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="absolute right-1 top-1/2 -translate-y-1/2"
+                onClick={clearSearch}
+                aria-label="검색·역 필터 초기화"
+              >
+                <X size={14} />
+              </Button>
+            )}
+            {suggestOpen && searchSuggestions.length > 0 && (
               <div
                 className="absolute top-[calc(100%+6px)] right-0 left-0 z-30 overflow-hidden rounded-xl border bg-card p-1 shadow-lg"
                 role="listbox"
+                id="map-search-suggestions"
                 aria-label="관련 검색어"
               >
-                {searchSuggestions.map((suggestion) => (
+                {searchSuggestions.map((suggestion, index) => (
                   <button
-                    key={suggestion.term}
+                    key={`${suggestion.kind}:${suggestion.station?.id ?? suggestion.term}`}
+                    id={`map-search-option-${index}`}
                     type="button"
                     role="option"
-                    aria-selected={false}
+                    aria-selected={suggestIndex === index}
                     className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs hover:bg-secondary"
                     onMouseDown={(event) => event.preventDefault()}
                     onClick={() => {
-                      setQuery(suggestion.term);
-                      setPage(1);
+                      chooseSuggestion(suggestion);
                       trackCommunityEvent("place_search_suggestion_selected", {
                         provider: config.provider,
                       });
@@ -739,7 +904,9 @@ export function CommunityExplorer({
                   >
                     <span>{suggestion.term}</span>
                     <span className="text-[10px] text-muted-foreground">
-                      {suggestion.kind}
+                      {suggestion.station
+                        ? `${suggestion.station.kind === "subway" ? "지하철" : "기차역"} · ${suggestion.station.region === "seoul" ? "서울" : suggestion.station.region === "tokyo" ? "도쿄" : suggestion.station.region}`
+                        : suggestionLabels[suggestion.kind]}
                     </span>
                   </button>
                 ))}
@@ -765,7 +932,9 @@ export function CommunityExplorer({
                   });
                 }}
               >
-                {option.label}
+                {search.active && option.value === "relevance"
+                  ? "검색 일치순"
+                  : option.label}
               </button>
             ))}
           </div>
@@ -780,6 +949,7 @@ export function CommunityExplorer({
               value={region}
               onChange={(event) => {
                 setRegion(event.target.value);
+                setRestoreBounds(null);
                 setPage(1);
                 setPreviewId(null);
                 setSelected(null);
@@ -807,7 +977,11 @@ export function CommunityExplorer({
             >
               {sortOptions.map((option) => (
                 <option key={option.value} value={option.value}>
-                  {option.value === "relevance" ? "종합 추천순" : option.label}
+                  {option.value === "relevance"
+                    ? search.active
+                      ? "검색 일치순"
+                      : option.label
+                    : option.label}
                 </option>
               ))}
             </select>
@@ -893,6 +1067,50 @@ export function CommunityExplorer({
           onChange={() => router.refresh()}
         />
       )}
+      {search.active && (
+        <div
+          className="flex flex-wrap items-center gap-2 border-b px-5 py-2 text-xs"
+          aria-live="polite"
+        >
+          {searchStation && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setSearchStation(null)}
+              aria-label="역 필터 해제"
+            >
+              {searchStation.name} 주변 2km <X size={12} />
+            </Button>
+          )}
+          <span>
+            {search.error
+              ? "검색 실패 · 이전 결과 표시"
+              : search.loading
+                ? "지도 전체 검색 중…"
+                : search.result?.mode === "local"
+                  ? "현재 불러온 장소 내 검색"
+                  : "지도 전체 공개 장소 검색"}
+          </span>
+          {searchStation && <span>역 반경은 직선거리 기준입니다.</span>}
+          {search.result?.stationsStatus !== "ready" && !search.loading && (
+            <span>
+              {search.result?.stationsStatus === "unsupported"
+                ? "이 지역은 역 검색을 지원하지 않습니다."
+                : "역 검색 데이터 준비 중"}
+            </span>
+          )}
+          {search.error && (
+            <>
+              <span role="alert" className="text-destructive">
+                {search.error}
+              </span>
+              <Button variant="outline" size="sm" onClick={search.retry}>
+                검색 재시도
+              </Button>
+            </>
+          )}
+        </div>
+      )}
       <div
         data-mobile-view={mobileView}
         className={`glass-map-shell explorer-layout ${selectedPlace ? "has-detail" : ""}`}
@@ -904,10 +1122,10 @@ export function CommunityExplorer({
         >
           <div className="place-list-heading sticky top-0 z-10 flex items-center justify-between border-b px-3 py-3">
             <span className="text-xs font-medium">
-              {filtered.length}개의 발견
-              {filtered.length > visiblePlaces.length &&
+              {resultCount}개의 발견
+              {resultCount > visiblePlaces.length &&
                 ` · 현재 ${visiblePlaces.length}곳 표시`}
-              {truncated && " · 일부 결과"}
+              {!search.active && truncated && " · 일부 결과"}
             </span>
           </div>
           {visiblePlaces.map((p, i) => {
@@ -959,6 +1177,16 @@ export function CommunityExplorer({
                         {p.rationale}
                       </p>
                     )}
+                    {searchStation &&
+                      search.result?.station?.id === searchStation.id &&
+                      (p as SearchPlace).station_distance_m != null && (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {searchStation.name} · 직선거리{" "}
+                          {formatDistance(
+                            (p as SearchPlace).station_distance_m!,
+                          )}
+                        </p>
+                      )}
                   </div>
                   <button
                     aria-label={`${p.name} 상세 보기`}
@@ -1025,7 +1253,7 @@ export function CommunityExplorer({
               </article>
             );
           })}
-          {filtered.length === 0 && (
+          {filtered.length === 0 && !search.loading && !search.error && (
             <div className="px-8 py-18 text-center">
               <MapPin className="mx-auto mb-4 text-muted-foreground" />
               <h2 className="font-medium">아직 발견된 장소가 없어요.</h2>
@@ -1037,10 +1265,7 @@ export function CommunityExplorer({
                 <Button
                   variant="secondary"
                   className="mt-5 mr-2"
-                  onClick={() => {
-                    setQuery("");
-                    setPage(1);
-                  }}
+                  onClick={clearSearch}
                 >
                   검색 조건 초기화
                 </Button>
@@ -1052,11 +1277,16 @@ export function CommunityExplorer({
               </Button>
             </div>
           )}
-          {filtered.length > page * 20 && (
+          {(search.active
+            ? search.result?.hasMore
+            : filtered.length > page * 20) && (
             <Button
               variant="ghost"
               className="my-3 w-full"
-              onClick={() => setPage((p) => p + 1)}
+              disabled={search.loading}
+              onClick={() =>
+                search.active ? void search.more() : setPage((p) => p + 1)
+              }
             >
               더 보기
             </Button>
@@ -1071,8 +1301,16 @@ export function CommunityExplorer({
             key={mobile ? `mobile-${region}` : "desktop"}
             onFallback={mobile ? () => changeView("list") : undefined}
             userLocation={userLocation}
-            stationFocus={stationFocus}
-            places={[...filtered, ...pendingPlaces]}
+            stationFocus={
+              stationFocus ??
+              (searchStation && searchStationHighlighted
+                ? {
+                    station: { ...searchStation, distance_m: 0 },
+                    place: filtered[0] ?? searchStation,
+                  }
+                : null)
+            }
+            places={[...filtered, ...(search.active ? [] : pendingPlaces)]}
             selected={mobile ? activePreviewId : selected}
             onSelect={(id) => {
               if (pendingPlaces.some((p) => p.id === id)) {
@@ -1084,7 +1322,14 @@ export function CommunityExplorer({
               if (!mobile) setDetailId(id);
             }}
             focusRequest={focusRequest}
-            bounds={mobile ? mobileBounds : initialBounds}
+            bounds={
+              search.active
+                ? boundsForPlaces(
+                    [...filtered, ...(searchStation ? [searchStation] : [])],
+                    map.bounds,
+                  )
+                : (restoreBounds ?? (mobile ? mobileBounds : initialBounds))
+            }
             onBoundsChange={onBoundsChange}
             config={config}
           />
@@ -1113,7 +1358,7 @@ export function CommunityExplorer({
                 </button>
               </div>
             )}
-          {viewport && config.provider !== "preview" && (
+          {viewport && !search.active && config.provider !== "preview" && (
             <Button
               className="search-area-button absolute top-5 left-1/2 -translate-x-1/2 rounded-full shadow-lg"
               disabled={busy}
@@ -1154,7 +1399,7 @@ export function CommunityExplorer({
                 <Button
                   variant="outline"
                   onClick={() => {
-                    setQuery("");
+                    clearSearch();
                     setRegion("");
                   }}
                 >

@@ -15,23 +15,21 @@
 .footer {
   width: calc(100% + 72px);
   margin: 12px -36px 0;
-  padding-top: 4px;
+  padding-block: 3px;
+  line-height: 0.875rem;
 }
 
 @media (width >= 1024px) {
   .home {
     box-sizing: border-box;
-    padding-bottom: 12px;
-    display: flex;
-    height: calc(100dvh - 98px);
-    min-height: 0;
-    flex-direction: column;
+    padding-bottom: 24px;
   }
 
   .desktop {
     display: flex;
-    min-height: 0;
-    flex: 1;
+    /* The introduction and map list fill the first screen; the footer follows below. */
+    height: calc(100dvh - 130px);
+    min-height: 480px;
     flex-direction: column;
   }
 
@@ -49,8 +47,14 @@
 
   .desktopIntro {
     overflow-y: auto;
+    scrollbar-width: none;
     overscroll-behavior: contain;
-    padding-inline-start: clamp(24px, 2.5vw, 56px);
+    /* Keep copy clear of the page edge without consuming the narrow desktop column. */
+    padding-inline-start: 48px;
+  }
+
+  .desktopIntro::-webkit-scrollbar {
+    display: none;
   }
 
   .desktopIntro > * {
@@ -58,7 +62,13 @@
   }
 
   .footer {
-    margin-top: 0;
+    margin-top: 24px;
     flex: none;
+  }
+}
+
+@media (width >= 1280px) {
+  .desktopIntro {
+    padding-inline-start: clamp(64px, 5vw, 112px);
   }
 }

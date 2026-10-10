@@ -89,7 +89,10 @@ export function DesktopDiscovery({
                 <div className={styles.heading}>
                   <h3 className={styles.title}>{map.title}</h3>
                   <p className={styles.metadata}>
-                    {formatLocation(map)} · {mapTheme(map)}
+                    {map.slug === "seoul-taco-restaurant"
+                      ? "서울"
+                      : formatLocation(map)}{" "}
+                    · {map.slug === "tokyo-fashion" ? "패션" : mapTheme(map)}
                   </p>
                 </div>
                 <span className={styles.count}>

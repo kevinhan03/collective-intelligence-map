@@ -735,6 +735,12 @@ export type Database = {
       };
     };
     Functions: {
+      search_map_places: { Args: { payload: Json }; Returns: Json };
+      search_normalize: { Args: { t: string }; Returns: string };
+      search_compact: { Args: { t: string }; Returns: string };
+      search_city: { Args: { t: string }; Returns: string };
+      search_area: { Args: { t: string }; Returns: string };
+      search_category: { Args: { t: string }; Returns: string };
       nearby_rail_stations: { Args: { p: string }; Returns: Json };
       replace_rail_station_region: {
         Args: { r: string; stations: Json };

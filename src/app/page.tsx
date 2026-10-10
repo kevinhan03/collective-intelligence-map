@@ -68,7 +68,6 @@ export default async function Home() {
           >
             <div className="mb-5 flex items-end justify-between gap-3">
               <div>
-                <p className="kicker mb-2">Find your community</p>
                 <h2 className="text-xl font-semibold tracking-tight xl:text-2xl">
                   함께 만드는 지도
                 </h2>

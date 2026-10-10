@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import fs from "node:fs/promises";
 import assert from "node:assert/strict";
+import { testMapSearch } from "./test-map-search-db.mjs";
 const url =
   process.env.TEST_DATABASE_URL ??
   `postgresql://${process.env.USER}@127.0.0.1:55432/cim_test`;
@@ -32,6 +33,12 @@ create function storage.foldername(text) returns text[] language sql immutable a
       ),
     );
   await c.query(await fs.readFile("supabase/seed.sql", "utf8"));
+  const searchEditorSql = await fs.readFile("docs/sql/add-map-public-search.sql", "utf8");
+  await c.query(searchEditorSql);
+  await c.query(searchEditorSql);
+  const searchChecks = await c.query(await fs.readFile("docs/sql/check-map-public-search.sql", "utf8"));
+  assert.ok(Object.values(searchChecks[0].rows[0]).every((value) => value === true));
+  console.log("PASS: map search SQL Editor script is repeatable and all three checks are true");
   console.log("PASS: migrations and seed apply to PostgreSQL/PostGIS");
   const a = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
     b = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
@@ -1064,6 +1071,7 @@ create function storage.foldername(text) returns text[] language sql immutable a
     await c.query("rollback");
   }
 
+  await testMapSearch(c);
   const functions = (
     await c.query(
       "select n.nspname,p.proname from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.prosecdef",

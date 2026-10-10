@@ -1,8 +1,16 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
-import { ArrowLeft, ArrowUpRight, CheckCircle2, LoaderCircle, MapPin, Search, X } from "lucide-react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
+import {
+  ArrowLeft,
+  ArrowUpRight,
+  CheckCircle2,
+  LoaderCircle,
+  MapPin,
+  Search,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,6 +42,7 @@ type Selection = {
   placeId?: string;
   token?: string;
   label: string;
+  address?: string;
   lat?: number;
   lng?: number;
 };
@@ -65,10 +74,37 @@ export function ProposalForm({
   } | null>(null);
   const [locating, setLocating] = useState(false);
   const [error, setError] = useState("");
+  const [locationError, setLocationError] = useState("");
+  const [sending, setSending] = useState(false);
   const [busy, setBusy] = useState(false);
   const [searching, setSearching] = useState(false);
+  const [composing, setComposing] = useState(false);
+  const [rationale, setRationale] = useState("");
+  const [searchError, setSearchError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const searchController = useRef<AbortController | null>(null);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const submitting = useRef(false);
   const requestId = useRef(0);
+  const geocodeController = useRef<AbortController | null>(null);
+  const autoSearch = useEffectEvent(() => search(false));
+  useEffect(() => {
+    if (!enabled || manual || selection || composing || query.trim().length < 2)
+      return;
+    searchTimer.current = setTimeout(() => void autoSearch(), 400);
+    return () => {
+      if (searchTimer.current) clearTimeout(searchTimer.current);
+    };
+  }, [query, composing, manual, enabled, selection]);
+  useEffect(
+    () => () => {
+      searchController.current?.abort();
+      geocodeController.current?.abort();
+    },
+    [],
+  );
   function resetProposal() {
+    searchController.current?.abort();
     requestId.current++;
     setQuery("");
     setInternal([]);
@@ -81,13 +117,21 @@ export function ProposalForm({
     setManualAddress("");
     setManualLocation(null);
     setError("");
+    setLocationError("");
     setSearching(false);
+    setRationale("");
+    setFieldErrors({});
+    setSearchError("");
   }
-  async function search() {
+  async function search(external = true) {
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchController.current?.abort();
+    const controller = new AbortController();
+    searchController.current = controller;
     const id = ++requestId.current;
-    setBusy(true);
+    if (external) setBusy(true);
     setSearching(true);
-    setError("");
+    setSearchError("");
     setSelection(null);
     setManual(false);
     setCandidates([]);
@@ -100,25 +144,33 @@ export function ProposalForm({
       let result = await post<{
         internal: Internal[];
         candidates: Candidate[];
-      }>("/api/places/search", {
-        mapId: map.id,
-        query: query.trim(),
-        external: false,
-      });
-      if (requestId.current !== id) return;
-      if (result.internal.length === 0)
-        result = await post<typeof result>("/api/places/search", {
+      }>(
+        "/api/places/search",
+        {
           mapId: map.id,
           query: query.trim(),
-          external: true,
-        });
-      if (requestId.current !== id) return;
+          external: false,
+        },
+        controller.signal,
+      );
+      if (requestId.current !== id || controller.signal.aborted) return;
+      if (external && result.internal.length === 0)
+        result = await post<typeof result>(
+          "/api/places/search",
+          {
+            mapId: map.id,
+            query: query.trim(),
+            external: true,
+          },
+          controller.signal,
+        );
+      if (requestId.current !== id || controller.signal.aborted) return;
       setInternal(result.internal);
       setCandidates(result.candidates);
       setSearched(true);
     } catch (e) {
-      if (requestId.current === id) {
-        setError((e as Error).message);
+      if (requestId.current === id && !controller.signal.aborted) {
+        setSearchError((e as Error).message);
         setSearched(true);
       }
     } finally {
@@ -129,6 +181,10 @@ export function ProposalForm({
     }
   }
   async function choose(candidate: Candidate) {
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchController.current?.abort();
+    const controller = new AbortController();
+    searchController.current = controller;
     const id = ++requestId.current;
     setBusy(true);
     setError("");
@@ -139,8 +195,12 @@ export function ProposalForm({
         currentMapPlaceId: string | null;
         currentMapStatus: string | null;
         candidate: Candidate;
-      }>("/api/places/details", { mapId: map.id, token: candidate.token });
-      if (requestId.current !== id) return;
+      }>(
+        "/api/places/details",
+        { mapId: map.id, token: candidate.token },
+        controller.signal,
+      );
+      if (requestId.current !== id || controller.signal.aborted) return;
       if (result.placeId) {
         const place = {
           id: result.placeId,
@@ -154,40 +214,55 @@ export function ProposalForm({
           currentMapStatus: result.currentMapStatus,
         };
         if (result.currentMapStatus) setExistingPlace(place);
-        else setSelection({ placeId: place.id, label: place.name, lat: place.lat, lng: place.lng });
+        else
+          setSelection({
+            placeId: place.id,
+            label: place.name,
+            address: place.address,
+            lat: place.lat,
+            lng: place.lng,
+          });
         return;
       }
       setSelection({
         placeId: undefined,
         token: result.candidate.token,
         label: result.candidate.label,
+        address: result.candidate.address,
         lat: result.candidate.lat,
         lng: result.candidate.lng,
       });
     } catch (e) {
-      if (requestId.current === id) setError((e as Error).message);
+      if (requestId.current === id && !controller.signal.aborted)
+        setSearchError((e as Error).message);
     } finally {
       if (requestId.current === id) setBusy(false);
     }
   }
   async function locateAddress() {
     if (manualAddress.trim().length < 5) {
-      setError("주소를 더 자세히 입력해 주세요.");
+      setLocationError("주소를 더 자세히 입력해 주세요.");
       return;
     }
     setLocating(true);
-    setError("");
+    setLocationError("");
+    geocodeController.current?.abort();
+    const controller = new AbortController();
+    geocodeController.current = controller;
     try {
       const location = await post<{ lat: number; lng: number; label: string }>(
         "/api/places/geocode",
         { mapId: map.id, address: manualAddress.trim() },
+        controller.signal,
       );
+      if (controller.signal.aborted) return;
       setManualLocation(location);
     } catch (error) {
+      if (controller.signal.aborted) return;
       setManualLocation(null);
-      setError((error as Error).message);
+      setLocationError((error as Error).message);
     } finally {
-      setLocating(false);
+      if (!controller.signal.aborted) setLocating(false);
     }
   }
   return (
@@ -195,7 +270,10 @@ export function ProposalForm({
       {!enabled && (
         <p className="rounded-lg border p-4 text-sm">
           로그인하면 누구나 장소를 제안할 수 있어요.{" "}
-          <Link href={loginHref(`/maps/${map.slug}/submit`)} className="underline">
+          <Link
+            href={loginHref(`/maps/${map.slug}/submit`)}
+            className="underline"
+          >
             로그인하기
           </Link>
         </p>
@@ -210,6 +288,7 @@ export function ProposalForm({
           aria-busy={searching}
           onSubmit={(e) => {
             e.preventDefault();
+            if (composing) return;
             void search();
           }}
         >
@@ -218,8 +297,15 @@ export function ProposalForm({
             placeholder="장소 이름을 입력하세요"
             value={query}
             maxLength={100}
-            disabled={!enabled}
+            disabled={!enabled || sending}
+            onCompositionStart={() => {
+              searchController.current?.abort();
+              requestId.current++;
+              setComposing(true);
+            }}
+            onCompositionEnd={() => setComposing(false)}
             onChange={(e) => {
+              searchController.current?.abort();
               requestId.current++;
               setBusy(false);
               setSearching(false);
@@ -229,12 +315,18 @@ export function ProposalForm({
               setShowRelated(false);
               setInternal([]);
               setCandidates([]);
-              setError("");
+              setSearchError("");
             }}
           />
-          <Button disabled={!enabled || busy || query.trim().length === 0}>
+          <Button
+            disabled={!enabled || busy || sending || query.trim().length === 0}
+          >
             {searching ? (
-              <LoaderCircle size={15} className="animate-spin" aria-hidden="true" />
+              <LoaderCircle
+                size={15}
+                className="animate-spin"
+                aria-hidden="true"
+              />
             ) : (
               <Search size={15} aria-hidden="true" />
             )}
@@ -247,8 +339,19 @@ export function ProposalForm({
             disabled={busy}
             className="block w-full rounded-lg border p-3 text-left hover:bg-secondary"
             onClick={() => {
+              if (searchTimer.current) clearTimeout(searchTimer.current);
+              searchController.current?.abort();
+              requestId.current++;
+              setSearching(false);
               if (p.currentMapStatus) setExistingPlace(p);
-              else setSelection({ placeId: p.id, label: p.name, lat: p.lat, lng: p.lng });
+              else
+                setSelection({
+                  placeId: p.id,
+                  label: p.name,
+                  address: p.address,
+                  lat: p.lat,
+                  lng: p.lng,
+                });
             }}
           >
             <span className="text-sm font-medium">{p.name}</span>
@@ -257,10 +360,14 @@ export function ProposalForm({
             </span>
             <span className="mt-1 block text-xs text-primary">
               {!p.currentMapStatus
-                ? "이 지도에 추천할 수 있음"
-                : ["rejected", "archived", "reviewed"].includes(p.currentMapStatus)
-                  ? "이 지도에서 검토된 장소"
-                  : "이 지도에 등록됨"}
+                ? "이 지도에 추천 가능"
+                : p.currentMapStatus === "pending"
+                  ? "검토 대기"
+                  : ["rejected", "archived", "reviewed"].includes(
+                        p.currentMapStatus,
+                      )
+                    ? "이미 검토됨"
+                    : "이 지도에 공개됨"}
             </span>
           </button>
         ))}
@@ -301,7 +408,12 @@ export function ProposalForm({
             관련 결과 {candidates.length - 5}개 더 보기
           </Button>
         )}
-        {searched && !error && !internal.length && !candidates.length && (
+        {searchError && (
+          <p role="alert" className="text-sm text-destructive">
+            {searchError}
+          </p>
+        )}
+        {searched && !searchError && !internal.length && !candidates.length && (
           <p className="text-sm text-muted-foreground">
             검색 결과가 없습니다. 아직 지원하지 않는 지역이거나 새 장소일 수
             있습니다.
@@ -312,7 +424,22 @@ export function ProposalForm({
           open={manual}
           onToggle={(event) => {
             const open = event.currentTarget.open;
+            if (sending) {
+              event.currentTarget.open = manual;
+              return;
+            }
+            if (open === manual) return;
+            if (searchTimer.current) clearTimeout(searchTimer.current);
+            searchController.current?.abort();
+            geocodeController.current?.abort();
+            setLocating(false);
+            requestId.current++;
+            setBusy(false);
+            setSearching(false);
             setManual(open);
+            setError("");
+            setLocationError("");
+            setFieldErrors({});
             setSelection(null);
             if (!open) setManualLocation(null);
           }}
@@ -328,7 +455,18 @@ export function ProposalForm({
           <div className="overflow-hidden rounded-lg border">
             <p className="bg-secondary p-3 text-sm">
               선택한 장소: {selection.label}
+              <span className="mt-1 block text-xs text-muted-foreground">
+                {selection.address}
+              </span>
             </p>
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={sending}
+              onClick={() => setSelection(null)}
+            >
+              다른 장소 선택
+            </Button>
             {selection.lat !== undefined && selection.lng !== undefined && (
               <div className="h-[300px]">
                 <MapCanvas
@@ -373,14 +511,38 @@ export function ProposalForm({
       {(selection || manual) && (
         <form
           className="space-y-6"
+          noValidate
           onSubmit={async (e) => {
             e.preventDefault();
+            if (submitting.current) return;
             const form = e.currentTarget;
+            const f = new FormData(form);
+            const errors: Record<string, string> = {};
+            if (rationale.trim().length < 5 || rationale.trim().length > 1000)
+              errors.rationale = "추천 이유를 5~1,000자로 입력해 주세요.";
+            if (manual && !String(f.get("name") ?? "").trim())
+              errors.name = "장소 이름을 입력해 주세요.";
+            if (manual && String(f.get("name") ?? "").trim().length > 120)
+              errors.name = "장소 이름은 120자 이내로 입력해 주세요.";
+            if (manual && !manualAddress.trim())
+              errors.address = "정확한 주소를 입력해 주세요.";
+            if (manual && manualAddress.trim().length > 250)
+              errors.address = "주소는 250자 이내로 입력해 주세요.";
+            if (manual && !manualLocation)
+              errors.location = "주소에서 위치를 찾고 지도에서 확인해 주세요.";
+            setFieldErrors(errors);
+            if (Object.keys(errors).length) return;
+            submitting.current = true;
+            setSending(true);
             setBusy(true);
             setError("");
-            const f = new FormData(form);
             try {
-              const result = await post<{ id: string; placeId: string; status: string; created: boolean }>("/api/places/propose", {
+              const result = await post<{
+                id: string;
+                placeId: string;
+                status: string;
+                created: boolean;
+              }>("/api/places/propose", {
                 mapId: map.id,
                 placeId: selection?.placeId,
                 candidateToken: selection?.token,
@@ -406,6 +568,8 @@ export function ProposalForm({
             } catch (e) {
               setError((e as Error).message);
             } finally {
+              submitting.current = false;
+              setSending(false);
               setBusy(false);
             }
           }}
@@ -414,7 +578,8 @@ export function ProposalForm({
             <section className="space-y-4 rounded-xl border bg-card p-6">
               <h2 className="text-sm font-semibold">새 장소 정보</h2>
               <p className="text-xs text-muted-foreground">
-                이름과 정확한 주소를 입력하면 위치를 찾습니다. 좌표를 직접 입력할 필요는 없어요.
+                이름과 정확한 주소를 입력하면 위치를 찾습니다. 좌표를 직접
+                입력할 필요는 없어요.
               </p>
               <Label htmlFor="name">장소 이름</Label>
               <Input
@@ -423,21 +588,52 @@ export function ProposalForm({
                 required
                 maxLength={120}
                 defaultValue={query}
+                aria-invalid={Boolean(fieldErrors.name)}
+                aria-describedby={fieldErrors.name ? "name-error" : undefined}
               />
+              {fieldErrors.name && (
+                <p
+                  id="name-error"
+                  role="alert"
+                  className="text-sm text-destructive"
+                >
+                  {fieldErrors.name}
+                </p>
+              )}
               <Label htmlFor="address">주소</Label>
               <Input
                 id="address"
                 name="address"
                 required
                 maxLength={250}
-                placeholder={map.country === "KR" ? "예: 서울 용산구 신흥로 20길 38" : "예: 東京都港区南青山6-1-3"}
+                placeholder={
+                  map.country === "KR"
+                    ? "예: 서울 용산구 신흥로 20길 38"
+                    : "예: 東京都港区南青山6-1-3"
+                }
                 className="min-h-11"
                 value={manualAddress}
+                aria-invalid={Boolean(fieldErrors.address)}
+                aria-describedby={
+                  fieldErrors.address ? "address-error" : undefined
+                }
                 onChange={(event) => {
+                  geocodeController.current?.abort();
+                  setLocating(false);
+                  setLocationError("");
                   setManualAddress(event.target.value);
                   setManualLocation(null);
                 }}
               />
+              {fieldErrors.address && (
+                <p
+                  id="address-error"
+                  role="alert"
+                  className="text-sm text-destructive"
+                >
+                  {fieldErrors.address}
+                </p>
+              )}
               <Button
                 type="button"
                 variant="outline"
@@ -447,10 +643,21 @@ export function ProposalForm({
                 <Search size={14} />
                 {locating ? "위치 찾는 중…" : "주소에서 위치 찾기"}
               </Button>
+              {fieldErrors.location && (
+                <p role="alert" className="text-sm text-destructive">
+                  {fieldErrors.location}
+                </p>
+              )}
+              {locationError && (
+                <p role="alert" className="text-sm text-destructive">
+                  {locationError}
+                </p>
+              )}
               {manualLocation && (
                 <div className="overflow-hidden rounded-lg border">
                   <p className="bg-secondary p-3 text-sm">
-                    위치를 찾았습니다. 핀이 맞는지 확인하고, 다르면 지도에서 원하는 위치를 눌러 조정하세요.
+                    위치를 찾았습니다. 핀이 맞는지 확인하고, 다르면 지도에서
+                    원하는 위치를 눌러 조정하세요.
                   </p>
                   <div className="h-[300px]">
                     <MapCanvas
@@ -480,7 +687,11 @@ export function ProposalForm({
                       selected="manual-location"
                       onSelect={() => {}}
                       onMapClick={({ lat, lng }) =>
-                        setManualLocation({ lat, lng, label: "지도에서 조정한 위치" })
+                        setManualLocation({
+                          lat,
+                          lng,
+                          label: "지도에서 조정한 위치",
+                        })
                       }
                       bounds={{
                         south: manualLocation.lat - 0.006,
@@ -511,29 +722,41 @@ export function ProposalForm({
               required
               minLength={5}
               maxLength={1000}
-              placeholder={map.country === "KR" ? "예: 빈티지 의류를 천천히 살펴보기 좋아요" : "예: 90년대 일본 빈티지를 찾기 좋아요"}
+              placeholder={
+                map.country === "KR"
+                  ? "예: 빈티지 의류를 천천히 살펴보기 좋아요"
+                  : "예: 90년대 일본 빈티지를 찾기 좋아요"
+              }
+              value={rationale}
+              onChange={(event) => setRationale(event.target.value)}
+              aria-invalid={Boolean(fieldErrors.rationale)}
+              aria-describedby="rationale-help rationale-error"
             />
+            <p id="rationale-help" className="text-xs text-muted-foreground">
+              5~1,000자 · {rationale.length.toLocaleString()} / 1,000자
+            </p>
+            <p
+              id="rationale-error"
+              role={fieldErrors.rationale ? "alert" : undefined}
+              className="text-sm text-destructive"
+            >
+              {fieldErrors.rationale}
+            </p>
             <p className="text-xs text-muted-foreground">
               {autoApprove
                 ? "운영자 제안은 제출 즉시 일반 목록에 공개됩니다."
                 : "제안은 검토 대기 핀으로 표시되며, 승인 후 일반 목록에 공개됩니다."}
             </p>
           </section>
-          <Button
-            disabled={!enabled || busy || (manual && !manualLocation)}
-            className="w-full"
-          >
-            {busy ? "보내는 중…" : "장소 제안하기"}
+          {error && (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          )}
+          <Button disabled={!enabled || busy || sending} className="w-full">
+            {sending ? "보내는 중…" : "장소 제안하기"}
           </Button>
         </form>
-      )}
-      {error && (
-        <p
-          role="alert"
-          className="rounded-lg bg-destructive/5 p-4 text-sm text-destructive"
-        >
-          {error}
-        </p>
       )}
       <Dialog
         open={Boolean(existingPlace)}
@@ -564,14 +787,22 @@ export function ProposalForm({
             </p>
             <DialogHeader className="mt-2 gap-2">
               <DialogTitle className="text-2xl leading-tight font-semibold tracking-tight">
-                {["rejected", "archived", "reviewed"].includes(existingPlace?.currentMapStatus ?? "")
+                {["rejected", "archived", "reviewed"].includes(
+                  existingPlace?.currentMapStatus ?? "",
+                )
                   ? "이미 검토된 장소입니다"
-                  : "이미 등록된 장소입니다"}
+                  : existingPlace?.currentMapStatus === "pending"
+                    ? "이미 검토 대기 중인 장소입니다"
+                    : "이미 공개된 장소입니다"}
               </DialogTitle>
               <DialogDescription className="max-w-sm leading-6">
-                {existingPlace?.currentMapStatus === "rejected" || existingPlace?.currentMapStatus === "archived" || existingPlace?.currentMapStatus === "reviewed"
-                  ? "이 지도에서 이미 검토된 장소입니다. 처리 상태는 내 제안에서 확인할 수 있어요."
-                  : "이 지도에 이미 등록된 장소입니다. 지도에서 위치와 추천 근거를 확인해 보세요."}
+                {existingPlace?.currentMapStatus === "rejected" ||
+                existingPlace?.currentMapStatus === "archived" ||
+                existingPlace?.currentMapStatus === "reviewed"
+                  ? "이 지도에서 이미 검토된 장소입니다. 다른 장소를 선택해 주세요."
+                  : existingPlace?.currentMapStatus === "pending"
+                    ? "이미 접수된 제안입니다. 지도에서 위치와 추천 근거를 확인해 보세요."
+                    : "이 지도에 이미 공개된 장소입니다. 지도에서 위치와 추천 근거를 확인해 보세요."}
               </DialogDescription>
             </DialogHeader>
           </div>
@@ -599,7 +830,9 @@ export function ProposalForm({
                   type="button"
                   onClick={() => {
                     if (!existingPlace?.currentMapPlaceId) return;
-                    router.push(`/maps/${map.slug}?proposal=${encodeURIComponent(existingPlace.currentMapPlaceId)}`);
+                    router.push(
+                      `/maps/${map.slug}?proposal=${encodeURIComponent(existingPlace.currentMapPlaceId)}`,
+                    );
                     setExistingPlace(null);
                   }}
                 >

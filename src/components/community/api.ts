@@ -1,11 +1,13 @@
 export async function post<T = Record<string, unknown>>(
   url: string,
   data: unknown,
+  signal?: AbortSignal,
 ): Promise<T> {
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
+    signal,
   });
   const result = await response.json();
   if (!response.ok)

@@ -66,7 +66,8 @@ describe("provider boundaries", () => {
             {
               id: "1",
               place_name: "예시",
-              address_name: "주소",
+              address_name: "서울 중구 태평로1가 31",
+              road_address_name: "서울 중구 세종대로 110",
               x: "127",
               y: "37",
             },
@@ -80,10 +81,40 @@ describe("provider boundaries", () => {
       map: { ...demoMap, country: "KR" },
       session,
     });
+    expect(result[0].address).toBe("서울 중구 세종대로 110");
     await provider.details(result[0], { map: demoMap, session });
     expect(fetch).toHaveBeenCalledTimes(1);
     expect(fetch.mock.calls[0][1].headers.Authorization).toBe("KakaoAK SECRET");
   });
+  it.each([undefined, "", "   "])(
+    "uses the land-lot address when Kakao road address is %s",
+    async (roadAddress) => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              documents: [
+                {
+                  id: "1",
+                  place_name: "예시",
+                  address_name: "서울 중구 태평로1가 31",
+                  road_address_name: roadAddress,
+                  x: "127",
+                  y: "37",
+                },
+              ],
+            }),
+          ),
+        ),
+      );
+      const result = await kakaoProvider("SECRET").search("예시", {
+        map: { ...demoMap, country: "KR" },
+        session,
+      });
+      expect(result[0].address).toBe("서울 중구 태평로1가 31");
+    },
+  );
   it("rejects tampering, cross-user tokens and expired selection", () => {
     vi.stubEnv("PROVIDER_SIGNING_SECRET", "x".repeat(32));
     const claims = {

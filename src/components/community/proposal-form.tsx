@@ -178,12 +178,12 @@ export function ProposalForm({
     external = true,
     translate = false,
     keyword = query,
-    compositionComplete = false,
+    allowComposition = false,
   ) {
     if (
       !enabled ||
       authChanged ||
-      (composing && !compositionComplete) ||
+      (composing && !allowComposition) ||
       keyword.trim().length < 2
     )
       return;
@@ -434,8 +434,18 @@ export function ProposalForm({
                 setShowRelated(false);
                 setTranslationAvailable(false);
                 setSearchError("");
-                if (!composing && !(e.nativeEvent as InputEvent).isComposing)
-                  void search(true, false, e.target.value);
+                const inComposition =
+                  composing || (e.nativeEvent as InputEvent).isComposing;
+                // Korean IMEs may keep the last syllable composing until blur.
+                // Search complete Hangul syllables without forcing IME commit;
+                // skip standalone jamo and other languages' preedit text.
+                const completeHangul =
+                  /[가-힣]$/.test(e.target.value.trim()) &&
+                  !/[\u1100-\u11ff\u3130-\u318f\ua960-\ua97f\ud7b0-\ud7ff]/.test(
+                    e.target.value,
+                  );
+                if (!inComposition || completeHangul)
+                  void search(true, false, e.target.value, completeHangul);
               }}
             />
             <Button

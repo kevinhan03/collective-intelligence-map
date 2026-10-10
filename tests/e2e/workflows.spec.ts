@@ -276,18 +276,22 @@ test("automatic suggestions are immediate, respect composition and search extern
   await page.waitForTimeout(650);
   expect(requests).toHaveLength(0);
   await input.dispatchEvent("compositionstart");
-  await input.fill("가게");
+  await input.fill("가ㄱ");
+  await page.waitForTimeout(650);
+  expect(requests).toHaveLength(0);
+  await input.fill("かな");
   await page.waitForTimeout(650);
   expect(requests).toHaveLength(0);
   // Freeze timers before committing the IME. A debounce timer could not fire,
   // whereas the input-event search must still reach the API.
   await page.clock.install();
   await page.clock.pauseAt(new Date());
+  await input.fill("がけ");
   await input.dispatchEvent("compositionend");
   await expect(page.getByRole("button", { name: /가게 후보/ })).toBeVisible();
   expect(requests).toEqual([
     expect.objectContaining({
-      query: "가게",
+      query: "がけ",
       external: true,
       translate: false,
     }),
@@ -304,6 +308,40 @@ test("automatic suggestions are immediate, respect composition and search extern
       translate: false,
     }),
   ]);
+});
+test("complete Korean syllables search while focused before composition ends", async ({
+  page,
+}) => {
+  const queries: string[] = [];
+  await page.route("**/api/places/search", (route) => {
+    queries.push(route.request().postDataJSON().query);
+    return route.fulfill({
+      json: { internal: [internalPlace("스타 장소 후보")], candidates: [] },
+    });
+  });
+  await open(page);
+  const input = page.getByRole("textbox", { name: "제안할 장소 검색" });
+  await input.focus();
+  await page.clock.install();
+  await page.clock.pauseAt(new Date());
+  await input.dispatchEvent("compositionstart");
+  await input.fill("ㅅ");
+  await input.fill("스타");
+  await expect(
+    page.getByRole("button", { name: /스타 장소 후보/ }),
+  ).toBeVisible();
+  await expect(input).toBeFocused();
+  expect(queries).toEqual(["스타"]);
+  await input.dispatchEvent("compositionend");
+  await expect(
+    page.getByRole("button", { name: /스타 장소 후보/ }),
+  ).toBeEnabled();
+  expect(queries).toEqual(["스타"]);
+  await input.dispatchEvent("compositionstart");
+  await input.fill("스타ㅂ");
+  await input.fill("스타벅");
+  await expect.poll(() => queries).toEqual(["스타", "스타벅"]);
+  await expect(input).toBeFocused();
 });
 test("manual entry validates fields, adjusts location and retains input after submit failure", async ({
   page,

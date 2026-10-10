@@ -12,19 +12,16 @@ export default async function Submit({
   ]);
   if (!map) notFound();
   return (
-    <main id="main" className="page-wrap max-w-2xl">
-      <p className="kicker mb-3">Contribute to {map.title}</p>
-      <h1 className="text-3xl font-semibold break-keep">나만 알기 아까운 곳이 있나요?</h1>
-      <p className="mt-4 mb-8 text-sm leading-7 text-muted-foreground">
-        장소를 고르고, 추천하는 점을 한 줄만 남겨 주세요.
-        <br />
-        {viewer?.role === "admin"
-          ? "운영자 제안은 제출 즉시 일반 목록에 공개됩니다."
-          : "검토 대기 핀으로 표시되며 운영자 승인 후 일반 목록에 공개됩니다."}
-      </p>
+    <main id="main" className="page-wrap proposal-page">
+      <header className="proposal-intro">
+        <p className="kicker">{map.title}</p>
+        <h1>장소 제안</h1>
+        <p>좋은 장소를 더 많은 사람들과 공유해 주세요.</p>
+      </header>
       <ProposalForm
         map={map}
         enabled={Boolean(viewer)}
+        viewerId={viewer?.id}
         autoApprove={viewer?.role === "admin"}
         config={rendererFor()}
       />

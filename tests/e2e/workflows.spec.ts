@@ -197,9 +197,20 @@ test("existing statuses guide users and a selected place submits only once", asy
     "서울 용산구",
   );
   await page.getByLabel("추천하는 점 한 줄").fill("추천하는 이유입니다");
+  await page.getByRole("button", { name: "제안 내용 확인" }).click();
+  expect(count).toBe(0);
+  await expect(
+    page.getByRole("region", { name: "제출할 제안 내용" }),
+  ).toContainText("추천하는 이유입니다");
+  await page.getByRole("button", { name: "이전 단계" }).click();
+  await expect(page.getByLabel("추천하는 점 한 줄")).toHaveValue(
+    "추천하는 이유입니다",
+  );
+  await page.getByRole("button", { name: "제안 내용 확인" }).click();
   await page.getByRole("button", { name: "장소 제안하기" }).click();
   await expect(page.getByRole("button", { name: "보내는 중…" })).toBeDisabled();
-  await expect(input).toBeDisabled();
+  await expect(input).toBeHidden();
+  await expect(page.getByRole("button", { name: "이전 단계" })).toBeDisabled();
   expect(count).toBe(1);
   release!();
   await expect(page).toHaveURL(
@@ -233,30 +244,66 @@ test("unauthenticated users cannot open admin moderation", async ({ page }) => {
   await page.goto("/admin/moderation");
   await expect(page).toHaveURL(/\/login/);
 });
-test("automatic internal search debounces, respects composition and never searches externally", async ({
+test("automatic suggestions are immediate, respect composition and search externally only without internal matches", async ({
   page,
 }) => {
   const requests: { query: string; external: boolean }[] = [];
   await page.route("**/api/places/search", (route) => {
-    requests.push(route.request().postDataJSON());
-    return route.fulfill({ json: { internal: [], candidates: [] } });
+    const input = route.request().postDataJSON();
+    requests.push(input);
+    return route.fulfill({
+      json: {
+        internal: input.query === "등록" ? [internalPlace("등록된 가게")] : [],
+        candidates: input.external
+          ? [
+              {
+                provider: "kakao",
+                externalId: "candidate",
+                token: "candidate-token",
+                label: "가게 후보",
+                address: "서울 용산구",
+                category: "",
+                attribution: "Kakao Maps",
+              },
+            ]
+          : [],
+      },
+    });
   });
   await open(page);
   const input = page.getByRole("textbox", { name: "제안할 장소 검색" });
   await input.fill("가");
-  await page.waitForTimeout(450);
+  await page.waitForTimeout(650);
   expect(requests).toHaveLength(0);
   await input.dispatchEvent("compositionstart");
   await input.fill("가게");
-  await page.waitForTimeout(450);
+  await page.waitForTimeout(650);
   expect(requests).toHaveLength(0);
+  // Freeze timers before committing the IME. A debounce timer could not fire,
+  // whereas the input-event search must still reach the API.
+  await page.clock.install();
+  await page.clock.pauseAt(new Date());
   await input.dispatchEvent("compositionend");
-  await page.waitForTimeout(200);
-  expect(requests).toHaveLength(0);
-  await expect.poll(() => requests.length).toBe(1);
-  expect(requests[0]).toMatchObject({ query: "가게", external: false });
-  await page.getByRole("button", { name: "검색", exact: true }).click();
-  await expect.poll(() => requests.some((r) => r.external)).toBe(true);
+  await expect(page.getByRole("button", { name: /가게 후보/ })).toBeVisible();
+  expect(requests).toEqual([
+    expect.objectContaining({
+      query: "가게",
+      external: true,
+      translate: false,
+    }),
+  ]);
+  await input.fill("등록");
+  await expect(
+    page.getByRole("button", { name: /등록된 가게.*추천 가능/ }),
+  ).toBeVisible();
+  await page.waitForTimeout(650);
+  expect(requests.filter((r) => r.query === "등록")).toEqual([
+    expect.objectContaining({
+      query: "등록",
+      external: true,
+      translate: false,
+    }),
+  ]);
 });
 test("manual entry validates fields, adjusts location and retains input after submit failure", async ({
   page,
@@ -274,7 +321,7 @@ test("manual entry validates fields, adjusts location and retains input after su
   });
   await open(page);
   await page.getByText("찾는 장소가 없나요? 직접 등록").click();
-  await page.getByRole("button", { name: "장소 제안하기" }).click();
+  await page.getByRole("button", { name: "이 장소로 계속" }).click();
   await expect(
     page.getByText("장소 이름을 입력해 주세요.", { exact: true }),
   ).toBeVisible();
@@ -282,7 +329,13 @@ test("manual entry validates fields, adjusts location and retains input after su
   await page.getByLabel("주소", { exact: true }).fill("서울시 용산구 주소");
   await page.getByRole("button", { name: "주소에서 위치 찾기" }).click();
   await page.getByRole("button", { name: "테스트 지도 위치 조정" }).click();
+  await page.getByRole("button", { name: "이 장소로 계속" }).click();
+  await page.getByRole("button", { name: "제안 내용 확인" }).click();
+  await expect(
+    page.getByText("추천 이유를 5~1,000자로 입력해 주세요."),
+  ).toBeVisible();
   await page.getByLabel("추천하는 점 한 줄").fill("추천할 만한 가게입니다");
+  await page.getByRole("button", { name: "제안 내용 확인" }).click();
   await page.getByRole("button", { name: "장소 제안하기" }).click();
   await expect(page.getByText("일시적인 저장 오류")).toBeVisible();
   await expect(page.getByLabel("추천하는 점 한 줄")).toHaveValue(
@@ -336,4 +389,103 @@ test("admin tabs restore through history, filters and ordering work, errors reta
   await expect(page.getByRole("alertdialog")).toContainText(
     "원본 “원본 가게” → 목적 “목적 가게”",
   );
+});
+
+test("keeps previous candidates disabled during a new query and reuses the previous result", async ({
+  page,
+}) => {
+  const queries: string[] = [];
+  let finish: (() => Promise<void>) | undefined;
+  await page.route("**/api/places/search", (route) => {
+    const { query } = route.request().postDataJSON();
+    queries.push(query);
+    if (query === "느린검색") {
+      finish = () =>
+        route.fulfill({
+          json: { internal: [internalPlace("느린검색 결과")], candidates: [] },
+        });
+      return;
+    }
+    return route.fulfill({
+      json: { internal: [internalPlace("빠른검색 결과")], candidates: [] },
+    });
+  });
+  await open(page);
+  const input = page.getByRole("textbox", { name: "제안할 장소 검색" });
+  await input.fill("빠른검색");
+  const prior = page.getByRole("button", { name: /빠른검색 결과/ });
+  await expect(prior).toBeEnabled();
+  await input.fill("느린검색");
+  await expect(prior).toBeVisible();
+  await expect(prior).toBeDisabled();
+  await expect.poll(() => queries).toContain("느린검색");
+  await input.fill("빠른검색");
+  await expect(prior).toBeEnabled();
+  expect(queries.filter((q) => q === "빠른검색")).toHaveLength(1);
+  await finish?.().catch(() => {});
+  await expect(page.getByRole("button", { name: /느린검색 결과/ })).toHaveCount(
+    0,
+  );
+});
+test("Japanese translation is explicit and world search explains limited data", async ({
+  page,
+}) => {
+  const requests: { translate: boolean }[] = [];
+  await page.route("**/api/places/search", (route) => {
+    const input = route.request().postDataJSON();
+    requests.push(input);
+    return route.fulfill({
+      json: {
+        internal: input.translate ? [internalPlace("翻訳した場所")] : [],
+        candidates: [],
+        translationAvailable: !input.translate,
+      },
+    });
+  });
+  await open(page, "japan");
+  await page.getByRole("textbox", { name: "제안할 장소 검색" }).fill("vintage");
+  await expect(
+    page.getByRole("button", { name: "일본어 이름으로 찾아보기" }),
+  ).toBeVisible();
+  expect(requests).toHaveLength(1);
+  expect(requests[0].translate).toBe(false);
+  await page.getByRole("button", { name: "일본어 이름으로 찾아보기" }).click();
+  await expect(
+    page.getByRole("button", { name: /翻訳した場所/ }),
+  ).toBeVisible();
+  expect(requests[1].translate).toBe(true);
+  await open(page, "world");
+  await expect(
+    page.getByText("현재 확보된 지역 데이터에서 검색합니다."),
+  ).toBeVisible();
+  await page.getByText("찾는 장소가 없나요? 직접 등록").click();
+  await expect(page.getByLabel("국가", { exact: true })).toBeVisible();
+});
+
+test("Enter shares an active automatic search and request limits retain manual registration", async ({
+  page,
+}) => {
+  let requests = 0;
+  let release!: () => Promise<void>;
+  await page.route("**/api/places/search", (route) => {
+    requests++;
+    release = () =>
+      route.fulfill({
+        status: 429,
+        json: { error: "외부 검색 요청 한도에 도달했습니다." },
+      });
+  });
+  await open(page);
+  const input = page.getByRole("textbox", { name: "제안할 장소 검색" });
+  await input.fill("한도검색");
+  await expect.poll(() => requests).toBe(1);
+  await input.press("Enter");
+  await input.press("Enter");
+  expect(requests).toBe(1);
+  await release();
+  await expect(
+    page.getByText("외부 검색 요청 한도에 도달했습니다."),
+  ).toBeVisible();
+  await page.getByText("찾는 장소가 없나요? 직접 등록").click();
+  await expect(page.getByLabel("장소 이름", { exact: true })).toBeVisible();
 });

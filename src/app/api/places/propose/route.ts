@@ -15,6 +15,8 @@ import {
 import { db } from "@/lib/supabase/server";
 import { serviceDb } from "@/lib/supabase/admin";
 import { verifyCandidate } from "@/server/places/candidate-token";
+import { getSearchMap } from "@/server/places/search-map";
+import { searchScope, withinSearchScope } from "@/domain/search-scope";
 import { z } from "zod";
 const proposalResult = z.object({
   id: z.uuid(),
@@ -41,6 +43,24 @@ export async function POST(request: Request) {
         "이 검색 공급자의 장소 정보 저장이 활성화되지 않았습니다. 직접 알고 있는 정보로 새 장소를 등록해 주세요.",
         409,
       );
+    const map = await getSearchMap(input.mapId);
+    if (
+      claims &&
+      (!claims.countryCode ||
+        !withinSearchScope(map, {
+          countryCode: claims.countryCode,
+          lat: claims.lat!,
+          lng: claims.lng!,
+        }))
+    )
+      throw new HttpError("이 지도 범위 안의 장소를 선택해 주세요.");
+    if (
+      !claims &&
+      !input.placeId &&
+      searchScope(map) === "world" &&
+      !input.countryCode
+    )
+      throw new HttpError("장소가 있는 국가를 선택해 주세요.");
     const { candidateToken: _, ...payload } = input;
     void _;
     const client = await db();
@@ -50,6 +70,8 @@ export async function POST(request: Request) {
             ...payload,
             placeId: undefined,
             name: claims.name,
+            countryCode: claims.countryCode,
+            locality: claims.locality,
             category: claims.category ?? payload.category,
             address: claims.address ?? "",
             lat: claims.lat,
@@ -66,7 +88,10 @@ export async function POST(request: Request) {
     if (!data) throw new HttpError("장소 제안을 저장하지 못했습니다.", 503);
     const result = proposalResult.parse(data);
     if (!result.created && ["rejected", "archived"].includes(result.status))
-      throw new HttpError("이 지도에서 이미 검토된 장소입니다. 다른 장소를 선택해 주세요.", 409);
+      throw new HttpError(
+        "이 지도에서 이미 검토된 장소입니다. 다른 장소를 선택해 주세요.",
+        409,
+      );
     revalidateTag("public-community", { expire: 0 });
     return json(result, result.created ? 201 : 200);
   } catch (e) {

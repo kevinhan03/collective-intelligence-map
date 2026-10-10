@@ -105,7 +105,13 @@ createRoot(document.getElementById("root")!).render(
     <AdminConsole snapshot={snapshot} />
   ) : (
     <ProposalForm
-      map={map}
+      map={
+        new URLSearchParams(location.search).get("fixture") === "world"
+          ? { ...map, country: null, search_scope: "world" }
+          : new URLSearchParams(location.search).get("fixture") === "japan"
+            ? { ...map, country: "JP" }
+            : map
+      }
       enabled
       autoApprove={false}
       config={{ provider: "preview", key: "" }}

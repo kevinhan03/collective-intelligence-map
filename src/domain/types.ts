@@ -10,7 +10,8 @@ export type ThemeMap = {
   title: string;
   description: string;
   rules: string;
-  country: string;
+  country: string | null;
+  search_scope?: "region" | "country" | "world";
   city: string;
   tags: string[];
   bounds: Bounds;

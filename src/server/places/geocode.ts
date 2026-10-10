@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import type { ThemeMap } from "@/domain/types";
+import { searchScope, withinSearchScope } from "@/domain/search-scope";
 import { HttpError } from "@/server/http";
 
 const responseSchema = z.object({
@@ -23,22 +24,37 @@ function mapTilerKey() {
   }
 }
 
-export async function geocodeAddress(address: string, map: ThemeMap) {
+export async function geocodeAddress(
+  address: string,
+  map: ThemeMap,
+  countryCode?: string,
+) {
   const key = mapTilerKey();
   if (!key)
-    throw new HttpError("주소에서 위치를 찾을 수 있도록 지도 연결을 준비 중입니다.", 503);
+    throw new HttpError(
+      "주소에서 위치를 찾을 수 있도록 지도 연결을 준비 중입니다.",
+      503,
+    );
   const url = new URL(
     `https://api.maptiler.com/geocoding/${encodeURIComponent(address)}.json`,
   );
   url.searchParams.set("key", key);
-  url.searchParams.set("country", map.country.toLowerCase());
-  url.searchParams.set(
-    "bbox",
-    [map.bounds.west, map.bounds.south, map.bounds.east, map.bounds.north].join(","),
-  );
+  const country = searchScope(map) === "world" ? countryCode : map.country;
+  if (country) url.searchParams.set("country", country.toLowerCase());
+  if (searchScope(map) === "region" && map.bounds.west < map.bounds.east) {
+    url.searchParams.set(
+      "bbox",
+      [
+        map.bounds.west,
+        map.bounds.south,
+        map.bounds.east,
+        map.bounds.north,
+      ].join(","),
+    );
+  }
   url.searchParams.set("limit", "1");
   url.searchParams.set("fuzzyMatch", "false");
-  url.searchParams.set("language", map.country === "JP" ? "ja" : "ko");
+  url.searchParams.set("language", country === "JP" ? "ja" : "ko");
   const site = process.env.NEXT_PUBLIC_SITE_URL;
   if (!site) throw new HttpError("사이트 주소가 설정되지 않았습니다.", 503);
   const origin = new URL(site).origin;
@@ -48,17 +64,15 @@ export async function geocodeAddress(address: string, map: ThemeMap) {
     headers: { Origin: origin, Referer: `${origin}/` },
   });
   if (!result.ok)
-    throw new HttpError("주소에서 위치를 찾지 못했습니다. 주소를 더 자세히 입력해 주세요.", 422);
+    throw new HttpError(
+      "주소에서 위치를 찾지 못했습니다. 주소를 더 자세히 입력해 주세요.",
+      422,
+    );
   const feature = responseSchema.parse(await result.json()).features[0];
   if (!feature)
     throw new HttpError("이 지도 범위 안에서 주소를 찾지 못했습니다.", 422);
   const [lng, lat] = feature.center;
-  if (
-    lng < map.bounds.west ||
-    lng > map.bounds.east ||
-    lat < map.bounds.south ||
-    lat > map.bounds.north
-  )
+  if (!withinSearchScope(map, { lat, lng, countryCode: country ?? undefined }))
     throw new HttpError("이 지도 범위 안의 주소를 입력해 주세요.", 422);
   return { lat, lng, label: feature.place_name ?? feature.text ?? address };
 }

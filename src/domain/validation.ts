@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { countryCodes } from "./countries";
 export const boundsSchema = z
   .object({
     west: z.coerce.number().min(-180).max(180),
@@ -14,6 +15,7 @@ export const searchSchema = z.object({
   mapId: z.uuid(),
   query: z.string().trim().min(1).max(100),
   external: z.boolean().default(false),
+  translate: z.boolean().default(false),
   session: z.uuid().optional(),
 });
 export const proposalSchema = z
@@ -32,6 +34,10 @@ export const proposalSchema = z
       .max(1000),
     sourceNote: z.string().trim().max(1000).default(""),
     candidateToken: z.string().max(3000).optional(),
+    countryCode: z
+      .string()
+      .refine((code) => countryCodes.has(code), "올바른 국가를 선택해 주세요.")
+      .optional(),
   })
   .superRefine((v, c) => {
     if (

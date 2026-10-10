@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import fs from "node:fs/promises";
 import assert from "node:assert/strict";
+import { testProposalSearch } from "./test-proposal-search-db.mjs";
 import { testMapSearch } from "./test-map-search-db.mjs";
 const url =
   process.env.TEST_DATABASE_URL ??
@@ -33,12 +34,21 @@ create function storage.foldername(text) returns text[] language sql immutable a
       ),
     );
   await c.query(await fs.readFile("supabase/seed.sql", "utf8"));
-  const searchEditorSql = await fs.readFile("docs/sql/add-map-public-search.sql", "utf8");
+  const searchEditorSql = await fs.readFile(
+    "docs/sql/add-map-public-search.sql",
+    "utf8",
+  );
   await c.query(searchEditorSql);
   await c.query(searchEditorSql);
-  const searchChecks = await c.query(await fs.readFile("docs/sql/check-map-public-search.sql", "utf8"));
-  assert.ok(Object.values(searchChecks[0].rows[0]).every((value) => value === true));
-  console.log("PASS: map search SQL Editor script is repeatable and all three checks are true");
+  const searchChecks = await c.query(
+    await fs.readFile("docs/sql/check-map-public-search.sql", "utf8"),
+  );
+  assert.ok(
+    Object.values(searchChecks[0].rows[0]).every((value) => value === true),
+  );
+  console.log(
+    "PASS: map search SQL Editor script is repeatable and all three checks are true",
+  );
   console.log("PASS: migrations and seed apply to PostgreSQL/PostGIS");
   const a = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
     b = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
@@ -1072,6 +1082,107 @@ create function storage.foldername(text) returns text[] language sql immutable a
   }
 
   await testMapSearch(c);
+  const proposalSetupSql = await fs.readFile(
+    "docs/sql/setup-proposal-search.sql",
+    "utf8",
+  );
+  // Reproduce production without the shared normalization prerequisite. Rename
+  // within a transaction so existing expression-index dependencies stay intact.
+  await c.query("begin");
+  try {
+    await c.query(
+      "alter function public.search_normalize(text) rename to proposal_test_existing_normalize",
+    );
+    const standaloneSetup = proposalSetupSql
+      .replace(/^begin;\s*$/m, "")
+      .replace(/^commit;\s*$/m, "");
+    await c.query(standaloneSetup);
+    await c.query(standaloneSetup);
+    const normalized = (
+      await c.query(
+        "select public.search_normalize(' ＶＩＮＴＡＧＥ　 Shop ') value",
+      )
+    ).rows[0].value;
+    assert.equal(normalized, "vintage shop");
+    console.log(
+      "PASS: proposal setup works independently without search_normalize and is repeatable",
+    );
+  } finally {
+    await c.query("rollback");
+  }
+  await c.query(proposalSetupSql);
+  await c.query(proposalSetupSql);
+  const proposalActivateSql = await fs.readFile(
+    "docs/sql/activate-proposal-search.sql",
+    "utf8",
+  );
+  // Reproduce the failed remote setup: an empty derivative table and a
+  // disabled trigger. Cleanup must remove only these retired objects.
+  await c.query(`create table public.proposal_search_names(source text,source_id text);
+    create function private.proposal_name_terms(text,text[],text) returns text language sql as $$ select 'test'::text $$;
+    create function private.sync_proposal_search_names() returns trigger language plpgsql as $$ begin return new; end $$;
+    create function public.backfill_proposal_search_names(integer) returns jsonb language sql as $$ select '{}'::jsonb $$;
+    create trigger sync_proposal_search_names after insert on public.our_search_places for each row execute function private.sync_proposal_search_names();
+    alter table public.our_search_places disable trigger sync_proposal_search_names;`);
+  await c.query(proposalActivateSql);
+  await c.query(proposalActivateSql);
+  assert.equal(
+    (await c.query("select to_regclass('public.proposal_search_names') names"))
+      .rows[0].names,
+    null,
+  );
+  assert.equal(
+    (
+      await c.query(
+        "select count(*)::int n from pg_trigger where tgname='sync_proposal_search_names'",
+      )
+    ).rows[0].n,
+    0,
+  );
+  console.log("PASS: failed legacy setup cleanup is explicit and repeatable");
+  const combinedProposalSql = await fs.readFile(
+    "docs/sql/apply-lightweight-proposal-search.sql",
+    "utf8",
+  );
+  await c.query(combinedProposalSql);
+  await c.query(combinedProposalSql);
+  // RESTRICT must roll back replacement functions when an unexpected view
+  // still depends on the retired table. Never cascade into another feature.
+  await c.query("begin");
+  await c.query(
+    "create table public.proposal_search_names(source text); create view public.proposal_cleanup_dependency as select source from public.proposal_search_names",
+  );
+  await c.query("savepoint dependency_guard");
+  await assert.rejects(
+    c.query(
+      proposalActivateSql
+        .replace(/^begin;\s*$/m, "")
+        .replace(/^commit;\s*$/m, ""),
+    ),
+    (error) => error.code === "2BP01",
+  );
+  await c.query("rollback to savepoint dependency_guard");
+  assert.ok(
+    (await c.query("select to_regclass('public.proposal_search_names') names"))
+      .rows[0].names,
+  );
+  await c.query("rollback");
+  console.log(
+    "PASS: unknown cleanup dependencies are preserved by transaction rollback",
+  );
+  const proposalChecks = await c.query(
+    await fs.readFile("docs/sql/check-proposal-search.sql", "utf8"),
+  );
+  assert.ok(
+    Object.values(
+      (Array.isArray(proposalChecks) ? proposalChecks[0] : proposalChecks)
+        .rows[0],
+    ).every((value) => value === true),
+  );
+  console.log(
+    "PASS: proposal search SQL Editor script repeats safely and all three checks are true",
+  );
+  await testProposalSearch(c);
   const functions = (
     await c.query(
       "select n.nspname,p.proname from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.prosecdef",

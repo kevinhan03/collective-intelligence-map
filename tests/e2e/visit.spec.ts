@@ -38,7 +38,9 @@ for (const failureCode of [1, 3]) {
         page.getByRole("combobox", { name: "장소 정렬" }),
       ).toHaveValue("newest");
     } else {
-      await page.getByRole("button", { name: "최근 추가순", exact: true }).click();
+      await page
+        .getByRole("button", { name: "최근 추가순", exact: true })
+        .click();
       await page
         .getByRole("button", { name: "가까운 순", exact: true })
         .click();
@@ -150,8 +152,12 @@ test("place sharing copies the canonical deep link and opens without login", asy
     .getByRole("button", { name: "Archive Room 공유", exact: true })
     .click();
   const url = await page.locator("html").getAttribute("data-shared-url");
-  expect(url).toMatch(/\/maps\/tokyo-fashion\?place=[0-9a-f-]{36}$/);
+  expect(url).toMatch(/\/maps\/tokyo-fashion\/places\/[0-9a-f-]{36}$/);
   await page.goto(url!);
+  await expect(
+    page.getByRole("heading", { name: "Archive Room", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "지도에서 상세·사진 보기" }).click();
   await expect(
     page.getByRole(isMobile ? "dialog" : "complementary", {
       name: "Archive Room 장소 상세",
@@ -187,4 +193,73 @@ test("cancelling the native mobile share sheet is silent", async ({
   await expect(
     page.getByText("공유하지 못했어요. 다시 시도해 주세요."),
   ).toHaveCount(0);
+});
+
+test("detail scroll hint follows overflow and disappears at the bottom", async ({
+  page,
+  isMobile,
+}) => {
+  await page.setViewportSize({ width: isMobile ? 390 : 1280, height: 520 });
+  await page.goto("/maps/tokyo-fashion");
+  if (isMobile)
+    await page.getByRole("button", { name: "목록 보기", exact: true }).click();
+  await page
+    .getByRole("region", { name: "장소 목록" })
+    .getByRole("article")
+    .first()
+    .getByRole("button")
+    .first()
+    .click();
+  const body = page.locator(".place-detail-scroll");
+  const hint = page.locator(".place-detail-scroll-hint");
+  await expect(body).toBeVisible();
+  await expect(body).toHaveCSS("scrollbar-width", "none");
+  if (isMobile) {
+    // The compact mobile detail may initially fit; expanded records must also
+    // update the hint when their content creates overflow.
+    for (const summary of await page
+      .locator(".participation-section summary")
+      .all())
+      await summary.click();
+    await body.evaluate((element) => {
+      element.scrollTop = 0;
+    });
+  }
+  await expect(hint).toBeVisible();
+  await body.evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+  });
+  await expect(hint).toHaveCount(0);
+  await body.evaluate((element) => {
+    element.scrollTop = 0;
+  });
+  await expect(hint).toBeVisible();
+});
+
+test("discovery list scroll hint follows scrolling and filtered content", async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(
+    isMobile,
+    "The left discovery panel scrolls internally on desktop.",
+  );
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto("/maps/tokyo-fashion");
+  const list = page.getByRole("region", { name: "장소 목록" });
+  const hint = page.locator(".place-list-scroll-hint span");
+  await expect(hint).toBeVisible();
+  await list.evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+  });
+  await expect(hint).toHaveCount(0);
+  await list.evaluate((element) => {
+    element.scrollTop = 0;
+  });
+  await expect(hint).toBeVisible();
+  await page
+    .getByRole("combobox", { name: "이 맵의 장소 검색" })
+    .fill("Archive Room");
+  await expect(list.getByRole("article")).toHaveCount(1);
+  await expect(hint).toHaveCount(0);
 });

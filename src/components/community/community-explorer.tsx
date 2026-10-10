@@ -1,5 +1,6 @@
 "use client";
 import { ShareButton } from "./share-button";
+import { placePath } from "@/domain/seo";
 import type { Coordinate } from "@/domain/visit";
 import { formatDistance } from "@/domain/visit";
 import { useMapSearch } from "@/hooks/use-map-search";
@@ -27,6 +28,7 @@ import {
   ArrowUpRight,
   Bookmark,
   Check,
+  ChevronDown,
   Clock,
   Info,
   MapPin,
@@ -159,6 +161,35 @@ export function CommunityExplorer({
 
   const [mobileView, setMobileView] = useState<"list" | "map">("map");
   const listScroll = useRef(0);
+  const [listElement, setListElement] = useState<HTMLElement | null>(null);
+  const [hasMorePlacesBelow, setHasMorePlacesBelow] = useState(false);
+  useEffect(() => {
+    if (!listElement || mobile) return;
+    const update = () =>
+      setHasMorePlacesBelow(
+        listElement.scrollHeight -
+          listElement.clientHeight -
+          listElement.scrollTop >
+          4,
+      );
+    const resize = new ResizeObserver(update);
+    const observe = () => {
+      resize.disconnect();
+      resize.observe(listElement);
+      for (const child of listElement.children) resize.observe(child);
+      update();
+    };
+    const mutation = new MutationObserver(observe);
+    mutation.observe(listElement, { childList: true });
+    listElement.addEventListener("scroll", update, { passive: true });
+    const frame = requestAnimationFrame(observe);
+    return () => {
+      cancelAnimationFrame(frame);
+      resize.disconnect();
+      mutation.disconnect();
+      listElement.removeEventListener("scroll", update);
+    };
+  }, [listElement, mobile]);
   function changeView(view: "list" | "map") {
     if (mobileView === "list") listScroll.current = window.scrollY;
     setMobileView(view);
@@ -669,6 +700,12 @@ export function CommunityExplorer({
             {map.follower_count} 팔로워
           </span>
           <span>{map.contributor_count} 기여자</span>
+          <a
+            href={`/maps/${map.slug}/places`}
+            className="text-primary hover:underline"
+          >
+            공개 장소 목록
+          </a>
           <details className="ml-auto max-w-lg">
             <summary className="cursor-pointer">커뮤니티 규칙 보기</summary>
             <p className="pt-3 leading-6">{map.rules}</p>
@@ -706,6 +743,12 @@ export function CommunityExplorer({
               </DialogClose>
             </div>
             <ShareButton path={`/maps/${map.slug}`} title={map.title} />
+            <a
+              href={`/maps/${map.slug}/places`}
+              className="text-sm text-primary underline"
+            >
+              공개 장소 목록 보기
+            </a>
             <DialogDescription className="text-sm leading-6">
               {map.description}
             </DialogDescription>
@@ -1117,6 +1160,7 @@ export function CommunityExplorer({
       >
         <section
           id="explorer-list"
+          ref={setListElement}
           className="place-list lg:h-fit lg:max-h-[calc(100dvh-250px)] lg:min-h-[480px] lg:self-start lg:overflow-y-auto"
           aria-label="장소 목록"
         >
@@ -1291,6 +1335,13 @@ export function CommunityExplorer({
               더 보기
             </Button>
           )}
+          {!mobile && hasMorePlacesBelow && (
+            <div className="place-list-scroll-hint" aria-hidden="true">
+              <span>
+                아래로 스크롤해 더 보기 <ChevronDown size={14} />
+              </span>
+            </div>
+          )}
         </section>
         <section
           id="explorer-map"
@@ -1452,7 +1503,11 @@ export function CommunityExplorer({
         <PlaceDetail
           userLocation={userLocation}
           key={detailId ?? "closed"}
-          sharePath={`/maps/${map.slug}${selectedPlace ? `?place=${encodeURIComponent(selectedPlace.place_id)}` : ""}`}
+          sharePath={
+            selectedPlace
+              ? placePath(map.slug, selectedPlace.place_id)
+              : `/maps/${map.slug}`
+          }
           onStationSelect={(station) => {
             if (selectedPlace) selectStation(station, selectedPlace);
           }}

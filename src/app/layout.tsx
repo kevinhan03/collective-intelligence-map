@@ -5,6 +5,7 @@ import { MobileNavigation } from "@/components/mobile-navigation";
 import { SiteHeader } from "@/components/site-header";
 import { Telemetry } from "@/components/telemetry";
 import "./globals.css";
+import { canIndex, noIndex, siteOrigin, siteVerification } from "@/lib/seo";
 const suit = localFont({
   src: "../../node_modules/@sun-typeface/suit/fonts/variable/woff2/SUIT-Variable.woff2",
   weight: "100 900",
@@ -19,7 +20,7 @@ const suitHeavy = localFont({
 });
 const title = "Ting map — 취향이 모이는 지도";
 const description =
-  "장소를 넘어, 맥락을 발견하세요. 함께 추천하고 검증하는 공개 주제 커뮤니티.";
+  "빈티지 숍, 타코 맛집, 버거와 음악 공간까지. 지역과 취향별 지도에서 장소를 찾고, 방문자의 추천 이유와 사진을 확인하세요.";
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
@@ -28,11 +29,16 @@ export const viewport: Viewport = {
   interactiveWidget: "resizes-content",
 };
 export const metadata: Metadata = {
-  metadataBase: process.env.NEXT_PUBLIC_SITE_URL
-    ? new URL(process.env.NEXT_PUBLIC_SITE_URL)
-    : undefined,
+  metadataBase: new URL(siteOrigin ?? "http://localhost:3000"),
   title: { default: title, template: "%s · Ting map" },
   description,
+  robots: canIndex ? { index: true, follow: true } : noIndex,
+  verification: {
+    google: siteVerification.google,
+    other: siteVerification.bing
+      ? { "msvalidate.01": siteVerification.bing }
+      : undefined,
+  },
   openGraph: {
     title,
     description,

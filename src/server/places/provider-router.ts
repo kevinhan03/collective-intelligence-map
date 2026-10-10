@@ -2,11 +2,19 @@ import "server-only";
 import { kakaoProvider } from "./providers/kakao";
 import { overtureProvider } from "./providers/overture";
 import { HttpError } from "@/server/http";
-export function providerName(country: string): "kakao" | "overture" {
-  return country.toUpperCase() === "KR" ? "kakao" : "overture";
+export function providerName(
+  country: string | null,
+  scope: string = "region",
+): "kakao" | "overture" {
+  return scope !== "world" && country?.toUpperCase() === "KR"
+    ? "kakao"
+    : "overture";
 }
-export function routeProvider(country: string) {
-  const name = providerName(country);
+export function routeProvider(
+  country: string | null,
+  scope: string = "region",
+) {
+  const name = providerName(country, scope);
   if (name === "overture") return { name, adapter: overtureProvider };
   // KAKAO_LOCAL_API_KEY was the project's original variable name. Keep it
   // supported so existing deployments do not silently lose Korean search.

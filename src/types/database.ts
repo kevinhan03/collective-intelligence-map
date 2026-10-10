@@ -647,7 +647,8 @@ export type Database = {
         Row: {
           bounds: Json;
           city: string;
-          country: string;
+          country: string | null;
+          search_scope: string;
           created_at: string;
           description: string;
           id: string;
@@ -660,7 +661,8 @@ export type Database = {
         Insert: {
           bounds: Json;
           city: string;
-          country: string;
+          country: string | null;
+          search_scope?: string;
           created_at?: string;
           description: string;
           id?: string;
@@ -673,7 +675,8 @@ export type Database = {
         Update: {
           bounds?: Json;
           city?: string;
-          country?: string;
+          country?: string | null;
+          search_scope?: string;
           created_at?: string;
           description?: string;
           id?: string;
@@ -735,6 +738,10 @@ export type Database = {
       };
     };
     Functions: {
+      proposal_search_ready: {
+        Args: Record<PropertyKey, never>;
+        Returns: boolean;
+      };
       search_map_places: { Args: { payload: Json }; Returns: Json };
       search_normalize: { Args: { t: string }; Returns: string };
       search_compact: { Args: { t: string }; Returns: string };

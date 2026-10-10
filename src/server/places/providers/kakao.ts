@@ -1,5 +1,6 @@
 import "server-only";
 import { z } from "zod";
+import { searchScope } from "@/domain/search-scope";
 import type { PlaceProvider } from "./types";
 import { providerFetch } from "./types";
 const response = z.object({
@@ -19,7 +20,11 @@ export function kakaoProvider(key: string): PlaceProvider {
     async search(query, { map }) {
       const params = new URLSearchParams({
         query,
-        rect: `${map.bounds.west},${map.bounds.south},${map.bounds.east},${map.bounds.north}`,
+        ...(searchScope(map) === "region"
+          ? {
+              rect: `${map.bounds.west},${map.bounds.south},${map.bounds.east},${map.bounds.north}`,
+            }
+          : {}),
         size: "8",
       });
       const result = response.parse(

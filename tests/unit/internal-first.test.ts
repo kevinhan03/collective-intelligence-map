@@ -1,7 +1,11 @@
 import { expect, it, vi } from "vitest";
 import { demoMap } from "@/server/demo";
 import { searchSchema } from "@/domain/validation";
-const mocks = vi.hoisted(() => ({ rpc: vi.fn(), route: vi.fn(), mapRows: [] as { id: string; place_id: string; status: string }[] }));
+const mocks = vi.hoisted(() => ({
+  rpc: vi.fn(),
+  route: vi.fn(),
+  mapRows: [] as { id: string; place_id: string; status: string }[],
+}));
 vi.mock("@/lib/supabase/server", () => ({
   db: async () => ({ rpc: mocks.rpc }),
 }));
@@ -35,7 +39,11 @@ it("internal search never touches an external provider, including zero hits", as
       avatar_path: null,
     },
   );
-  expect(result).toEqual({ internal: [], candidates: [] });
+  expect(result).toMatchObject({
+    internal: [],
+    candidates: [],
+    translationAvailable: false,
+  });
   expect(mocks.route).not.toHaveBeenCalled();
 });
 
@@ -70,12 +78,24 @@ it("never searches external inventory when an internal match exists", async () =
 });
 
 it("marks a place already proposed on the current map", async () => {
-  mocks.rpc.mockResolvedValue({ data: [{ id: "internal", name: "Shop" }], error: null });
+  mocks.rpc.mockResolvedValue({
+    data: [{ id: "internal", name: "Shop" }],
+    error: null,
+  });
   mocks.mapRows = [{ id: "proposal", place_id: "internal", status: "pending" }];
   const result = await searchPlaces(
     { mapId: demoMap.id, query: "Shop", external: false },
-    { id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", handle: "tester", role: "member", bio: "", avatar_path: null },
+    {
+      id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      handle: "tester",
+      role: "member",
+      bio: "",
+      avatar_path: null,
+    },
   );
-  expect(result.internal[0]).toMatchObject({ currentMapPlaceId: "proposal", currentMapStatus: "pending" });
+  expect(result.internal[0]).toMatchObject({
+    currentMapPlaceId: "proposal",
+    currentMapStatus: "pending",
+  });
   mocks.mapRows = [];
 });

@@ -1,20 +1,19 @@
 import { expect, it, vi } from "vitest";
 import { demoMap } from "@/server/demo";
 const mocks = vi.hoisted(() => ({
-  search: vi
-    .fn()
-    .mockResolvedValue([
-      {
-        provider: "kakao",
-        externalId: "k1",
-        label: "국내 테스트 장소",
-        address: "직접 입력 아님",
-        lat: 37.55,
-        lng: 126.99,
-        category: "카페",
-        attribution: "Kakao Maps",
-      },
-    ]),
+  search: vi.fn().mockResolvedValue([
+    {
+      provider: "kakao",
+      externalId: "k1",
+      label: "국내 테스트 장소",
+      address: "직접 입력 아님",
+      lat: 37.55,
+      lng: 126.99,
+      category: "카페",
+      countryCode: "KR",
+      attribution: "Kakao Maps",
+    },
+  ]),
 }));
 vi.mock("@/server/places/search-map", () => ({
   getSearchMap: async () => ({

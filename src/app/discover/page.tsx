@@ -4,7 +4,12 @@ import { DiscoverMaps } from "@/components/community/discover-maps";
 import { configured } from "@/lib/supabase/server";
 import { getMaps } from "@/server/queries";
 
-export const metadata: Metadata = { title: "지도 발견" };
+export const metadata: Metadata = {
+  title: "지역·취향별 장소 추천 지도",
+  description:
+    "빈티지 숍, 맛집, 음악 공간 등 테마별 공개 지도를 둘러보고 장소와 추천 이유를 확인하세요.",
+  alternates: { canonical: "/discover" },
+};
 
 async function DiscoverMapResults() {
   const maps = await getMaps();
@@ -30,7 +35,6 @@ function DiscoverMapResultsFallback() {
 }
 
 export default function DiscoverPage() {
-
   return (
     <main id="main" className="page-wrap pb-20">
       <div className="mb-9 max-w-2xl">

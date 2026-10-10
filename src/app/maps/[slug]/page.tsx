@@ -18,6 +18,9 @@ import {
 } from "@/server/queries";
 import { configured } from "@/lib/supabase/server";
 import { CommunityExplorer } from "@/components/community/community-explorer";
+import { mapSearchTitle } from "@/domain/seo";
+import { ogImage } from "@/lib/seo";
+import { getPublicPlace } from "@/server/seo-queries";
 export async function generateStaticParams() {
   return (await getMaps()).map((map) => ({ slug: map.slug }));
 }
@@ -28,49 +31,79 @@ async function Personalization({ mapId }: { mapId: string }) {
 async function MapContent({
   map,
   proposalId,
+  linkedPlaceId,
   submitted,
   created,
 }: {
   map: Awaited<ReturnType<typeof getMap>>;
   proposalId: string | null;
+  linkedPlaceId: string | null;
   submitted: boolean;
   created: boolean;
 }) {
   if (!map) return null;
-  const [places, pendingPlaces, proposal] = await Promise.all([
+  const [places, pendingPlaces, proposal, linkedPlace] = await Promise.all([
     getInitialPlaces(map),
     getPendingPlaces(map),
     proposalId ? getMapPlaceById(map, proposalId) : null,
+    linkedPlaceId ? getPublicPlace(map.id, linkedPlaceId) : null,
   ]);
-  const publicPlaces = proposal && proposal.status !== "pending" && !places.some((p) => p.id === proposal.id)
-    ? [proposal, ...places]
-    : places;
-  const allPending = proposal?.status === "pending" && !pendingPlaces.some((p) => p.id === proposal.id)
-    ? [proposal, ...pendingPlaces]
-    : pendingPlaces;
+  const linkedPlaces =
+    linkedPlace && !places.some((p) => p.place_id === linkedPlace.place_id)
+      ? [linkedPlace, ...places]
+      : places;
+  const publicPlaces =
+    proposal &&
+    proposal.status !== "pending" &&
+    !linkedPlaces.some((p) => p.id === proposal.id)
+      ? [proposal, ...linkedPlaces]
+      : linkedPlaces;
+  const allPending =
+    proposal?.status === "pending" &&
+    !pendingPlaces.some((p) => p.id === proposal.id)
+      ? [proposal, ...pendingPlaces]
+      : pendingPlaces;
   return (
     <>
-    {submitted && (proposal
-      ? <ProposalNotice status={proposal.status} created={created} mapSlug={map.slug} id={proposal.id} />
-      : <p role="status" className="mx-auto max-w-7xl px-6 py-3 text-sm text-primary">
-          처리 상태가 변경됐을 수 있어요. <Link href="/my-proposals" className="underline">내 제안에서 확인하기</Link>
-        </p>)}
-    <CommunityExplorer
-      map={map}
-      initialPlaces={publicPlaces}
-      pendingPlaces={allPending}
-      viewer={null}
-      myState={{ votes: {}, saves: [], followed: false }}
-      config={rendererFor()}
-      demo={!configured()}
-    />
+      {submitted &&
+        (proposal ? (
+          <ProposalNotice
+            status={proposal.status}
+            created={created}
+            mapSlug={map.slug}
+            id={proposal.id}
+          />
+        ) : (
+          <p
+            role="status"
+            className="mx-auto max-w-7xl px-6 py-3 text-sm text-primary"
+          >
+            처리 상태가 변경됐을 수 있어요.{" "}
+            <Link href="/my-proposals" className="underline">
+              내 제안에서 확인하기
+            </Link>
+          </p>
+        ))}
+      <CommunityExplorer
+        map={map}
+        initialPlaces={publicPlaces}
+        pendingPlaces={allPending}
+        viewer={null}
+        myState={{ votes: {}, saves: [], followed: false }}
+        config={rendererFor()}
+        demo={!configured()}
+      />
     </>
   );
 }
 
 function MapContentFallback() {
   return (
-    <main id="main" className="page-wrap animate-pulse space-y-6" aria-label="지도 불러오는 중">
+    <main
+      id="main"
+      className="page-wrap animate-pulse space-y-6"
+      aria-label="지도 불러오는 중"
+    >
       <div className="h-10 w-64 rounded bg-muted" />
       <div className="h-80 rounded-xl bg-muted" />
     </main>
@@ -85,10 +118,20 @@ export async function generateMetadata({
   const map = await getMap((await params).slug);
   if (!map) return { title: "Theme Map" };
   return {
-    title: map.title,
+    title: mapSearchTitle(map),
     description: map.description,
-    openGraph: { title: map.title, description: map.description },
-    twitter: { title: map.title, description: map.description },
+    alternates: { canonical: `/maps/${map.slug}` },
+    openGraph: {
+      title: mapSearchTitle(map),
+      description: map.description,
+      url: `/maps/${map.slug}`,
+      images: [ogImage],
+    },
+    twitter: {
+      title: mapSearchTitle(map),
+      description: map.description,
+      images: [ogImage],
+    },
   };
 }
 async function MapRoute({
@@ -101,16 +144,24 @@ async function MapRoute({
   const [route, query] = await Promise.all([params, searchParams]);
   const map = await getMap(route.slug);
   if (!map) notFound();
-  const proposalId = typeof query.proposal === "string" && /^[0-9a-f-]{36}$/i.test(query.proposal)
-    ? query.proposal
-    : null;
+  const proposalId =
+    typeof query.proposal === "string" &&
+    /^[0-9a-f-]{36}$/i.test(query.proposal)
+      ? query.proposal
+      : null;
   return (
     <ViewerStateProvider key={map.id}>
       <Suspense fallback={null}>
         <Personalization mapId={map.id} />
       </Suspense>
       <Suspense fallback={<MapContentFallback />}>
-        <MapContent map={map} proposalId={proposalId} submitted={query.submitted === "1"} created={query.created === "1"} />
+        <MapContent
+          map={map}
+          proposalId={proposalId}
+          linkedPlaceId={typeof query.place === "string" ? query.place : null}
+          submitted={query.submitted === "1"}
+          created={query.created === "1"}
+        />
       </Suspense>
     </ViewerStateProvider>
   );

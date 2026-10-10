@@ -32,7 +32,9 @@ export function googleProvider(key: string): PlaceProvider {
               input: query,
               sessionToken: session,
               languageCode: languageCode ?? "ko",
-              includedRegionCodes: [map.country.toLowerCase()],
+              includedRegionCodes: map.country
+                ? [map.country.toLowerCase()]
+                : undefined,
               locationRestriction: {
                 rectangle: {
                   low: {

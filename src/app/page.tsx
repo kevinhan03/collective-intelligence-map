@@ -7,7 +7,40 @@ import { getHomeLocationTerms, getMaps } from "@/server/queries";
 import { configured } from "@/lib/supabase/server";
 import { Badge } from "@/components/ui/badge";
 import styles from "./page.module.css";
-export default async function Home() {
+import type { Metadata } from "next";
+import { Suspense } from "react";
+export const metadata: Metadata = { alternates: { canonical: "/" } };
+export default function Home() {
+  return (
+    <>
+      <noscript>
+        <section className="page-wrap pb-10">
+          <h1 className="text-3xl font-semibold">
+            Ting map — 취향에 맞는 장소 찾기
+          </h1>
+          <p className="mt-4 text-muted-foreground">
+            빈티지 숍, 타코 맛집, 버거와 음악 공간을 지역과 테마별로 찾아보세요.
+            방문자의 추천 이유와 장소 정보를 함께 확인할 수 있습니다.
+          </p>
+          <p className="mt-4">
+            지도 탐색에는 JavaScript가 필요합니다. 장소 소개 페이지는 JavaScript
+            없이도 읽을 수 있습니다.
+          </p>
+          <a
+            href="/discover"
+            className="mt-4 inline-block text-primary underline"
+          >
+            지역·취향별 지도 둘러보기
+          </a>
+        </section>
+      </noscript>
+      <Suspense fallback={null}>
+        <HomeContent />
+      </Suspense>
+    </>
+  );
+}
+async function HomeContent() {
   const maps = [...(await getMaps())].sort(homeMapFirst);
   const locationTerms = await getHomeLocationTerms(maps);
   return (

@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   resolve: vi.fn().mockResolvedValue(null),
   details: vi.fn(async (candidate: { externalId: string }) => ({
     ...candidate,
+    countryCode: "JP",
     label: "빈티지 숍",
     address: "부산",
     lat: 35.66,
@@ -30,7 +31,9 @@ vi.mock("@/lib/supabase/admin", () => ({
     from: () => ({
       select: () => ({
         eq: () => ({
-          eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }),
+          eq: () => ({
+            maybeSingle: async () => ({ data: null, error: null }),
+          }),
         }),
       }),
     }),
@@ -113,6 +116,41 @@ it("skips the paid provider call when the place was already resolved", async () 
       lat: 35.67,
       lng: 139.71,
     });
+  } finally {
+    vi.unstubAllEnvs();
+  }
+});
+
+it("rejects a candidate whose country disagrees with the map even when coordinates are inside", async () => {
+  vi.stubEnv("PROVIDER_SIGNING_SECRET", "x".repeat(32));
+  try {
+    mocks.details.mockResolvedValueOnce({
+      externalId: "bad",
+      countryCode: "FR",
+      label: "Mismatch",
+      address: "test",
+      lat: 35.66,
+      lng: 139.7,
+    });
+    const user = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    const token = signCandidate({
+      provider: "overture",
+      externalId: "bad",
+      userId: user,
+      mapId: demoMap.id,
+      session: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+      expires: Date.now() + 60000,
+      selected: false,
+    });
+    await expect(
+      selectCandidate(token, demoMap.id, {
+        id: user,
+        role: "member",
+        handle: "tester",
+        bio: "",
+        avatar_path: null,
+      }),
+    ).rejects.toThrow("지도 범위");
   } finally {
     vi.unstubAllEnvs();
   }

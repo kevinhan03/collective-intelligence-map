@@ -10,8 +10,13 @@ export function regionName(map: { city: string }) {
   return cityNames[map.city.toLowerCase()] ?? map.city;
 }
 
-export function formatLocation(map: { city: string; country: string }) {
-  const country = countryNames[map.country] ?? map.country;
+export function formatLocation(map: {
+  city: string;
+  country: string | null;
+  search_scope?: string;
+}) {
+  if (map.search_scope === "world") return "세계";
+  const country = countryNames[map.country ?? ""] ?? map.country ?? "";
   const city = regionName(map);
   return city === country ? country : `${city} · ${country}`;
 }

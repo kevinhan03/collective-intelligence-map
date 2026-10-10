@@ -8,6 +8,7 @@ export type CanonicalPlace = {
   category: string;
   lat: number;
   lng: number;
+  countryCode?: string;
 };
 /** Resolve an allowed external reference to our UUID without copying provider content. */
 export async function resolveExistingPlace(

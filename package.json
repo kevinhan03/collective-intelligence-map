@@ -23,6 +23,7 @@
     "build:local": "node scripts/run-local.mjs build",
     "start:local": "node scripts/run-local.mjs start",
     "check:deployment": "node scripts/check-deployment.mjs",
+    "check:seo": "node scripts/check-seo.mjs",
     "test:photos:live": "node scripts/test-place-photos-live.mjs",
     "photos:cleanup": "node scripts/cleanup-place-photos.mjs",
     "stations:collect": "node scripts/stations/import.mjs"

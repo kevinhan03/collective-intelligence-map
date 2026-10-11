@@ -20,6 +20,73 @@ export function MobileDiscovery({
   const [dockVisible, setDockVisible] = useState(true);
   const [searchFocused, setSearchFocused] = useState(false);
   const dock = useRef<HTMLDivElement>(null);
+  const stories = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const list = stories.current;
+    const card = list?.querySelector<HTMLElement>(
+      'article[data-expanded="true"]',
+    );
+    if (!list || !card || !expandedId) return;
+    // Keep the first two cards in place; centering them creates empty space above.
+    if (Array.from(list.children).indexOf(card) < 2) return;
+    let frame = 0;
+    let centered = false;
+    const reduced = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    const center = () => {
+      if (centered) return;
+      centered = true;
+      if (!card.getClientRects().length) return;
+      const viewport = window.visualViewport;
+      const height = viewport?.height ?? window.innerHeight;
+      const offset = viewport?.offsetTop ?? 0;
+      const rect = card.getBoundingClientRect();
+      const headerBottom =
+        document.querySelector(".glass-header")?.getBoundingClientRect()
+          .bottom ?? 72;
+      const top =
+        rect.height > height - headerBottom - 32
+          ? Math.max(offset + 16, headerBottom + 16)
+          : offset + (height - rect.height) / 2;
+      let destination = window.scrollY + rect.top - top;
+      // Temporary breathing room lets cards near either edge reach the center.
+      if (destination < 0) {
+        list.style.paddingTop = `${-destination}px`;
+        destination = 0;
+      }
+      const limit = document.documentElement.scrollHeight - window.innerHeight;
+      if (destination > limit)
+        list.style.paddingBottom = `${destination - limit}px`;
+      window.scrollTo({
+        top: destination,
+        behavior: reduced ? "instant" : "smooth",
+      });
+    };
+    const afterExpansion = (event: TransitionEvent) => {
+      if (event.propertyName === "grid-template-rows") center();
+    };
+    card.addEventListener("transitionend", afterExpansion);
+    const timer = window.setTimeout(center, reduced ? 0 : 340);
+    if (reduced) frame = requestAnimationFrame(center);
+    const cancel = () => {
+      centered = true;
+      clearTimeout(timer);
+      cancelAnimationFrame(frame);
+    };
+    window.addEventListener("wheel", cancel, { passive: true });
+    window.addEventListener("touchmove", cancel, { passive: true });
+    return () => {
+      cancel();
+      if (!reduced)
+        window.scrollTo({ top: window.scrollY, behavior: "instant" });
+      card.removeEventListener("transitionend", afterExpansion);
+      window.removeEventListener("wheel", cancel);
+      window.removeEventListener("touchmove", cancel);
+      list.style.removeProperty("padding-top");
+      list.style.removeProperty("padding-bottom");
+    };
+  }, [expandedId]);
   useEffect(() => {
     let previous = window.scrollY;
     const onScroll = () => {
@@ -70,7 +137,7 @@ export function MobileDiscovery({
       <span role="status" className="sr-only">
         {results.length}개 지도
       </span>
-      <div className={styles.stories}>
+      <div ref={stories} className={styles.stories}>
         {results.map((map) => (
           <MobileMapStory
             key={map.id}

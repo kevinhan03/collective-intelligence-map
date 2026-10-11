@@ -183,6 +183,7 @@ export default function MapLibreMap(props: MapProps) {
     map.once("moveend", onArrival);
     map.flyTo({
       center: [p.lng, p.lat],
+      padding: { top: 0, right: 0, bottom: 0, left: 0 },
       zoom: Math.max(map.getZoom(), 14),
       duration: 650,
       essential: true,

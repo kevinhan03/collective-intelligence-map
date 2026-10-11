@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { MobileDiscovery } from "@/components/community/mobile-discovery";
 import { MobilePlaceCarousel } from "@/components/community/mobile-place-carousel";
 import { PlaceDetail } from "@/components/community/place-detail";
 import type { PlaceSheetStage } from "@/hooks/use-place-sheet-drag";
@@ -175,7 +176,20 @@ function SheetFixture() {
   );
 }
 createRoot(document.getElementById("root")!).render(
-  new URLSearchParams(location.search).get("fixture") === "place-sheet" ? (
+  new URLSearchParams(location.search).get("fixture") === "home-cards" ? (
+    <MobileDiscovery
+      maps={Array.from({ length: 7 }, (_, index) => ({
+        ...map,
+        id: `map-${index}`,
+        slug: `test-map-${index}`,
+        title: `테마 지도 ${index + 1}`,
+        description: "좋은 장소를 함께 발견하고 추천하는 지도입니다.",
+        place_count: index + 1,
+      }))}
+      locationTerms={{}}
+      demo
+    />
+  ) : new URLSearchParams(location.search).get("fixture") === "place-sheet" ? (
     <SheetFixture />
   ) : new URLSearchParams(location.search).get("fixture") === "admin" ? (
     <AdminConsole snapshot={snapshot} />

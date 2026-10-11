@@ -876,6 +876,9 @@ button:not(:disabled),
     display: inline-flex;
     flex-shrink: 0;
   }
+  .community-explorer[data-mobile-view="list"] .map-hero {
+    padding-right: 72px;
+  }
   .community-explorer button:not(.map-pin),
   .community-explorer [data-slot="button"],
   .community-explorer select {
@@ -2534,4 +2537,27 @@ button:not(:disabled),
     animation: none !important;
     transition: none !important;
   }
+}
+
+@media (max-width: 1023px) {
+  .mobile-place-carousel .mobile-place-meta,
+  .mobile-place-carousel .mobile-place-summary > p {
+    touch-action: pan-y;
+  }
+  .mobile-place-carousel .place-sheet-title-row,
+  .mobile-place-carousel .mobile-place-meta,
+  .mobile-place-carousel .mobile-place-summary {
+    transform: translateX(var(--place-swipe-offset, 0px));
+    transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .mobile-place-carousel[data-place-dragging] .place-sheet-title-row,
+  .mobile-place-carousel[data-place-dragging] .mobile-place-meta,
+  .mobile-place-carousel[data-place-dragging] .mobile-place-summary {
+    transition: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mobile-place-carousel .place-sheet-title-row,
+  .mobile-place-carousel .mobile-place-meta,
+  .mobile-place-carousel .mobile-place-summary { transition: none; }
 }

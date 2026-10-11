@@ -5,6 +5,7 @@ import type { MapPlace } from "@/domain/types";
 import { PlaceSheetHandle } from "./place-sheet-handle";
 import { PlacePhotos } from "./place-photos";
 import { Badge } from "@/components/ui/badge";
+import { usePlaceSwipe } from "@/hooks/use-place-swipe";
 import { usePlaceSheetDrag } from "@/hooks/use-place-sheet-drag";
 import { animateSheetFrom, sheetOrigin } from "./place-sheet-motion";
 import { placeArea } from "@/domain/place-location";
@@ -89,10 +90,35 @@ export function MobilePlaceCarousel({
     else if (currentPlace) onOpen(currentPlace.id);
   };
   const collapse = () => onStageChange("collapsed");
-  const drag = usePlaceSheetDrag(expand, collapse, (direction) => {
+  const selectAdjacent = (direction: number) => {
     const next = index + direction;
     if (places[next]) onSelect(places[next].id);
-  });
+  };
+  const drag = usePlaceSheetDrag(expand, collapse);
+  const swipe = usePlaceSwipe(index, places.length, selectAdjacent);
+  const previousIndex = useRef(index);
+  useLayoutEffect(() => {
+    if (
+      previousIndex.current !== index &&
+      !window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      const direction = index > previousIndex.current ? 1 : -1;
+      card.current
+        ?.querySelectorAll<HTMLElement>(
+          ".place-sheet-title-row, .mobile-place-meta, .mobile-place-summary",
+        )
+        .forEach((element) => {
+          element.animate(
+            [
+              { transform: `translateX(${direction * 24}px)`, opacity: 0.5 },
+              { transform: "translateX(0)", opacity: 1 },
+            ],
+            { duration: 180, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },
+          );
+        });
+    }
+    previousIndex.current = index;
+  }, [index]);
   useLayoutEffect(() => {
     const element = track.current;
     if (!element) return;
@@ -128,6 +154,7 @@ export function MobilePlaceCarousel({
   return (
     <section
       ref={card}
+      {...swipe}
       className="mobile-place-carousel"
       data-multiple={places.length > 1}
       data-sheet-stage={stage}

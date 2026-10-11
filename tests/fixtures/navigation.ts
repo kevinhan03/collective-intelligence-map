@@ -18,6 +18,7 @@ export function usePathname() {
 }
 export function useRouter() {
   return {
+    prefetch: () => {},
     push: (url: string) => history.pushState(null, "", url),
     replace: (url: string) => history.replaceState(null, "", url),
     refresh: () => {

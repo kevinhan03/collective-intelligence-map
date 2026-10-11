@@ -641,3 +641,90 @@ for (const reduced of [false, true]) {
     await expect(card).toHaveAttribute("data-sheet-stage", "summary");
   });
 }
+
+test("mobile place cards swipe horizontally in collapsed and summary stages", async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(!isMobile);
+  await page.goto("/maps/tokyo-fashion");
+  const card = page.locator(".mobile-place-carousel");
+  const title = card.getByRole("heading");
+  const initial = await title.innerText();
+  const touch = await page.context().newCDPSession(page);
+  const swipe = async (
+    target: import("@playwright/test").Locator,
+    dx: number,
+    dy = 0,
+  ) => {
+    await expect
+      .poll(() =>
+        card.evaluate(
+          (element) =>
+            element
+              .getAnimations({ subtree: true })
+              .filter((animation) => animation.playState === "running").length,
+        ),
+      )
+      .toBe(0);
+    const b = (await target.boundingBox())!;
+    const x = b.x + b.width / 2,
+      y = b.y + b.height / 2;
+    await touch.send("Input.dispatchTouchEvent", {
+      type: "touchStart",
+      touchPoints: [{ x, y }],
+    });
+    for (let step = 1; step <= 8; step++) {
+      await touch.send("Input.dispatchTouchEvent", {
+        type: "touchMove",
+        touchPoints: [{ x: x + (dx * step) / 8, y: y + (dy * step) / 8 }],
+      });
+    }
+    await touch.send("Input.dispatchTouchEvent", {
+      type: "touchEnd",
+      touchPoints: [],
+    });
+  };
+  await swipe(title, 70);
+  await expect(title).toHaveText(initial);
+  await swipe(title, -18);
+  await expect(title).toHaveText(initial);
+  await swipe(title, -80);
+  await expect(title).not.toHaveText(initial);
+  await expect(card).toHaveAttribute("data-sheet-stage", "collapsed");
+  await swipe(card.locator(".mobile-place-meta > span"), 80);
+  await expect(title).toHaveText(initial);
+  await card
+    .getByRole("button", { name: "장소 카드 펼치기", exact: true })
+    .click();
+  await expect(card).toHaveAttribute("data-sheet-stage", "summary");
+  const body = card
+    .locator(
+      '.mobile-place-slide[aria-hidden="false"] .mobile-place-summary > p',
+    )
+    .first();
+  await swipe(body, -80);
+  await expect(title).not.toHaveText(initial);
+  await expect(card).toHaveAttribute("data-sheet-stage", "summary");
+  await swipe(body, 80);
+  await expect(title).toHaveText(initial);
+  await swipe(body, 0, -65);
+  await expect(title).toHaveText(initial);
+  await expect(card).toHaveAttribute("data-sheet-stage", "summary");
+  for (
+    let i = 0;
+    i < 12 &&
+    (await card
+      .getByRole("button", { name: "다음 장소", exact: true })
+      .isEnabled());
+    i++
+  ) {
+    await card.getByRole("button", { name: "다음 장소", exact: true }).click();
+  }
+  const last = await title.innerText();
+  await swipe(title, -80);
+  await expect(title).toHaveText(last);
+  await expect(
+    card.getByRole("button", { name: "다음 장소", exact: true }),
+  ).toBeDisabled();
+});

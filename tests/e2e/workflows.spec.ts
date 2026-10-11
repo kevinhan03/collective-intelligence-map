@@ -60,6 +60,10 @@ test.beforeAll(async () => {
     : "output" in result
       ? result.output
       : [];
+  css += output
+    .filter((item) => item.type === "asset" && item.fileName.endsWith(".css"))
+    .map((item) => (item.type === "asset" ? String(item.source) : ""))
+    .join("\n");
   bundle = output
     .filter((item) => item.type === "chunk")
     .map((item) => (item.type === "chunk" ? item.code : ""))
@@ -700,3 +704,56 @@ for (const photoCount of [0, 1, 6, -1]) {
     expect(duplicateKeyWarnings).toEqual([]);
   });
 }
+
+test("seven mobile home cards center the latest selection and close the previous card", async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(!isMobile);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await open(page, "home-cards");
+  const cards = page.locator("[data-mobile-story-home] article");
+  await expect(cards).toHaveCount(7);
+  for (const index of [0, 1]) {
+    const card = cards.nth(index);
+    const before = await page.evaluate(() => window.scrollY);
+    await card
+      .locator("button[aria-expanded]")
+      .evaluate((element) => (element as HTMLButtonElement).click());
+    await expect(card).toHaveAttribute("data-expanded", "true");
+    await page.waitForTimeout(400);
+    expect(await page.evaluate(() => window.scrollY)).toBe(before);
+    expect(
+      await card
+        .locator("..")
+        .evaluate((element) => (element as HTMLElement).style.paddingTop),
+    ).toBe("");
+  }
+  for (const index of [2, 3, 6]) {
+    const card = cards.nth(index);
+    await card.locator("button[aria-expanded]").click();
+    await expect
+      .poll(async () => {
+        const rect = (await card.boundingBox())!;
+        return Math.abs(rect.y + rect.height / 2 - 422);
+      })
+      .toBeLessThan(3);
+    await expect(page.locator('article[data-expanded="true"]')).toHaveCount(1);
+  }
+  await cards
+    .first()
+    .locator("button[aria-expanded]")
+    .evaluate((element) => (element as HTMLButtonElement).click());
+  await cards
+    .nth(4)
+    .locator("button[aria-expanded]")
+    .evaluate((element) => (element as HTMLButtonElement).click());
+  await expect
+    .poll(async () => {
+      const rect = (await cards.nth(4).boundingBox())!;
+      return Math.abs(rect.y + rect.height / 2 - 422);
+    })
+    .toBeLessThan(3);
+  await expect(cards.first()).toHaveAttribute("data-expanded", "false");
+  await page.screenshot({ path: "artifacts/home-seven-cards-centered.png" });
+});

@@ -7,6 +7,7 @@ import { formatDistance } from "@/domain/visit";
 import { useMapSearch } from "@/hooks/use-map-search";
 import {
   localMapSearch,
+  compactSearch,
   suggestionLabels,
   type SearchStation,
   type SearchSuggestion,
@@ -338,6 +339,7 @@ export function CommunityExplorer({
   const [searchStationHighlighted, setSearchStationHighlighted] =
     useState(false);
   const [composing, setComposing] = useState(false);
+  const [searchSelection, setSearchSelection] = useState<string | null>(null);
   const [suggestOpen, setSuggestOpen] = useState(false);
   const [suggestIndex, setSuggestIndex] = useState(-1);
   const [openedSearchPlace, setOpenedSearchPlace] = useState<MapPlace | null>(
@@ -478,12 +480,14 @@ export function CommunityExplorer({
     ? (search.result?.total ?? filtered.length)
     : filtered.length;
   function clearSearch() {
+    setSearchSelection(null);
     setQuery("");
     setSearchStation(null);
     setSuggestOpen(false);
     setPage(1);
   }
   function chooseSuggestion(suggestion: SearchSuggestion) {
+    setSearchSelection(suggestion.kind === "place" ? suggestion.term : null);
     if (suggestion.station) {
       setSearchStation(suggestion.station);
       setSearchStationHighlighted(true);
@@ -656,6 +660,27 @@ export function CommunityExplorer({
     },
     [config.provider, mobile, mobileView, filtered],
   );
+  const openSearchSelection = useEffectEvent((id: string) => {
+    setSearchSelection(null);
+    if (mobile) {
+      changeView("map");
+      setDetailId(null);
+      selectPreview(id);
+      setSearchOpen(false);
+      searchInput.current?.blur();
+    } else focusPlace(id);
+  });
+  useEffect(() => {
+    if (!searchSelection || search.loading || composing) return;
+    if (compactSearch(query) !== compactSearch(searchSelection)) return;
+    const exact = filtered.filter(
+      (place) => compactSearch(place.name) === compactSearch(searchSelection),
+    );
+    const target = exact[0] ?? (filtered.length === 1 ? filtered[0] : null);
+    if (!target) return;
+    const frame = requestAnimationFrame(() => openSearchSelection(target.id));
+    return () => cancelAnimationFrame(frame);
+  }, [searchSelection, search.loading, composing, query, filtered]);
   useEffect(() => {
     const requestKey = requestedProposalId ?? requestedPlaceId;
     if (!requestKey || openedPlaceId.current === requestKey) return;
@@ -1042,16 +1067,27 @@ export function CommunityExplorer({
                   );
                 } else if (
                   event.key === "Enter" &&
+                  !composing &&
+                  !event.nativeEvent.isComposing &&
                   suggestOpen &&
                   searchSuggestions[suggestIndex]
                 ) {
                   event.preventDefault();
                   chooseSuggestion(searchSuggestions[suggestIndex]);
+                } else if (
+                  event.key === "Enter" &&
+                  !composing &&
+                  !event.nativeEvent.isComposing
+                ) {
+                  event.preventDefault();
+                  setSuggestOpen(false);
+                  setSearchSelection(query);
                 }
               }}
               onChange={(e) => {
                 const value = e.target.value;
                 setQuery(value);
+                setSearchSelection(null);
                 setSuggestOpen(true);
                 setSuggestIndex(-1);
                 setPage(1);

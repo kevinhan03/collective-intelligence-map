@@ -50,6 +50,45 @@ async function open(page: Page, mobile: boolean) {
   }
   return page.getByRole("combobox", { name: "이 맵의 장소 검색", exact: true });
 }
+for (const action of ["suggestion", "enter"] as const) {
+  test(`mobile search ${action} selects the result and reopens its map card`, async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(!isMobile);
+    await page.route("**/api/maps/*/search?*", (route) =>
+      route.fulfill({
+        json: response({
+          suggestions: [{ term: "Remote Place 525", kind: "place" }],
+        }),
+      }),
+    );
+    await page.goto("/maps/tokyo-fashion");
+    await page.getByRole("button", { name: "장소 카드 닫기" }).click();
+    await expect(page.locator(".mobile-place-carousel")).toHaveCount(0);
+    await page.getByRole("button", { name: "장소 검색 열기" }).click();
+    const input = page.getByRole("combobox", {
+      name: "이 맵의 장소 검색",
+      exact: true,
+    });
+    await input.fill(action === "suggestion" ? "remote" : "Remote Place 525");
+    const option = page.getByRole("option", { name: /Remote Place 525/ });
+    await expect(option).toBeVisible();
+    if (action === "suggestion") await option.click();
+    else await input.press("Enter");
+    await expect(
+      page.locator(".mobile-place-carousel").getByRole("heading"),
+    ).toHaveText("Remote Place 525");
+    await expect(
+      page.locator('.map-pin[data-selected="true"]'),
+    ).toHaveAttribute("aria-label", /Remote Place 525/);
+    await expect(page.locator(".community-explorer")).toHaveAttribute(
+      "data-mobile-view",
+      "map",
+    );
+    await expect(input).not.toBeVisible();
+  });
+}
 test("map-wide search loads places outside the initial inventory and paginates before sorting", async ({
   page,
   isMobile,

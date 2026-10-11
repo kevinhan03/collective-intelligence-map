@@ -732,3 +732,128 @@ test("mobile map load failure keeps list navigation available", async ({
     page.getByRole("button", { name: "Archive Room", exact: true }),
   ).toBeVisible();
 });
+
+for (const width of [320, 390, 768]) {
+  test(`mobile home expands top cards in place and centers later cards at ${width}px`, async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(!isMobile);
+    await page.setViewportSize({ width, height: 844 });
+    await page.emulateMedia({
+      reducedMotion: width === 320 ? "reduce" : "no-preference",
+    });
+    await page.goto("/");
+    const cards = page.locator("[data-mobile-story-home] article");
+    for (const index of new Set([
+      0,
+      Math.floor((await cards.count()) / 2),
+      (await cards.count()) - 1,
+    ])) {
+      const card = cards.nth(index);
+      await card.locator("button[aria-expanded]").click();
+      await expect(card).toHaveAttribute("data-expanded", "true");
+      await expect(
+        page.locator('[data-mobile-story-home] article[data-expanded="true"]'),
+      ).toHaveCount(1);
+      if (index >= 2) {
+        await expect
+          .poll(async () => {
+            const bounds = (await card.boundingBox())!;
+            return Math.abs(bounds.y + bounds.height / 2 - 422);
+          })
+          .toBeLessThan(3);
+      } else {
+        expect(
+          await card
+            .locator("..")
+            .evaluate((element) => (element as HTMLElement).style.paddingTop),
+        ).toBe("");
+      }
+      await expect(card.getByRole("region")).toBeInViewport();
+      await expect(page).toHaveURL("/");
+    }
+    await page.screenshot({
+      path: `artifacts/home-centered-card-${width}.png`,
+    });
+    const last = cards.last();
+    await last.getByRole("button", { name: /미리보기 닫기/ }).click();
+    await expect(last).toHaveAttribute("data-expanded", "false");
+    await expect(last.locator("button[aria-expanded]")).toBeFocused();
+  });
+}
+
+test("mobile home keeps even a tall first preview in place", async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(!isMobile);
+  await page.setViewportSize({ width: 390, height: 400 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+  const card = page.locator("[data-mobile-story-home] article").first();
+  await card
+    .locator('[role="region"] p')
+    .first()
+    .evaluate((element) => {
+      element.textContent = "추천하는 장소를 지도로 만나보세요. ".repeat(25);
+    });
+  const top = (await card.boundingBox())!.y;
+  await card.locator("button[aria-expanded]").click();
+  await expect(card).toHaveAttribute("data-expanded", "true");
+  expect((await card.boundingBox())!.y).toBe(top);
+  await expect(card.locator("button[aria-expanded]")).toBeInViewport();
+  await card.getByRole("button", { name: /미리보기 닫기/ }).click();
+  await expect(card).toHaveAttribute("data-expanded", "false");
+});
+
+test("mobile home centers only the latest preview and cancels a closed preview", async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(!isMobile);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  const cards = page.locator("[data-mobile-story-home] article");
+  await cards
+    .first()
+    .locator("button[aria-expanded]")
+    .evaluate((element) => (element as HTMLButtonElement).click());
+  if ((await cards.count()) > 1) {
+    await cards
+      .last()
+      .locator("button[aria-expanded]")
+      .evaluate((element) => (element as HTMLButtonElement).click());
+    await expect(cards.first()).toHaveAttribute("data-expanded", "false");
+  }
+  if ((await cards.count()) > 2) {
+    await expect
+      .poll(async () => {
+        const bounds = (await cards.last().boundingBox())!;
+        return Math.abs(bounds.y + bounds.height / 2 - 422);
+      })
+      .toBeLessThan(3);
+  }
+  await cards
+    .last()
+    .getByRole("button", { name: /미리보기 닫기/ })
+    .click();
+  await cards
+    .first()
+    .locator("button[aria-expanded]")
+    .evaluate((element) => (element as HTMLButtonElement).click());
+  await cards
+    .first()
+    .getByRole("button", { name: /미리보기 닫기/ })
+    .evaluate((element) => (element as HTMLButtonElement).click());
+  await page.waitForTimeout(400);
+  await expect(
+    page.locator('[data-mobile-story-home] article[data-expanded="true"]'),
+  ).toHaveCount(0);
+  expect(
+    await cards
+      .first()
+      .locator("..")
+      .evaluate((element) => (element as HTMLElement).style.paddingTop),
+  ).toBe("");
+});

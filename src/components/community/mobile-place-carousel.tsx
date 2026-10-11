@@ -1,8 +1,8 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { Bookmark, ChevronLeft, ChevronRight } from "lucide-react";
-import { NearbyStationInfo } from "./nearby-stations";
-import type { MapPlace, RailStation } from "@/domain/types";
+import type { MapPlace } from "@/domain/types";
+import { Badge } from "@/components/ui/badge";
 import { placeArea } from "@/domain/place-location";
 
 export function MobilePlaceCarousel({
@@ -13,8 +13,7 @@ export function MobilePlaceCarousel({
   onSave,
   isSaved,
   disabled,
-  demo,
-  onStationSelect,
+  controls,
 }: {
   places: MapPlace[];
   activeId: string | null;
@@ -23,8 +22,7 @@ export function MobilePlaceCarousel({
   onSave: (id: string) => void;
   isSaved: (id: string) => boolean;
   disabled: boolean;
-  demo: boolean;
-  onStationSelect: (station: RailStation, place: MapPlace) => void;
+  controls: ReactNode;
 }) {
   const track = useRef<HTMLDivElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -127,42 +125,40 @@ export function MobilePlaceCarousel({
             aria-hidden={i !== index}
           >
             <h2 className="truncate text-lg font-semibold">{place.name}</h2>
-            {i === index && (
-              <NearbyStationInfo
-                key={place.place_id}
-                place={place}
-                compact
-                demo={demo}
-                onSelect={(station) => onStationSelect(station, place)}
-              />
-            )}
             <p className="mt-1 line-clamp-2 text-base leading-6 text-muted-foreground">
               {place.rationale}
             </p>
-            <div className="mt-3 grid grid-cols-[1fr_auto] gap-2">
-              <button
-                className="rounded-xl bg-primary px-4 font-semibold text-primary-foreground"
-                onClick={() => onOpen(place.id)}
+            <div className="mobile-place-buttons mt-2 flex items-center gap-2">
+              <Badge asChild className="mobile-action-badge">
+                <button type="button" onClick={() => onOpen(place.id)}>
+                  상세 보기
+                </button>
+              </Badge>
+              <Badge
+                asChild
+                variant={isSaved(place.id) ? "secondary" : "outline"}
+                className="mobile-action-badge"
               >
-                상세 보기
-              </button>
-              <button
-                className="flex items-center justify-center gap-2 rounded-xl border px-3"
-                aria-label={`${place.name} ${isSaved(place.id) ? "저장 해제" : "저장"}`}
-                aria-pressed={isSaved(place.id)}
-                disabled={disabled}
-                onClick={() => onSave(place.id)}
-              >
-                <Bookmark
-                  size={18}
-                  fill={isSaved(place.id) ? "currentColor" : "none"}
-                />
-                {isSaved(place.id) ? "저장됨" : "저장"}
-              </button>
+                <button
+                  type="button"
+                  aria-label={`${place.name} ${isSaved(place.id) ? "저장 해제" : "저장"}`}
+                  aria-pressed={isSaved(place.id)}
+                  disabled={disabled}
+                  onClick={() => onSave(place.id)}
+                >
+                  <Bookmark
+                    size={12}
+                    data-icon="inline-start"
+                    fill={isSaved(place.id) ? "currentColor" : "none"}
+                  />
+                  {isSaved(place.id) ? "저장됨" : "저장"}
+                </button>
+              </Badge>
             </div>
           </article>
         ))}
       </div>
+      {controls}
     </section>
   );
 }

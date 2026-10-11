@@ -263,3 +263,49 @@ test("discovery list scroll hint follows scrolling and filtered content", async 
   await expect(list.getByRole("article")).toHaveCount(1);
   await expect(hint).toHaveCount(0);
 });
+
+test("mobile map actions fit inside the preview card and remain available in list view", async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(!isMobile);
+  for (const width of [320, 390, 768]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto("/maps/tokyo-fashion");
+    const card = page.locator(".mobile-place-carousel");
+    await expect(card).toBeVisible();
+    await expect(
+      card.getByRole("button", { name: "목록 보기", exact: true }),
+    ).toBeVisible();
+    await expect(
+      card.getByRole("link", { name: "장소 제안", exact: true }),
+    ).toBeVisible();
+    await expect(card).not.toContainText("가까운 역");
+    const bounds = await card.boundingBox();
+    expect(bounds!.x).toBeGreaterThanOrEqual(0);
+    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width);
+    const actions = await card
+      .locator(".mobile-explorer-actions")
+      .boundingBox();
+    expect(actions!.y).toBeGreaterThan(bounds!.y);
+    expect(actions!.y + actions!.height).toBeLessThanOrEqual(
+      bounds!.y + bounds!.height + 1,
+    );
+    const detail = card.getByRole("button", { name: "상세 보기", exact: true });
+    expect((await detail.boundingBox())!.height).toBe(28);
+    await expect(detail).toHaveAttribute("data-slot", "badge");
+    await expect(
+      page.getByRole("button", { name: "내 위치", exact: true }),
+    ).toHaveCSS("background-color", "rgb(32, 39, 49)");
+    if (width === 390)
+      await page.screenshot({ path: "artifacts/mobile-map-actions.png" });
+    await card.getByRole("button", { name: "목록 보기", exact: true }).click();
+    await expect(
+      page
+        .locator(".community-explorer > .mobile-explorer-actions")
+        .getByRole("link", { name: "장소 제안", exact: true }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "지도 보기", exact: true }).click();
+    await expect(card).toBeVisible();
+  }
+});

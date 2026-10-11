@@ -41,6 +41,7 @@ import {
   Users,
   X,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -604,6 +605,75 @@ export function CommunityExplorer({
     requestedPlaceId,
     requestedProposalId,
   ]);
+  const mobileControls = (
+    <div className="mobile-explorer-actions lg:hidden">
+      <div
+        className="visit-view-switch flex rounded-xl border bg-card p-0.5 lg:hidden"
+        role="group"
+        aria-label="장소 보기 방식"
+      >
+        <Badge
+          asChild
+          variant={mobileView === "list" ? "secondary" : "outline"}
+          className="mobile-action-badge"
+        >
+          <button
+            aria-label="목록 보기"
+            aria-pressed={mobileView === "list"}
+            aria-controls="explorer-list"
+            onClick={() => {
+              changeView("list");
+              trackCommunityEvent("community_view_changed", {
+                provider: config.provider,
+                view: "list",
+              });
+            }}
+          >
+            <List size={17} aria-hidden="true" />
+            <span>목록</span>
+          </button>
+        </Badge>
+        <Badge
+          asChild
+          variant={mobileView === "map" ? "secondary" : "outline"}
+          className="mobile-action-badge"
+        >
+          <button
+            aria-label="지도 보기"
+            aria-pressed={mobileView === "map"}
+            aria-controls="explorer-map"
+            onClick={() => {
+              changeView("map");
+              trackCommunityEvent("community_view_changed", {
+                provider: config.provider,
+                view: "map",
+              });
+            }}
+          >
+            <MapIcon size={17} aria-hidden="true" />
+            <span>지도</span>
+          </button>
+        </Badge>
+        <span className="px-2 text-xs text-muted-foreground">
+          {resultCount}곳
+        </span>
+      </div>
+      <Badge
+        asChild
+        variant="outline"
+        className="mobile-action-badge mobile-propose-badge"
+      >
+        <Link
+          href={`/maps/${map.slug}/submit`}
+          prefetch={false}
+          className="mobile-propose-link"
+        >
+          <Plus size={12} data-icon="inline-start" aria-hidden="true" />
+          장소 제안
+        </Link>
+      </Badge>
+    </div>
+  );
   return (
     <main
       ref={explorerRoot}
@@ -788,45 +858,7 @@ export function CommunityExplorer({
           </div>
         </DialogContent>
       </Dialog>
-      <div
-        className="visit-view-switch flex rounded-xl border bg-card p-0.5 lg:hidden"
-        role="group"
-        aria-label="장소 보기 방식"
-      >
-        <button
-          aria-label="목록 보기"
-          aria-pressed={mobileView === "list"}
-          aria-controls="explorer-list"
-          onClick={() => {
-            changeView("list");
-            trackCommunityEvent("community_view_changed", {
-              provider: config.provider,
-              view: "list",
-            });
-          }}
-        >
-          <List size={17} aria-hidden="true" />
-          <span>목록</span>
-        </button>
-        <button
-          aria-label="지도 보기"
-          aria-pressed={mobileView === "map"}
-          aria-controls="explorer-map"
-          onClick={() => {
-            changeView("map");
-            trackCommunityEvent("community_view_changed", {
-              provider: config.provider,
-              view: "map",
-            });
-          }}
-        >
-          <MapIcon size={17} aria-hidden="true" />
-          <span>지도</span>
-        </button>
-        <span className="px-2 text-xs text-muted-foreground">
-          {resultCount}곳
-        </span>
-      </div>
+      {mobileView === "list" && mobileControls}
       <div
         data-search-open={searchOpen}
         className="glass-toolbar explorer-toolbar flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3 md:px-9"
@@ -1422,10 +1454,7 @@ export function CommunityExplorer({
           {mobile ? (
             filtered.length ? (
               <MobilePlaceCarousel
-                demo={demo}
-                onStationSelect={(station, place) =>
-                  selectStation(station, place)
-                }
+                controls={mobileControls}
                 places={filtered}
                 activeId={activePreviewId}
                 onSelect={selectPreview}
@@ -1438,8 +1467,8 @@ export function CommunityExplorer({
                 disabled={demo || busy}
               />
             ) : (
-              <div className="mobile-map-empty" role="status">
-                <p>조건에 맞는 장소가 없어요.</p>
+              <div className="mobile-map-empty">
+                <p role="status">조건에 맞는 장소가 없어요.</p>
                 <button
                   aria-label="빈 결과를 목록으로 보기"
                   className="text-sm underline"
@@ -1456,6 +1485,7 @@ export function CommunityExplorer({
                 >
                   검색 조건 초기화
                 </Button>
+                {mobileControls}
               </div>
             )
           ) : previewPlace ? (

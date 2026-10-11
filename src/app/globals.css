@@ -1601,18 +1601,6 @@ button:not(:disabled),
     background: var(--primary);
     color: var(--primary-foreground);
   }
-  .community-explorer[data-mobile-view="map"] .visit-view-switch {
-    position: absolute;
-    top: 64px;
-    left: 0;
-  }
-  .community-explorer[data-mobile-view="map"]:has(
-      .explorer-toolbar[data-search-open="true"]
-    )
-    .visit-view-switch {
-    top: auto;
-    bottom: 260px;
-  }
   .community-explorer[data-mobile-view="map"] .location-button {
     top: 160px;
     right: 12px;
@@ -1947,4 +1935,79 @@ button:not(:disabled),
 }
 .place-list-scroll-hint svg {
   margin-bottom: 1px;
+}
+
+/* Mobile map actions live inside the preview card, with a visible proposal link. */
+@media (max-width: 1023px) {
+  .mobile-explorer-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 14px;
+    background: #202731;
+  }
+  .mobile-place-carousel .mobile-explorer-actions {
+    border-top: 1px solid #ffffff1a;
+  }
+  .community-explorer .mobile-explorer-actions .visit-view-switch {
+    position: static;
+    margin: 0;
+    gap: 6px;
+    padding: 0;
+    flex-shrink: 0;
+    background: transparent;
+    border: 0;
+  }
+  .mobile-explorer-actions .visit-view-switch > span {
+    display: none;
+  }
+  .community-explorer .mobile-place-carousel .mobile-action-badge,
+  .community-explorer .mobile-explorer-actions .mobile-action-badge {
+    min-height: 28px;
+    height: 28px;
+    border-radius: 999px;
+    padding: 0 10px;
+    font-size: 12px;
+    font-weight: 500;
+    gap: 4px;
+  }
+  .community-explorer .mobile-action-badge:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  .community-explorer .mobile-explorer-actions .visit-view-switch button {
+    min-height: 28px;
+    padding: 0 10px;
+    border-radius: 999px;
+  }
+  .community-explorer .visit-view-switch button[aria-pressed="true"] {
+    background: var(--secondary);
+    color: var(--secondary-foreground);
+    border-color: var(--border);
+  }
+  .community-explorer .mobile-propose-badge {
+    color: var(--primary);
+    border-color: color-mix(in srgb, var(--primary) 40%, transparent);
+    background: transparent;
+  }
+  .mobile-action-badge svg {
+    width: 12px;
+    height: 12px;
+  }
+  .community-explorer[data-mobile-view="list"] > .mobile-explorer-actions {
+    position: sticky;
+    top: 64px;
+    z-index: 26;
+    margin: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+  }
+  .community-explorer .location-button {
+    background: #202731 !important;
+    color: #f1f2ed !important;
+    border: 1px solid #ffffff55;
+    box-shadow: 0 3px 12px #0006;
+    opacity: 1;
+  }
 }

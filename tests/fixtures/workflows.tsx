@@ -1,10 +1,15 @@
+import { useState } from "react";
+import { MobilePlaceCarousel } from "@/components/community/mobile-place-carousel";
+import { PlaceDetail } from "@/components/community/place-detail";
+import type { PlaceSheetStage } from "@/hooks/use-place-sheet-drag";
 import { createRoot } from "react-dom/client";
+import { PlacePhotos } from "@/components/community/place-photos";
 import { ProposalForm } from "@/components/community/proposal-form";
 import {
   AdminConsole,
   type AdminSnapshot,
 } from "@/components/community/admin-console";
-import type { ThemeMap } from "@/domain/types";
+import type { ThemeMap, MapPlace } from "@/domain/types";
 
 const map: ThemeMap = {
   id: "11111111-1111-4111-8111-111111111111",
@@ -100,9 +105,92 @@ const snapshot: AdminSnapshot = {
     },
   ],
 };
+const sheetPlace: MapPlace = {
+  id: "22222222-2222-4222-8222-222222222222",
+  place_id: "11111111-1111-4111-8111-111111111111",
+  map_id: map.id,
+  name: "서울에서 만나는 아주 긴 이름을 가진 독립 편집숍과 빈티지 아카이브",
+  address: "서울 용산구 이태원로 123 아주 긴 도로명주소 상세 건물 3층",
+  rationale:
+    "좋은 장소를 추천하는 이유와 방문할 때 확인할 정보를 충분히 길게 작성했습니다. ".repeat(
+      8,
+    ),
+  category: "편집숍",
+  lat: 37,
+  lng: 127,
+  status: "approved",
+  added_by: null,
+  handle: "visitor",
+  positive: 12,
+  negative: 1,
+  saved_count: 0,
+  created_at: "2026-10-12",
+  last_verified_at: null,
+};
+function SheetFixture() {
+  const [stage, setStage] = useState<PlaceSheetStage>("collapsed");
+  const [saved, setSaved] = useState(false);
+  return (
+    <section
+      className="community-explorer"
+      data-mobile-view="map"
+      style={{ height: "100dvh", position: "relative" }}
+    >
+      {stage === "closed" ? (
+        <button onClick={() => setStage("collapsed")}>다시 장소 선택</button>
+      ) : (
+        <MobilePlaceCarousel
+          places={[sheetPlace]}
+          activeId={sheetPlace.id}
+          onSelect={() => {}}
+          onOpen={() => setStage("detail")}
+          onSave={() => setSaved(!saved)}
+          isSaved={() => saved}
+          disabled={false}
+          controls={<span>지도 / 목록</span>}
+          demo={false}
+          stage={stage === "collapsed" ? "collapsed" : "summary"}
+          onStageChange={setStage}
+          onClose={() => setStage("closed")}
+          showHint={false}
+        />
+      )}
+      {stage === "detail" && (
+        <PlaceDetail
+          place={sheetPlace}
+          userLocation={null}
+          onClose={() => setStage("closed")}
+          onCollapse={() => setStage("summary")}
+          viewer={null}
+          loginHref="/login"
+          vote={0}
+          saved={saved}
+          onChange={() => {}}
+          demo={false}
+          sharePath="/maps/test-map"
+          onStationSelect={() => {}}
+        />
+      )}
+    </section>
+  );
+}
 createRoot(document.getElementById("root")!).render(
-  new URLSearchParams(location.search).get("fixture") === "admin" ? (
+  new URLSearchParams(location.search).get("fixture") === "place-sheet" ? (
+    <SheetFixture />
+  ) : new URLSearchParams(location.search).get("fixture") === "admin" ? (
     <AdminConsole snapshot={snapshot} />
+  ) : new URLSearchParams(location.search).get("fixture") ===
+    "photo-preview" ? (
+    <PlacePhotos
+      placeId="11111111-1111-4111-8111-111111111111"
+      viewer={null}
+      loginHref="/login"
+      demo={false}
+      preview
+      onOpenDetail={() => {
+        document.documentElement.dataset.openedPhotoDetail = "true";
+      }}
+    />
   ) : (
     <ProposalForm
       map={

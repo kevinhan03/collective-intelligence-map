@@ -42,7 +42,8 @@ test.beforeAll(async () => {
         },
       },
     ],
-    define: { "process.env.NODE_ENV": '"production"' },
+    // Keep React diagnostics enabled so reconciliation warnings fail regressions.
+    define: { "process.env.NODE_ENV": '"development"' },
     build: {
       write: false,
       minify: false,
@@ -527,3 +528,175 @@ test("Enter shares an active automatic search and request limits retain manual r
   await page.getByText("찾는 장소가 없나요? 직접 등록").click();
   await expect(page.getByLabel("장소 이름", { exact: true })).toBeVisible();
 });
+
+test("summary photo preview loads thumbnails and opens detail without showing upload controls", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 740 });
+  await page.route("**/api/places/*/photos", (route) =>
+    route.fulfill({
+      json: {
+        photos: [
+          {
+            id: "photo-one",
+            place_id: "place-one",
+            author_id: null,
+            handle: "visitor",
+            caption: "방문자 사진 설명",
+            width: 600,
+            height: 400,
+            created_at: "2026-10-12T00:00:00Z",
+          },
+        ],
+        nextCursor: null,
+      },
+    }),
+  );
+  await page.route("**/api/photos/*/image?*", (route) =>
+    route.fulfill({
+      contentType: "image/svg+xml",
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><rect width="20" height="20" fill="green"/></svg>',
+    }),
+  );
+  await open(page, "photo-preview");
+  const photo = page.getByRole("button", { name: "사진 1 장소 상세에서 보기" });
+  await expect(photo).toBeVisible();
+  await expect(photo.getByRole("img")).toHaveAttribute(
+    "src",
+    "/api/photos/photo-one/image?size=thumbnail",
+  );
+  await expect(page.getByRole("button", { name: "사진 추가" })).toHaveCount(0);
+  await photo.click();
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-opened-photo-detail",
+    "true",
+  );
+});
+
+for (const photoCount of [0, 1, 6, -1]) {
+  test(`mobile sheet long content and photo state ${photoCount} fit all stages`, async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(!isMobile);
+    const duplicateKeyWarnings: string[] = [];
+    page.on("console", (message) => {
+      if (message.text().includes("same key"))
+        duplicateKeyWarnings.push(message.text());
+    });
+    await page.route("**/api/places/*/photos", (route) =>
+      route.fulfill(
+        photoCount < 0
+          ? { status: 503, json: { error: "사진 조회 실패" } }
+          : {
+              json: {
+                photos: Array.from({ length: photoCount }, (_, i) => ({
+                  id: `photo-${i}`,
+                  place_id: "place-one",
+                  author_id: null,
+                  handle: "visitor",
+                  caption: `사진 ${i}`,
+                  width: 600,
+                  height: 400,
+                  created_at: "2026-10-12T00:00:00Z",
+                })),
+                nextCursor: null,
+              },
+            },
+      ),
+    );
+    await page.route("**/api/map-places/**", (route) =>
+      route.fulfill({ json: { comments: [], checks: [], summary: {} } }),
+    );
+    await page.route("**/api/places/*/stations", (route) =>
+      route.fulfill({ json: { stations: [], available: false } }),
+    );
+    await page.route("**/api/photos/*/image?*", (route) =>
+      route.fulfill({
+        contentType: "image/svg+xml",
+        body: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><rect width="20" height="20" fill="green"/></svg>',
+      }),
+    );
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await open(page, "place-sheet");
+    for (const width of [320, 390, 768]) {
+      await page.setViewportSize({ width, height: 740 });
+      const card = page.locator(".mobile-place-carousel");
+      await expect(card).toHaveAttribute("data-sheet-stage", "collapsed");
+      const name = await card.getByRole("heading").innerText();
+      await page.screenshot({
+        path: `artifacts/sheet-collapsed-${photoCount}-${width}.png`,
+      });
+      const title = (await card.getByRole("heading").boundingBox())!;
+      const close = (await card
+        .getByRole("button", { name: "장소 카드 닫기" })
+        .boundingBox())!;
+      expect(title.x + title.width).toBeLessThanOrEqual(close.x);
+      await card
+        .getByRole("button", { name: "장소 카드 펼치기", exact: true })
+        .click();
+      const preview = card.getByRole("region", {
+        name: "방문자 사진 미리보기",
+      });
+      if (photoCount === 0) await expect(preview).toHaveCount(0);
+      else if (photoCount > 0)
+        await expect(preview.getByRole("img")).toHaveCount(
+          Math.min(5, photoCount),
+        );
+      else await expect(preview).toContainText("상세에서 다시 확인");
+      expect((await card.boundingBox())!.height).toBeLessThanOrEqual(385);
+      await page.screenshot({
+        path: `artifacts/sheet-summary-${photoCount}-${width}.png`,
+      });
+      await card
+        .getByRole("button", { name: "장소 상세 펼치기", exact: true })
+        .click();
+      const detail = page.getByRole("dialog", { name: `${name} 장소 상세` });
+      await expect(detail).toBeVisible();
+      await page.screenshot({
+        path: `artifacts/sheet-detail-top-${photoCount}-${width}.png`,
+      });
+      const initialActionBounds = (await detail
+        .locator(".place-save-bar")
+        .boundingBox())!;
+      const scroll = detail.locator(".place-detail-scroll");
+      const reasons = detail.getByText("이 테마에 추천하는 이유");
+      const photoSection = detail.getByRole("region", {
+        name: "방문자 사진",
+        exact: true,
+      });
+      expect((await reasons.boundingBox())!.y).toBeLessThan(
+        (await photoSection.boundingBox())!.y,
+      );
+      await scroll.evaluate((el) => (el.scrollTop = el.scrollHeight));
+      const actions = (await detail.locator(".place-save-bar").boundingBox())!;
+      expect(actions.y).toBeCloseTo(initialActionBounds.y, 0);
+      expect(actions.y + actions.height).toBeLessThanOrEqual(741);
+      expect(actions.y).toBeGreaterThan(0);
+      await detail
+        .locator(".participation-section")
+        .filter({ hasText: "더 보기" })
+        .locator("summary")
+        .click();
+      await expect(
+        detail.getByRole("link", { name: "장소 소개 페이지 보기" }),
+      ).toBeVisible();
+      if (photoCount > 0) {
+        await photoSection.getByRole("button", { name: /사진 1 확대/ }).click();
+        await expect(page.locator("[data-photo-dialog]")).toBeVisible();
+        await page.keyboard.press("Escape");
+        await expect(page.locator("[data-photo-dialog]")).toHaveCount(0);
+        await expect(detail).toBeVisible();
+      }
+      await page.screenshot({
+        path: `artifacts/sheet-detail-${photoCount}-${width}.png`,
+      });
+      await detail
+        .getByRole("button", { name: "장소 상세 닫기", exact: true })
+        .click();
+      await expect(card).toHaveCount(0);
+      await page.getByRole("button", { name: "다시 장소 선택" }).click();
+    }
+    expect(duplicateKeyWarnings).toEqual([]);
+  });
+}

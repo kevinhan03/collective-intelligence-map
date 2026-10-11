@@ -14,11 +14,30 @@ export function Link({
 }
 export function Image({
   unoptimized: _,
+  fill,
+  style,
   ...props
-}: ComponentProps<"img"> & { unoptimized?: boolean }) {
+}: ComponentProps<"img"> & { unoptimized?: boolean; fill?: boolean }) {
   void _;
-  // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
-  return <img {...props} />;
+  return (
+    // Test substitute for next/image, including its fill layout.
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      {...props}
+      alt={props.alt ?? ""}
+      style={
+        fill
+          ? {
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              ...style,
+            }
+          : style
+      }
+    />
+  );
 }
 export function MapCanvas({
   onMapClick,

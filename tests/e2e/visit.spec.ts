@@ -289,30 +289,25 @@ test("mobile map actions fit inside the preview card and remain available in lis
     expect(actions!.y + actions!.height).toBeLessThanOrEqual(
       bounds!.y + bounds!.height + 1,
     );
-    const detail = card.getByRole("button", { name: "상세 보기", exact: true });
-    expect((await detail.boundingBox())!.height).toBe(28);
-    await expect(detail).toHaveAttribute("data-slot", "badge");
-    const detailBounds = (await detail.boundingBox())!;
-    const titleBounds = (await card
-      .locator('.mobile-place-slide[aria-hidden="false"] h2')
-      .boundingBox())!;
-    expect(
-      Math.abs(
-        detailBounds.y +
-          detailBounds.height / 2 -
-          titleBounds.y -
-          titleBounds.height / 2,
-      ),
-    ).toBeLessThan(1);
-    expect(titleBounds.x + titleBounds.width).toBeLessThan(detailBounds.x);
-    expect(detailBounds.x + detailBounds.width).toBeGreaterThan(
-      bounds!.x + bounds!.width - 20,
-    );
+    await expect(
+      card.getByRole("button", { name: "상세 보기", exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      card.getByRole("button", { name: "장소 카드 펼치기", exact: true }),
+    ).toBeVisible();
     const saved = card
       .locator(".mobile-explorer-actions")
       .getByRole("button", { name: /保存|저장/ });
     await expect(saved).toBeVisible();
-    expect((await saved.boundingBox())!.height).toBe(28);
+    expect((await saved.boundingBox())!.height).toBe(44);
+    const switchBounds = (await card
+      .locator(".visit-view-switch")
+      .boundingBox())!;
+    expect(switchBounds.x + switchBounds.width / 2).toBeCloseTo(width / 2, 0);
+    const savedBounds = (await saved.boundingBox())!;
+    expect(switchBounds.x + switchBounds.width).toBeLessThanOrEqual(
+      savedBounds.x,
+    );
     const menuBounds = (await page
       .getByRole("button", { name: "메뉴 열기", exact: true })
       .boundingBox())!;
@@ -327,11 +322,322 @@ test("mobile map actions fit inside the preview card and remain available in lis
     await expect(
       page.getByRole("button", { name: "내 위치", exact: true }),
     ).toHaveCSS("background-color", "rgb(32, 39, 49)");
+    const location = page.getByRole("button", { name: "내 위치", exact: true });
+    await expect(location).toHaveText("");
+    const locationBounds = (await location.boundingBox())!;
+    expect(locationBounds.width).toBe(44);
+    expect(locationBounds.height).toBe(44);
+    await expect(location.locator("svg circle")).toHaveCount(1);
     if (width === 390)
       await page.screenshot({ path: "artifacts/mobile-map-actions.png" });
     await card.getByRole("button", { name: "목록 보기", exact: true }).click();
+    const listSwitch = page.locator(".visit-view-switch:visible");
+    await expect(listSwitch).toBeVisible();
+    const listSwitchBounds = (await listSwitch.boundingBox())!;
+    expect(listSwitchBounds.x + listSwitchBounds.width / 2).toBeCloseTo(
+      width / 2,
+      0,
+    );
+    expect(Math.abs(listSwitchBounds.y - switchBounds.y)).toBeLessThanOrEqual(
+      3,
+    );
+    if (width === 390)
+      await page.screenshot({
+        path: "artifacts/mobile-centered-toggle-list.png",
+      });
     await expect(page.locator(".mobile-propose-floating")).toBeVisible();
     await page.getByRole("button", { name: "지도 보기", exact: true }).click();
     await expect(card).toBeVisible();
+    await card
+      .getByRole("button", { name: "장소 카드 닫기", exact: true })
+      .click();
+    const floatingSwitch = page.locator(
+      ".mobile-closed-controls .visit-view-switch",
+    );
+    await expect(floatingSwitch).toBeVisible();
+    const floatingBounds = (await floatingSwitch.boundingBox())!;
+    expect(floatingBounds.x + floatingBounds.width / 2).toBeCloseTo(
+      width / 2,
+      0,
+    );
+    expect(Math.abs(floatingBounds.y - switchBounds.y)).toBeLessThanOrEqual(3);
+    if (width === 390)
+      await page.screenshot({
+        path: "artifacts/mobile-centered-toggle-closed.png",
+      });
   }
 });
+
+test("mobile place sheet expands in two upward gestures and collapses without losing selection", async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(!isMobile);
+  await page.goto("/maps/tokyo-fashion");
+  const card = page.locator(".mobile-place-carousel");
+  const name = await card.getByRole("heading").innerText();
+  async function swipe(
+    handle: import("@playwright/test").Locator,
+    direction: number,
+  ) {
+    const b = (await handle.boundingBox())!;
+    await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(
+      b.x + b.width / 2,
+      b.y + b.height / 2 + direction * 65,
+      { steps: 5 },
+    );
+    await page.mouse.up();
+  }
+  await expect(card).toHaveAttribute("data-sheet-stage", "collapsed");
+  await swipe(
+    card.getByRole("button", { name: "장소 카드 펼치기", exact: true }),
+    -1,
+  );
+  await expect(card).toHaveAttribute("data-sheet-stage", "summary");
+  await expect(card).toHaveCSS("transform", "none");
+  await page.screenshot({ path: "artifacts/place-sheet-summary.png" });
+  await expect(
+    card.getByRole("region", { name: "방문자 사진 미리보기" }),
+  ).toHaveCount(0);
+  await swipe(
+    card.getByRole("button", { name: "장소 상세 펼치기", exact: true }),
+    -1,
+  );
+  const detail = page.getByRole("dialog", { name: `${name} 장소 상세` });
+  await expect(detail).toBeVisible();
+  await expect(detail).toHaveCSS("transform", "none");
+  await expect(detail.locator(".place-detail-topbar")).toHaveCount(0);
+  await expect(detail.getByText("장소 상세", { exact: true })).toHaveCount(0);
+  const titleBounds = (await detail
+    .getByRole("heading", { name, exact: true })
+    .boundingBox())!;
+  const closeBounds = (await detail
+    .getByRole("button", { name: "장소 상세 닫기", exact: true })
+    .boundingBox())!;
+  expect(
+    Math.abs(
+      titleBounds.y +
+        titleBounds.height / 2 -
+        closeBounds.y -
+        closeBounds.height / 2,
+    ),
+  ).toBeLessThan(2);
+  expect(closeBounds.x).toBeGreaterThan(titleBounds.x + titleBounds.width);
+  await page.screenshot({ path: "artifacts/place-sheet-detail.png" });
+  await expect(
+    detail.getByRole("heading", { name, exact: true }),
+  ).toBeVisible();
+  await swipe(
+    detail.getByRole("button", {
+      name: "장소 카드 요약으로 접기",
+      exact: true,
+    }),
+    1,
+  );
+  await expect(detail).toBeHidden();
+  await expect(card).toHaveAttribute("data-sheet-stage", "summary");
+  await expect(card.getByRole("heading", { level: 2 })).toHaveText(name);
+  await swipe(
+    card.getByRole("button", { name: "장소 상세 펼치기", exact: true }),
+    1,
+  );
+  await expect(card).toHaveAttribute("data-sheet-stage", "collapsed");
+  await card
+    .getByRole("button", { name: "장소 카드 펼치기", exact: true })
+    .press("ArrowUp");
+  await expect(card).toHaveAttribute("data-sheet-stage", "summary");
+  await card
+    .getByRole("button", { name: "장소 상세 펼치기", exact: true })
+    .press("ArrowUp");
+  await expect(detail).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(detail).toBeHidden();
+  await expect(
+    card.getByRole("button", { name: "장소 상세 펼치기", exact: true }),
+  ).toBeFocused();
+});
+
+test("mobile sheet header drags, short drags settle, X stays closed and pin selection reopens", async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(!isMobile);
+  await page.goto("/maps/tokyo-fashion");
+  const card = page.locator(".mobile-place-carousel");
+  const header = card.locator(".place-sheet-title");
+  const b = (await header.boundingBox())!;
+  await page.mouse.move(b.x + 15, b.y + b.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(b.x + 15, b.y + b.height / 2 - 16, { steps: 4 });
+  await expect(card).toHaveAttribute("data-dragging", "true");
+  await expect(card).not.toHaveCSS("transform", "none");
+  await page.waitForTimeout(180);
+  await page.mouse.up();
+  await expect(card).toHaveAttribute("data-sheet-stage", "collapsed");
+  await expect(card).toHaveCSS("transform", "none");
+  const c = (await header.boundingBox())!;
+  await page.mouse.move(c.x + 15, c.y + c.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(c.x + 15, c.y + c.height / 2 - 65, { steps: 4 });
+  await page.mouse.up();
+  await expect(card).toHaveAttribute("data-sheet-stage", "summary");
+  await expect(card.getByText("위로 올려 장소 정보 보기")).toHaveCount(0);
+  const name = await header.innerText();
+  await card
+    .getByRole("button", { name: "장소 상세 펼치기", exact: true })
+    .click();
+  const detail = page.getByRole("dialog", { name: `${name} 장소 상세` });
+  await expect(detail).toBeVisible();
+  await detail
+    .getByRole("button", { name: "장소 상세 닫기", exact: true })
+    .click();
+  await expect(detail).toBeHidden();
+  await expect(card).toHaveCount(0);
+  await page.waitForTimeout(350);
+  await expect(card).toHaveCount(0);
+  await page
+    .getByRole("button", { name: `${name} 지도에서 선택`, exact: false })
+    .click();
+  await expect(card).toHaveAttribute("data-sheet-stage", "collapsed");
+  await expect(card.getByRole("heading")).toHaveText(name);
+  await expect(card.getByText("위로 올려 장소 정보 보기")).toHaveCount(0);
+  await card
+    .getByRole("button", { name: "장소 카드 닫기", exact: true })
+    .click();
+  await expect(card).toHaveCount(0);
+  await page.getByRole("button", { name: "목록 보기", exact: true }).click();
+  await page
+    .getByRole("region", { name: "장소 목록" })
+    .getByRole("button", { name, exact: true })
+    .click();
+  await expect(detail).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(detail).toBeHidden();
+  await expect(
+    page
+      .getByRole("region", { name: "장소 목록" })
+      .getByRole("button", { name, exact: true }),
+  ).toBeFocused();
+});
+
+test("mobile view switch supports horizontal swipes without overriding taps", async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(!isMobile);
+  await page.goto("/maps/tokyo-fashion");
+  const swipe = async (from: "map" | "list", dx: number, dy = 0) => {
+    const button = page.getByRole("button", {
+      name: from === "map" ? "지도 보기" : "목록 보기",
+      exact: true,
+    });
+    const bounds = (await button.boundingBox())!;
+    const x = bounds.x + bounds.width / 2,
+      y = bounds.y + bounds.height / 2;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x + dx, y + dy, { steps: 6 });
+    if (Math.abs(dx) > Math.abs(dy)) {
+      await expect(button.locator("..")).toHaveAttribute(
+        "data-view-dragging",
+        "true",
+      );
+      expect(
+        await page
+          .locator(".community-explorer")
+          .evaluate((element) =>
+            (element as HTMLElement).style.getPropertyValue("--view-progress"),
+          ),
+      ).not.toBe("");
+    }
+    await page.mouse.up();
+    expect(
+      await page
+        .locator(".community-explorer")
+        .evaluate((element) =>
+          (element as HTMLElement).style.getPropertyValue("--view-progress"),
+        ),
+    ).toBe("");
+  };
+  await swipe("map", 14);
+  await expect(page.locator(".community-explorer")).toHaveAttribute(
+    "data-mobile-view",
+    "map",
+  );
+  await swipe("map", 35, 45);
+  await expect(page.locator(".community-explorer")).toHaveAttribute(
+    "data-mobile-view",
+    "map",
+  );
+  await swipe("map", 48);
+  await expect(page.locator(".community-explorer")).toHaveAttribute(
+    "data-mobile-view",
+    "list",
+  );
+  await swipe("list", -48);
+  await expect(page.locator(".community-explorer")).toHaveAttribute(
+    "data-mobile-view",
+    "map",
+  );
+  await page.getByRole("button", { name: "목록 보기", exact: true }).click();
+  await expect(page.locator(".community-explorer")).toHaveAttribute(
+    "data-mobile-view",
+    "list",
+  );
+});
+
+for (const reduced of [false, true]) {
+  test(`mobile sheet motion respects reduced motion ${reduced}`, async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(!isMobile);
+    await page.emulateMedia({
+      reducedMotion: reduced ? "reduce" : "no-preference",
+    });
+    await page.goto("/maps/tokyo-fashion");
+    const card = page.locator(".mobile-place-carousel");
+    await card
+      .getByRole("button", { name: "장소 카드 펼치기", exact: true })
+      .click();
+    await expect(card).toHaveAttribute("data-sheet-stage", "summary");
+    const moving = await card.evaluate(async (element) => {
+      await new Promise<void>((resolve) =>
+        requestAnimationFrame(() => resolve()),
+      );
+      return element
+        .getAnimations()
+        .some((animation) => animation.playState === "running");
+    });
+    expect(moving).toBe(!reduced);
+    await expect
+      .poll(() =>
+        card.evaluate(
+          (element) =>
+            element
+              .getAnimations()
+              .filter((animation) => animation.playState === "running").length,
+        ),
+      )
+      .toBe(0);
+    await card
+      .getByRole("button", { name: "장소 상세 펼치기", exact: true })
+      .click();
+    const detail = page.locator(".mobile-place-dialog");
+    await expect(detail).toBeVisible();
+    const detailMoving = await detail.evaluate(async (element) => {
+      await new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      );
+      return element
+        .getAnimations()
+        .some((animation) => animation.playState === "running");
+    });
+    expect(detailMoving).toBe(!reduced);
+    await page.keyboard.press("Escape");
+    await expect(detail).toHaveCount(0);
+    await expect(card).toHaveAttribute("data-sheet-stage", "summary");
+  });
+}

@@ -1,4 +1,14 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
+async function expandMobileDetail(page: Page) {
+  const collapsed = page.getByRole("button", {
+    name: "장소 카드 펼치기",
+    exact: true,
+  });
+  if (await collapsed.isVisible()) await collapsed.click();
+  await page
+    .getByRole("button", { name: "장소 상세 펼치기", exact: true })
+    .click();
+}
 test("mobile logo stays visible after returning home from a map", async ({
   page,
   isMobile,
@@ -110,23 +120,29 @@ for (const viewport of [
   { width: 1440, height: 600 },
   { width: 1536, height: 864 },
 ]) {
-  test(`home footer fits the ${viewport.width}x${viewport.height} viewport`, async ({
+  test(`home footer follows content and is reachable at ${viewport.width}x${viewport.height}`, async ({
     page,
     isMobile,
   }) => {
     test.skip(isMobile);
     await page.setViewportSize(viewport);
     await page.goto("/");
-    await expect(page.getByRole("link", { name: "로그인", exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "로그인", exact: true }),
+    ).toBeVisible();
     const footer = page.locator("footer");
     const [panelBox, footerBox] = await Promise.all([
       page.locator("#communities").boundingBox(),
       footer.boundingBox(),
     ]);
     expect(panelBox!.y + panelBox!.height).toBeLessThan(footerBox!.y);
-    expect(footerBox!.y + footerBox!.height).toBeLessThanOrEqual(viewport.height);
-    await expect(footer.getByRole("link", { name: "이용약관" })).toBeInViewport();
-    await expect(footer.getByRole("link", { name: "개인정보 처리방침" })).toBeInViewport();
+    await footer.scrollIntoViewIfNeeded();
+    await expect(
+      footer.getByRole("link", { name: "이용약관" }),
+    ).toBeInViewport();
+    await expect(
+      footer.getByRole("link", { name: "개인정보 처리방침" }),
+    ).toBeInViewport();
   });
 }
 
@@ -177,7 +193,9 @@ test("discover community, filter venues, open context and protect participation"
       })
       .click();
   } else {
-    await page.locator('summary[aria-label="Tokyo Fashion Store 미리보기"]').click();
+    await page
+      .locator('summary[aria-label="Tokyo Fashion Store 미리보기"]')
+      .click();
     await page
       .getByRole("link", { name: /전체 지도 열기.*Tokyo Fashion/ })
       .click();
@@ -220,10 +238,7 @@ test("discover community, filter venues, open context and protect participation"
     await page
       .getByRole("button", { name: "Second Chapter 지도에서 선택" })
       .click();
-    await page
-      .getByRole("article", { name: "Second Chapter 미리보기" })
-      .getByRole("button", { name: "상세 보기", exact: true })
-      .click();
+    await expandMobileDetail(page);
   } else {
     await page
       .getByRole("button", { name: "Second Chapter", exact: true })
@@ -235,8 +250,13 @@ test("discover community, filter venues, open context and protect participation"
     }),
   ).toBeVisible();
   await expect(page.getByText("이 테마에 추천하는 이유")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "방문자 사진", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "사진 추가", exact: true })).toBeDisabled();
+  if (!isMobile)
+    await expect(
+      page.getByRole("heading", { name: "방문자 사진", exact: true }),
+    ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "사진 추가", exact: true }),
+  ).toBeDisabled();
   if (isMobile)
     await page
       .locator("summary")
@@ -268,7 +288,7 @@ test("proposal and Google login honestly report unavailable connections", async 
 }) => {
   await page.goto("/maps/tokyo-fashion/submit");
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
-    "나만 알기",
+    "장소 제안",
   );
   await expect(
     page.getByRole("textbox", { name: "제안할 장소 검색" }),
@@ -363,19 +383,21 @@ test("mobile view switching preserves scroll position and detail returns focus",
   const preview = page.getByRole("article", {
     name: "Second Chapter 미리보기",
   });
-  await expect(preview).toBeVisible();
+  await expect(
+    page.locator(".mobile-place-carousel").getByRole("heading"),
+  ).toHaveText("Second Chapter");
   await expect(page.getByRole("dialog")).toBeHidden();
-  await preview.getByRole("button", { name: "상세 보기", exact: true }).click();
+  await expandMobileDetail(page);
   const detail = page.getByRole("dialog", { name: "Second Chapter 장소 상세" });
   await expect(detail).toBeVisible();
   await expect(
     detail.getByRole("button", { name: "저장 불가" }),
   ).toBeDisabled();
-  await page.getByRole("button", { name: "장소 상세 닫기" }).click();
+  await page.keyboard.press("Escape");
   await expect(detail).toBeHidden();
   await expect(preview).toBeVisible();
   await expect(
-    preview.getByRole("button", { name: "상세 보기" }),
+    page.getByRole("button", { name: "장소 상세 펼치기", exact: true }),
   ).toBeFocused();
   await page.getByRole("button", { name: "목록 보기", exact: true }).click();
   await expect(page.getByText("6개의 발견")).toBeVisible();
@@ -447,12 +469,18 @@ for (const width of [360, 390, 430, 768, 1024, 1440, 1920]) {
     ).toBe(true);
     if (!mobile) {
       // Text can overlap the neighboring panel without overflowing the page.
-      const overlapsPanel = await page.getByRole("heading", { level: 1 }).evaluate((heading) => {
-        const panel = document.getElementById("communities")!.getBoundingClientRect();
-        const range = document.createRange();
-        range.selectNodeContents(heading);
-        return [...range.getClientRects()].some((rect) => rect.right > panel.left);
-      });
+      const overlapsPanel = await page
+        .getByRole("heading", { level: 1 })
+        .evaluate((heading) => {
+          const panel = document
+            .getElementById("communities")!
+            .getBoundingClientRect();
+          const range = document.createRange();
+          range.selectNodeContents(heading);
+          return [...range.getClientRects()].some(
+            (rect) => rect.right > panel.left,
+          );
+        });
       expect(overlapsPanel).toBe(false);
 
       const panel = page.locator("#communities");
@@ -462,7 +490,10 @@ for (const width of [360, 390, 430, 768, 1024, 1440, 1920]) {
         footer.boundingBox(),
       ]);
       expect(panelBox!.y + panelBox!.height).toBeLessThan(footerBox!.y);
-      expect(footerBox!.y + footerBox!.height).toBeLessThanOrEqual(900);
+      await footer.scrollIntoViewIfNeeded();
+      await expect(
+        footer.getByRole("link", { name: "이용약관" }),
+      ).toBeInViewport();
     }
     await page.screenshot({ path: testInfo.outputPath(`home-${width}.png`) });
     if (mobile) {
@@ -499,6 +530,9 @@ for (const width of [360, 390, 430, 768, 1024, 1440, 1920]) {
       await expect(carousel).toBeVisible();
       const cardBox = (await carousel.boundingBox())!;
       expect(900 - cardBox.y - cardBox.height).toBeCloseTo(10, 0);
+      await carousel
+        .getByRole("button", { name: "장소 카드 펼치기", exact: true })
+        .click();
       const trackBox = (await carousel
         .locator(".mobile-place-track")
         .boundingBox())!;
@@ -550,9 +584,7 @@ for (const width of [360, 390, 430, 768, 1024, 1440, 1920]) {
           exact: false,
         }),
       ).toHaveAttribute("data-selected", "true");
-      await carousel
-        .getByRole("button", { name: "상세 보기", exact: true })
-        .click();
+      await expandMobileDetail(page);
       await expect(
         page.getByRole("dialog", { name: `${after} 장소 상세` }),
       ).toBeVisible();
@@ -561,7 +593,7 @@ for (const width of [360, 390, 430, 768, 1024, 1440, 1920]) {
       ).toBeHidden();
       await page.keyboard.press("Escape");
       await expect(
-        carousel.getByRole("button", { name: "상세 보기", exact: true }),
+        page.getByRole("button", { name: "장소 상세 펼치기", exact: true }),
       ).toBeFocused();
       await search.fill("no-matching-place");
       await expect(page.getByText("조건에 맞는 장소가 없어요.")).toBeVisible();
@@ -637,6 +669,9 @@ test("mobile enlarged content and carousel scrolling remain usable", async ({
   await page.goto("/maps/tokyo-fashion");
   const carousel = page.getByRole("region", { name: "장소 미리보기" });
   await expect(carousel).toBeVisible();
+  await carousel
+    .getByRole("button", { name: "장소 카드 펼치기", exact: true })
+    .click();
   await page
     .locator(".mobile-place-track")
     .evaluate((element) =>

@@ -29,11 +29,15 @@ export function PlacePhotos({
   viewer,
   loginHref,
   demo,
+  preview = false,
+  onOpenDetail,
 }: {
   placeId: string;
   viewer: Viewer | null;
   loginHref: string;
   demo: boolean;
+  preview?: boolean;
+  onOpenDetail?: () => void;
 }) {
   const [photos, setPhotos] = useState<PlacePhoto[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -203,9 +207,55 @@ export function PlacePhotos({
     }
   }
   const photo = photos[selected];
+  if (preview && !loading && !error && !photos.length) return null;
+  if (preview)
+    return (
+      <section aria-label="방문자 사진 미리보기" className="space-y-2">
+        <h3 className="text-xs font-medium">방문자 사진</h3>
+        {loading ? (
+          <p role="status" className="text-xs text-muted-foreground">
+            사진을 불러오는 중…
+          </p>
+        ) : error ? (
+          <p className="text-xs text-muted-foreground">
+            사진은 상세에서 다시 확인할 수 있어요.
+          </p>
+        ) : !photos.length ? (
+          <p className="text-xs text-muted-foreground">
+            아직 방문자 사진이 없어요.
+          </p>
+        ) : (
+          <div className="place-sheet-photo-preview">
+            {photos.slice(0, 5).map((item, index) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={onOpenDetail}
+                aria-label={`사진 ${index + 1} 장소 상세에서 보기`}
+              >
+                <Image
+                  unoptimized
+                  src={photoImageUrl(item.id, true)}
+                  alt={item.caption || "방문자 사진"}
+                  fill
+                  sizes="160px"
+                  className="object-cover"
+                />
+              </button>
+            ))}
+          </div>
+        )}
+      </section>
+    );
   return (
-    <section aria-label="방문자 사진" className="space-y-3">
-      <div className="flex items-center justify-between gap-2">
+    <section
+      aria-label="방문자 사진"
+      className="place-photos-section space-y-3"
+      data-loading={loading}
+      data-error={Boolean(error)}
+      data-has-photos={photos.length > 0}
+    >
+      <div className="place-photos-heading flex items-center justify-between gap-2">
         <h3 className="flex items-center gap-2 text-sm font-semibold">
           <Camera size={16} />
           방문자 사진
@@ -231,7 +281,7 @@ export function PlacePhotos({
         </p>
       ) : (
         !photos.length && (
-          <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+          <p className="place-photos-empty rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
             {demo
               ? "가상 예시에서는 사진을 등록할 수 없습니다."
               : "이 장소의 첫 사진을 올려 주세요."}
@@ -242,6 +292,7 @@ export function PlacePhotos({
         {photos.map((p, index) => (
           <button
             key={p.id}
+            data-photo-thumbnail
             className="relative h-28 w-36 shrink-0 overflow-hidden rounded-lg border focus-visible:outline-2"
             aria-label={`사진 ${index + 1} 확대: ${p.caption || "방문자 사진"}`}
             onClick={(e) => open("view", e.currentTarget, index)}
@@ -311,6 +362,12 @@ export function PlacePhotos({
               opener.current?.focus({ preventScroll: true });
             }}
             onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!busy) setMode(null);
+                return;
+              }
               if (mode === "view" && !reporting) {
                 if (e.key === "ArrowLeft") {
                   e.preventDefault();

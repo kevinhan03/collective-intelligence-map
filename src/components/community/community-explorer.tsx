@@ -1,4 +1,5 @@
 "use client";
+import type { PlaceSheetStage } from "@/hooks/use-place-sheet-drag";
 import { ShareButton } from "./share-button";
 import { placePath } from "@/domain/seo";
 import type { Coordinate } from "@/domain/visit";
@@ -33,6 +34,7 @@ import {
   Info,
   MapPin,
   List,
+  LoaderCircle,
   Map as MapIcon,
   Plus,
   Search,
@@ -41,7 +43,6 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -157,7 +158,10 @@ export function CommunityExplorer({
   function selectStation(station: RailStation, place: MapPlace) {
     setStationFocus({ station, place: { lat: place.lat, lng: place.lng } });
     setDetailId(null);
-    if (mobile) changeView("map");
+    if (mobile) {
+      setSheetStage("summary");
+      changeView("map");
+    }
   }
 
   const [mobileView, setMobileView] = useState<"list" | "map">("map");
@@ -191,8 +195,15 @@ export function CommunityExplorer({
       listElement.removeEventListener("scroll", update);
     };
   }, [listElement, mobile]);
-  function changeView(view: "list" | "map") {
+  function changeView(view: "list" | "map", fromProgress?: string) {
     if (mobileView === "list") listScroll.current = window.scrollY;
+    if (view !== mobileView && explorerRoot.current) {
+      explorerRoot.current.style.setProperty(
+        "--view-start",
+        fromProgress ?? (mobileView === "list" ? "100%" : "0%"),
+      );
+      explorerRoot.current.dataset.viewTransition = view;
+    }
     setMobileView(view);
     if (view === "list")
       requestAnimationFrame(() =>
@@ -202,6 +213,13 @@ export function CommunityExplorer({
   const [searchOpen, setSearchOpen] = useState(false);
   const searchInput = useRef<HTMLInputElement>(null);
   const explorerRoot = useRef<HTMLElement>(null);
+  const viewSwipe = useRef<{
+    id: number;
+    x: number;
+    y: number;
+    width: number;
+  } | null>(null);
+  const suppressViewClick = useRef(false);
   useEffect(() => {
     const viewport = window.visualViewport;
     const updateViewport = () => {
@@ -234,6 +252,58 @@ export function CommunityExplorer({
   const [region, setRegion] = useState("");
   const infoTrigger = useRef<HTMLButtonElement>(null);
   const [infoOpen, setInfoOpen] = useState(false);
+  const [sheetStage, setSheetStage] = useState<PlaceSheetStage>("collapsed");
+  const [sheetHint, setSheetHint] = useState(false);
+  const browsingSheetStage = useRef<"collapsed" | "summary">("collapsed");
+  const placeTrigger = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      try {
+        setSheetHint(sessionStorage.getItem("place-sheet-expanded") !== "true");
+      } catch {
+        setSheetHint(true);
+      }
+    }, 0);
+    return () => clearTimeout(timer);
+  }, []);
+  function changeSheetStage(stage: PlaceSheetStage) {
+    setSheetStage(stage);
+    if (stage === "collapsed" || stage === "summary")
+      browsingSheetStage.current = stage;
+    if (stage === "summary" || stage === "detail") {
+      setSheetHint(false);
+      try {
+        sessionStorage.setItem("place-sheet-expanded", "true");
+      } catch {
+        /* Storage may be unavailable. */
+      }
+    }
+  }
+  function closeSheet() {
+    setRestoreBounds(viewport);
+    setSheetStage("closed");
+    browsingSheetStage.current = "collapsed";
+    setDetailId(null);
+    setPreviewId(null);
+    setSelected(null);
+    setStationFocus(null);
+    setSearchStationHighlighted(false);
+    requestAnimationFrame(() => {
+      if (placeTrigger.current?.isConnected)
+        placeTrigger.current.focus({ preventScroll: true });
+      else
+        explorerRoot.current
+          ?.querySelector<HTMLElement>(".explorer-toolbar button")
+          ?.focus({ preventScroll: true });
+    });
+  }
+  function collapseDetail() {
+    setDetailId(null);
+    const next = mobileView === "map" ? "summary" : browsingSheetStage.current;
+    setSheetStage(next);
+    browsingSheetStage.current = next;
+    if (mobileView === "map" && selected) setPreviewId(selected);
+  }
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [savedOverrides, setSavedOverrides] = useState<Record<string, boolean>>(
     {},
@@ -363,9 +433,12 @@ export function CommunityExplorer({
     [places],
   );
   const firstPlaceId = filtered[0]?.id ?? null;
-  const activePreviewId = filtered.some((p) => p.id === previewId)
-    ? previewId
-    : firstPlaceId;
+  const activePreviewId =
+    sheetStage === "closed"
+      ? null
+      : filtered.some((p) => p.id === previewId)
+        ? previewId
+        : firstPlaceId;
   const mobileBounds = useMemo(
     () =>
       boundsForPlaces(
@@ -375,7 +448,7 @@ export function CommunityExplorer({
     [region, filtered, activePreviewId, map.bounds],
   );
   useEffect(() => {
-    if (!mobile || detailId) return;
+    if (!mobile || detailId || sheetStage === "closed") return;
     const timer = window.setTimeout(() => {
       setPreviewId(activePreviewId);
       setSelected(activePreviewId);
@@ -383,8 +456,9 @@ export function CommunityExplorer({
         setFocusRequest((request) => request + 1);
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [mobile, activePreviewId, detailId, previewId, region]);
+  }, [mobile, activePreviewId, detailId, previewId, region, sheetStage]);
   const selectPreview = (id: string) => {
+    if (sheetStage === "closed") setSheetStage("collapsed");
     setRestoreBounds(null);
     setSearchStationHighlighted(false);
     setOpenedSearchPlace(filtered.find((p) => p.id === id) ?? null);
@@ -544,6 +618,10 @@ export function CommunityExplorer({
   };
   const focusPlace = useCallback(
     (id: string) => {
+      placeTrigger.current = document.activeElement as HTMLElement | null;
+      setSheetStage((current) =>
+        current === "closed" ? "collapsed" : current,
+      );
       setRestoreBounds(null);
       setSearchStationHighlighted(false);
       setOpenedSearchPlace(filtered.find((p) => p.id === id) ?? null);
@@ -560,7 +638,8 @@ export function CommunityExplorer({
           });
           return;
         }
-        setPreviewId(null);
+        setPreviewId(id);
+        changeSheetStage("detail");
         setDetailId(id);
         trackCommunityEvent("place_detail_opened", {
           entry: "list",
@@ -591,6 +670,7 @@ export function CommunityExplorer({
       setSelected(mapPlace.id);
       setFocusRequest((request) => request + 1);
       setPreviewId(mapPlace.id);
+      changeSheetStage("detail");
       setDetailId(mapPlace.id);
       trackCommunityEvent("place_detail_opened", {
         entry: "deep_link",
@@ -608,55 +688,99 @@ export function CommunityExplorer({
   const mobileControls = (
     <div className="mobile-view-controls lg:hidden">
       <div
-        className="visit-view-switch flex rounded-xl border bg-card p-0.5 lg:hidden"
+        className="visit-view-switch"
         role="group"
         aria-label="장소 보기 방식"
+        onPointerDown={(event) => {
+          if (!event.isPrimary || event.button !== 0) return;
+          viewSwipe.current = {
+            id: event.pointerId,
+            x: event.clientX,
+            y: event.clientY,
+            width: event.currentTarget.clientWidth / 2,
+          };
+          suppressViewClick.current = false;
+          if (explorerRoot.current)
+            explorerRoot.current.removeAttribute("data-view-transition");
+          const target = event.target as HTMLElement;
+          (target.closest("button") ?? event.currentTarget).setPointerCapture(
+            event.pointerId,
+          );
+        }}
+        onPointerMove={(event) => {
+          const origin = viewSwipe.current;
+          if (!origin || origin.id !== event.pointerId) return;
+          const dx = event.clientX - origin.x;
+          const dy = event.clientY - origin.y;
+          if (Math.abs(dx) < 5 || Math.abs(dx) <= Math.abs(dy)) return;
+          event.currentTarget.setAttribute("data-view-dragging", "true");
+          const progress = Math.max(
+            0,
+            Math.min(1, (mobileView === "list" ? 1 : 0) + dx / origin.width),
+          );
+          explorerRoot.current?.style.setProperty(
+            "--view-progress",
+            `${progress * 100}%`,
+          );
+        }}
+        onPointerUp={(event) => {
+          const fromProgress =
+            explorerRoot.current?.style.getPropertyValue("--view-progress") ||
+            undefined;
+          event.currentTarget.removeAttribute("data-view-dragging");
+          explorerRoot.current?.style.removeProperty("--view-progress");
+          const origin = viewSwipe.current;
+          viewSwipe.current = null;
+          if (!origin || origin.id !== event.pointerId) return;
+          const dx = event.clientX - origin.x;
+          const dy = event.clientY - origin.y;
+          if (Math.abs(dx) < 28 || Math.abs(dx) < Math.abs(dy) * 1.3) return;
+          suppressViewClick.current = true;
+          const view = dx > 0 ? "list" : "map";
+          if (view !== mobileView) {
+            changeView(view, fromProgress);
+            trackCommunityEvent("community_view_changed", {
+              provider: config.provider,
+              view,
+            });
+          }
+        }}
+        onPointerCancel={(event) => {
+          event.currentTarget.removeAttribute("data-view-dragging");
+          explorerRoot.current?.style.removeProperty("--view-progress");
+          viewSwipe.current = null;
+        }}
+        onClickCapture={(event) => {
+          if (suppressViewClick.current && event.detail !== 0) {
+            event.preventDefault();
+            event.stopPropagation();
+            suppressViewClick.current = false;
+          }
+        }}
       >
-        <Badge
-          asChild
-          variant={mobileView === "list" ? "secondary" : "outline"}
-          className="mobile-action-badge"
-        >
+        {(["map", "list"] as const).map((view) => (
           <button
-            aria-label="목록 보기"
-            aria-pressed={mobileView === "list"}
-            aria-controls="explorer-list"
+            key={view}
+            type="button"
+            aria-label={view === "map" ? "지도 보기" : "목록 보기"}
+            aria-pressed={mobileView === view}
+            aria-controls={view === "map" ? "explorer-map" : "explorer-list"}
             onClick={() => {
-              changeView("list");
+              changeView(view);
               trackCommunityEvent("community_view_changed", {
                 provider: config.provider,
-                view: "list",
+                view,
               });
             }}
           >
-            <List size={17} aria-hidden="true" />
-            <span>목록</span>
+            {view === "map" ? (
+              <MapIcon size={16} aria-hidden="true" />
+            ) : (
+              <List size={16} aria-hidden="true" />
+            )}
+            <span>{view === "map" ? "지도" : "목록"}</span>
           </button>
-        </Badge>
-        <Badge
-          asChild
-          variant={mobileView === "map" ? "secondary" : "outline"}
-          className="mobile-action-badge"
-        >
-          <button
-            aria-label="지도 보기"
-            aria-pressed={mobileView === "map"}
-            aria-controls="explorer-map"
-            onClick={() => {
-              changeView("map");
-              trackCommunityEvent("community_view_changed", {
-                provider: config.provider,
-                view: "map",
-              });
-            }}
-          >
-            <MapIcon size={17} aria-hidden="true" />
-            <span>지도</span>
-          </button>
-        </Badge>
-        <span className="px-2 text-xs text-muted-foreground">
-          {resultCount}곳
-        </span>
+        ))}
       </div>
     </div>
   );
@@ -852,7 +976,7 @@ export function CommunityExplorer({
       >
         <Plus size={22} aria-hidden="true" />
       </Link>
-      {mobileView === "list" && (
+      {mobileView === "list" && !detailId && (
         <div className="mobile-explorer-actions lg:hidden">
           {mobileControls}
         </div>
@@ -1418,10 +1542,31 @@ export function CommunityExplorer({
             variant="outline"
             className="location-button absolute top-28 right-3 z-20 shadow-lg"
             disabled={locating}
+            aria-label="내 위치"
+            aria-busy={locating}
+            title="내 위치"
             onClick={() => locate()}
           >
-            <MapPin size={14} />
-            {locating ? "위치 확인 중…" : "내 위치"}
+            {locating ? (
+              <LoaderCircle className="animate-spin" aria-hidden="true" />
+            ) : (
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                aria-hidden="true"
+              >
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 3v5M21 12h-5M12 21v-5M3 12h5" />
+              </svg>
+            )}
+            {locating && (
+              <span className="sr-only" role="status">
+                위치 확인 중…
+              </span>
+            )}
           </Button>
           {!mobile &&
             config.provider === "maplibre" &&
@@ -1451,19 +1596,34 @@ export function CommunityExplorer({
           )}
           {mobile ? (
             filtered.length ? (
-              <MobilePlaceCarousel
-                controls={mobileControls}
-                places={filtered}
-                activeId={activePreviewId}
-                onSelect={selectPreview}
-                onOpen={(id) => {
-                  setSelected(id);
-                  setDetailId(id);
-                }}
-                onSave={(id) => void savePlace(id)}
-                isSaved={isSaved}
-                disabled={demo || busy}
-              />
+              sheetStage === "closed" ? (
+                <div className="mobile-closed-controls">
+                  <span className="mobile-result-count">
+                    장소 {resultCount}곳
+                  </span>
+                  {mobileControls}
+                </div>
+              ) : (
+                <MobilePlaceCarousel
+                  demo={demo}
+                  stage={sheetStage === "collapsed" ? "collapsed" : "summary"}
+                  onStageChange={changeSheetStage}
+                  onClose={closeSheet}
+                  showHint={sheetHint && sheetStage === "collapsed"}
+                  controls={mobileControls}
+                  places={filtered}
+                  activeId={activePreviewId}
+                  onSelect={selectPreview}
+                  onOpen={(id) => {
+                    changeSheetStage("detail");
+                    setSelected(id);
+                    setDetailId(id);
+                  }}
+                  onSave={(id) => void savePlace(id)}
+                  isSaved={isSaved}
+                  disabled={demo || busy}
+                />
+              )
             ) : (
               <div className="mobile-map-empty">
                 <p role="status">조건에 맞는 장소가 없어요.</p>
@@ -1543,12 +1703,8 @@ export function CommunityExplorer({
           loginHref={loginHref(
             `/maps/${map.slug}${selectedPlace ? `?place=${encodeURIComponent(selectedPlace.place_id)}` : ""}`,
           )}
-          onClose={() => {
-            setDetailId(null);
-            if (mobile && mobileView === "map" && selected) {
-              setPreviewId(selected);
-            }
-          }}
+          onClose={mobile ? closeSheet : () => setDetailId(null)}
+          onCollapse={mobile ? collapseDetail : () => setDetailId(null)}
           viewer={viewer}
           vote={myState.votes[detailId ?? ""] ?? 0}
           saved={isSaved(detailId ?? "")}

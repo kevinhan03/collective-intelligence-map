@@ -5,8 +5,11 @@ import {
   type Coordinate,
 } from "@/domain/visit";
 import { useMobile } from "@/hooks/use-mobile";
-import type { ReactNode } from "react";
+import { useCallback, type ReactNode } from "react";
 import Link from "next/link";
+import { usePlaceSheetDrag } from "@/hooks/use-place-sheet-drag";
+import { PlaceSheetHandle } from "./place-sheet-handle";
+import { exitPlaceSheet } from "./place-sheet-motion";
 import { PlacePanel } from "./place-panel";
 import { PlacePhotos } from "./place-photos";
 import { PlaceChecks } from "./place-checks";
@@ -35,6 +38,7 @@ export function PlaceDetail({
   place,
   userLocation,
   onClose,
+  onCollapse,
   viewer,
   loginHref,
   vote,
@@ -47,6 +51,7 @@ export function PlaceDetail({
   place: MapPlace | null;
   userLocation: Coordinate | null;
   onClose: () => void;
+  onCollapse?: () => void;
   viewer: Viewer | null;
   loginHref: string;
   vote: number;
@@ -58,6 +63,16 @@ export function PlaceDetail({
 }) {
   const [checksRevision, setChecksRevision] = useState(0);
   const mobile = useMobile();
+  const collapse = useCallback(() => {
+    const callback = onCollapse ?? onClose;
+    if (mobile) exitPlaceSheet(callback);
+    else callback();
+  }, [mobile, onCollapse, onClose]);
+  const closeSelection = () => {
+    if (mobile) exitPlaceSheet(onClose, true);
+    else onClose();
+  };
+  const drag = usePlaceSheetDrag(undefined, collapse);
   const [scrollBody, setScrollBody] = useState<HTMLDivElement | null>(null);
   const scrollContent = useRef<HTMLDivElement>(null);
   const [hasMoreBelow, setHasMoreBelow] = useState(false);
@@ -66,13 +81,22 @@ export function PlaceDetail({
     const body = scrollBody;
     const content = scrollContent.current;
     if (!body || !content || !placeId) return;
-    const update = () =>
+    const panel = body.closest<HTMLElement>(".place-detail-panel");
+    const actions = panel?.querySelector<HTMLElement>(".place-save-bar");
+    const update = () => {
+      if (actions)
+        panel?.style.setProperty(
+          "--detail-actions-height",
+          `${actions.offsetHeight}px`,
+        );
       setHasMoreBelow(
         body.scrollHeight - body.clientHeight - body.scrollTop > 4,
       );
+    };
     const observer = new ResizeObserver(update);
     observer.observe(body);
     observer.observe(content);
+    if (actions) observer.observe(actions);
     body.addEventListener("scroll", update, { passive: true });
     const frame = requestAnimationFrame(update);
     return () => {
@@ -90,18 +114,18 @@ export function PlaceDetail({
     [report, setReport] = useState<string | null>(null),
     [reason, setReason] = useState("");
   useEffect(() => {
-    if (!place) return;
+    if (!place || mobile) return;
     const close = (event: KeyboardEvent) => {
       if (
         event.key === "Escape" &&
         !event.defaultPrevented &&
         !document.querySelector("[data-photo-dialog]")
       )
-        onClose();
+        (mobile ? collapse : onClose)();
     };
     window.addEventListener("keydown", close);
     return () => window.removeEventListener("keydown", close);
-  }, [place, onClose]);
+  }, [place, onClose, mobile, collapse]);
   useEffect(() => {
     if (!place) return;
     const controller = new AbortController();
@@ -134,25 +158,77 @@ export function PlaceDetail({
   const total = place.positive + place.negative;
   const enabled = Boolean(viewer) && !demo;
   const votingEnabled = !demo;
+  const rationaleSection = (
+    <div className="rounded-xl bg-secondary/60 p-5">
+      <p className="kicker mb-2">이 테마에 추천하는 이유</p>
+      <p className="text-sm leading-7">{place.rationale}</p>
+      <p className="mt-3 text-xs text-muted-foreground">
+        {place.added_by ? (
+          <Link href={`/u/${place.handle}`}>@{place.handle}</Link>
+        ) : (
+          place.handle
+        )}{" "}
+        · 추천 근거
+      </p>
+    </div>
+  );
+  const photoSection = (
+    <PlacePhotos
+      key={`photos:${place.place_id}`}
+      placeId={place.place_id}
+      viewer={viewer}
+      loginHref={loginHref}
+      demo={demo}
+    />
+  );
+  const stationSection = !demo && (
+    <details
+      key={`stations:${place.place_id}`}
+      className="station-disclosure group/stations rounded-xl border px-3"
+    >
+      <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-sm font-semibold [&::-webkit-details-marker]:hidden">
+        <TrainFront size={16} aria-hidden="true" />
+        <span className="flex-1">가까운 지하철·기차역</span>
+        <ChevronDown
+          size={16}
+          aria-hidden="true"
+          className="transition-transform group-open/stations:rotate-180"
+        />
+      </summary>
+      <div className="pb-3">
+        <NearbyStationInfo
+          place={place}
+          demo={demo}
+          onSelect={onStationSelect}
+        />
+      </div>
+    </details>
+  );
   return (
-    <PlacePanel title={`${place.name} 장소 상세`} onClose={onClose}>
+    <PlacePanel title={`${place.name} 장소 상세`} onClose={collapse}>
       <aside
         aria-label={`${place.name} 장소 상세`}
         className="place-detail-panel"
       >
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-card px-5 py-3">
-          <span className="text-xs font-medium text-muted-foreground">
-            장소 상세
-          </span>
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="장소 상세 닫기"
-            onClick={onClose}
-          >
-            <X size={18} />
-          </Button>
-        </div>
+        {mobile ? (
+          <div className="place-sheet-drag-zone" {...drag}>
+            <PlaceSheetHandle stage="detail" onCollapse={collapse} />
+          </div>
+        ) : (
+          <div className="place-detail-topbar sticky top-0 z-10 flex items-center justify-between border-b bg-card px-5 py-3">
+            <span className="text-xs font-medium text-muted-foreground">
+              장소 상세
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="장소 상세 닫기"
+              onClick={closeSelection}
+            >
+              <X size={18} />
+            </Button>
+          </div>
+        )}
         <div
           ref={setScrollBody}
           className="place-detail-scroll"
@@ -164,9 +240,35 @@ export function PlaceDetail({
               {place.status === "disputed" && (
                 <Badge variant="outline">주제 적합성 재검토 중</Badge>
               )}
-              <h2 className="text-2xl font-semibold tracking-tight">
-                {place.name}
-              </h2>
+              <div
+                className={
+                  mobile
+                    ? "place-sheet-title-row place-sheet-drag-zone"
+                    : "flex items-center justify-between gap-3"
+                }
+                {...(mobile ? drag : {})}
+              >
+                <h2
+                  className={
+                    mobile
+                      ? "place-sheet-title"
+                      : "min-w-0 text-2xl font-semibold tracking-tight break-words"
+                  }
+                >
+                  {place.name}
+                </h2>
+                {mobile && (
+                  <Button
+                    className="shrink-0"
+                    variant="ghost"
+                    size="icon"
+                    aria-label="장소 상세 닫기"
+                    onClick={closeSelection}
+                  >
+                    <X size={18} />
+                  </Button>
+                )}
+              </div>
               {placeArea(place.address) && (
                 <p className="text-sm font-medium text-primary">
                   {placeArea(place.address)}
@@ -185,55 +287,31 @@ export function PlaceDetail({
                 demo={demo}
                 revision={checksRevision}
               />
-              {!demo && (
-                <details
-                  key={place.place_id}
-                  className="station-disclosure group/stations rounded-xl border px-3"
-                >
-                  <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-sm font-semibold [&::-webkit-details-marker]:hidden">
-                    <TrainFront size={16} aria-hidden="true" />
-                    <span className="flex-1">가까운 지하철·기차역</span>
-                    <ChevronDown
-                      size={16}
-                      aria-hidden="true"
-                      className="transition-transform group-open/stations:rotate-180"
-                    />
-                  </summary>
-                  <div className="pb-3">
-                    <NearbyStationInfo
-                      place={place}
-                      demo={demo}
-                      onSelect={onStationSelect}
-                    />
-                  </div>
-                </details>
-              )}
+              {!mobile && stationSection}
               <div className="flex flex-wrap items-center gap-3">
+                {!mobile && (
+                  <a
+                    href={sharePath}
+                    className="text-xs text-primary underline"
+                  >
+                    장소 소개 페이지 보기
+                  </a>
+                )}
                 <ShareButton path={sharePath} title={place.name} />
-                <a href={sharePath} className="text-xs text-primary underline">
-                  장소 소개 페이지 보기
-                </a>
               </div>
             </header>
-            <PlacePhotos
-              key={place.place_id}
-              placeId={place.place_id}
-              viewer={viewer}
-              loginHref={loginHref}
-              demo={demo}
-            />
-            <div className="rounded-xl bg-secondary/60 p-5">
-              <p className="kicker mb-2">이 테마에 추천하는 이유</p>
-              <p className="text-sm leading-7">{place.rationale}</p>
-              <p className="mt-3 text-xs text-muted-foreground">
-                {place.added_by ? (
-                  <Link href={`/u/${place.handle}`}>@{place.handle}</Link>
-                ) : (
-                  place.handle
-                )}{" "}
-                · 추천 근거
-              </p>
-            </div>
+            {mobile ? (
+              <>
+                {rationaleSection}
+                {photoSection}
+                {stationSection}
+              </>
+            ) : (
+              <>
+                {photoSection}
+                {rationaleSection}
+              </>
+            )}
             <ParticipationSection mobile={mobile} title="이 주제에 맞나요?">
               <div className="flex items-center justify-between">
                 <div>
@@ -287,6 +365,14 @@ export function PlaceDetail({
               )}
             </ParticipationSection>
             <ParticipationSection mobile={mobile} title="더 보기">
+              {mobile && (
+                <a
+                  href={sharePath}
+                  className="inline-flex min-h-11 items-center text-sm text-primary underline"
+                >
+                  장소 소개 페이지 보기
+                </a>
+              )}
               <div className="flex justify-end border-y py-3">
                 <Button
                   variant="ghost"
@@ -439,61 +525,61 @@ export function PlaceDetail({
               />
             </ParticipationSection>
           </div>
-          <div className="place-save-bar border-t bg-card p-4">
-            {error && (
-              <p role="alert" className="mb-3 text-sm text-destructive">
-                {error}
-              </p>
+        </div>
+        <div className="place-save-bar border-t bg-card p-4">
+          {error && (
+            <p role="alert" className="mb-3 text-sm text-destructive">
+              {error}
+            </p>
+          )}
+          <div className="grid grid-cols-2 gap-2">
+            {!viewer && !demo ? (
+              <Button asChild className="h-12">
+                <Link href={loginHref}>
+                  <Bookmark size={17} /> 저장하기
+                </Link>
+              </Button>
+            ) : (
+              <Button
+                className="h-12"
+                variant={savedValue ? "secondary" : "default"}
+                disabled={!enabled || busy}
+                aria-pressed={savedValue}
+                onClick={async () => {
+                  if (
+                    await act({
+                      action: "save",
+                      id: place.id,
+                      enabled: !savedValue,
+                    })
+                  )
+                    setSavedOverride(!savedValue);
+                }}
+              >
+                <Bookmark
+                  size={17}
+                  fill={savedValue ? "currentColor" : "none"}
+                />
+                {demo
+                  ? "저장 불가"
+                  : busy
+                    ? "처리 중…"
+                    : savedValue
+                      ? "저장됨"
+                      : "저장하기"}
+              </Button>
             )}
-            <div className="grid grid-cols-2 gap-2">
-              {!viewer && !demo ? (
-                <Button asChild className="h-12">
-                  <Link href={loginHref}>
-                    <Bookmark size={17} /> 저장하기
-                  </Link>
-                </Button>
-              ) : (
-                <Button
-                  className="h-12"
-                  variant={savedValue ? "secondary" : "default"}
-                  disabled={!enabled || busy}
-                  aria-pressed={savedValue}
-                  onClick={async () => {
-                    if (
-                      await act({
-                        action: "save",
-                        id: place.id,
-                        enabled: !savedValue,
-                      })
-                    )
-                      setSavedOverride(!savedValue);
-                  }}
-                >
-                  <Bookmark
-                    size={17}
-                    fill={savedValue ? "currentColor" : "none"}
-                  />
-                  {demo
-                    ? "저장 불가"
-                    : busy
-                      ? "처리 중…"
-                      : savedValue
-                        ? "저장됨"
-                        : "저장하기"}
-                </Button>
-              )}
-              {demo ? (
-                <Button variant="outline" className="h-12" disabled>
+            {demo ? (
+              <Button variant="outline" className="h-12" disabled>
+                <ExternalLink size={17} /> 길찾기
+              </Button>
+            ) : (
+              <Button asChild variant="outline" className="h-12">
+                <a href={`/go/${place.id}`} target="_blank" rel="noreferrer">
                   <ExternalLink size={17} /> 길찾기
-                </Button>
-              ) : (
-                <Button asChild variant="outline" className="h-12">
-                  <a href={`/go/${place.id}`} target="_blank" rel="noreferrer">
-                    <ExternalLink size={17} /> 길찾기
-                  </a>
-                </Button>
-              )}
-            </div>
+                </a>
+              </Button>
+            )}
           </div>
         </div>
         {hasMoreBelow && (

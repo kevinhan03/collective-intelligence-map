@@ -606,7 +606,7 @@ export function CommunityExplorer({
     requestedProposalId,
   ]);
   const mobileControls = (
-    <div className="mobile-explorer-actions lg:hidden">
+    <div className="mobile-view-controls lg:hidden">
       <div
         className="visit-view-switch flex rounded-xl border bg-card p-0.5 lg:hidden"
         role="group"
@@ -658,20 +658,6 @@ export function CommunityExplorer({
           {resultCount}곳
         </span>
       </div>
-      <Badge
-        asChild
-        variant="outline"
-        className="mobile-action-badge mobile-propose-badge"
-      >
-        <Link
-          href={`/maps/${map.slug}/submit`}
-          prefetch={false}
-          className="mobile-propose-link"
-        >
-          <Plus size={12} data-icon="inline-start" aria-hidden="true" />
-          장소 제안
-        </Link>
-      </Badge>
     </div>
   );
   return (
@@ -858,7 +844,19 @@ export function CommunityExplorer({
           </div>
         </DialogContent>
       </Dialog>
-      {mobileView === "list" && mobileControls}
+      <Link
+        href={`/maps/${map.slug}/submit`}
+        prefetch={false}
+        className="mobile-propose-floating lg:hidden"
+        aria-label="장소 제안"
+      >
+        <Plus size={22} aria-hidden="true" />
+      </Link>
+      {mobileView === "list" && (
+        <div className="mobile-explorer-actions lg:hidden">
+          {mobileControls}
+        </div>
+      )}
       <div
         data-search-open={searchOpen}
         className="glass-toolbar explorer-toolbar flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3 md:px-9"
@@ -1485,7 +1483,7 @@ export function CommunityExplorer({
                 >
                   검색 조건 초기화
                 </Button>
-                {mobileControls}
+                <div className="mobile-explorer-actions">{mobileControls}</div>
               </div>
             )
           ) : previewPlace ? (

@@ -277,9 +277,7 @@ test("mobile map actions fit inside the preview card and remain available in lis
     await expect(
       card.getByRole("button", { name: "목록 보기", exact: true }),
     ).toBeVisible();
-    await expect(
-      card.getByRole("link", { name: "장소 제안", exact: true }),
-    ).toBeVisible();
+    await expect(page.locator(".mobile-propose-floating")).toBeVisible();
     await expect(card).not.toContainText("가까운 역");
     const bounds = await card.boundingBox();
     expect(bounds!.x).toBeGreaterThanOrEqual(0);
@@ -294,17 +292,45 @@ test("mobile map actions fit inside the preview card and remain available in lis
     const detail = card.getByRole("button", { name: "상세 보기", exact: true });
     expect((await detail.boundingBox())!.height).toBe(28);
     await expect(detail).toHaveAttribute("data-slot", "badge");
+    const detailBounds = (await detail.boundingBox())!;
+    const titleBounds = (await card
+      .locator('.mobile-place-slide[aria-hidden="false"] h2')
+      .boundingBox())!;
+    expect(
+      Math.abs(
+        detailBounds.y +
+          detailBounds.height / 2 -
+          titleBounds.y -
+          titleBounds.height / 2,
+      ),
+    ).toBeLessThan(1);
+    expect(titleBounds.x + titleBounds.width).toBeLessThan(detailBounds.x);
+    expect(detailBounds.x + detailBounds.width).toBeGreaterThan(
+      bounds!.x + bounds!.width - 20,
+    );
+    const saved = card
+      .locator(".mobile-explorer-actions")
+      .getByRole("button", { name: /保存|저장/ });
+    await expect(saved).toBeVisible();
+    expect((await saved.boundingBox())!.height).toBe(28);
+    const menuBounds = (await page
+      .getByRole("button", { name: "메뉴 열기", exact: true })
+      .boundingBox())!;
+    const proposalBounds = (await page
+      .locator(".mobile-propose-floating")
+      .boundingBox())!;
+    expect(proposalBounds.x + proposalBounds.width / 2).toBe(
+      menuBounds.x + menuBounds.width / 2,
+    );
+    expect(proposalBounds.y).toBeGreaterThan(menuBounds.y + menuBounds.height);
+    await expect(page.locator(".mobile-propose-floating")).toHaveText("");
     await expect(
       page.getByRole("button", { name: "내 위치", exact: true }),
     ).toHaveCSS("background-color", "rgb(32, 39, 49)");
     if (width === 390)
       await page.screenshot({ path: "artifacts/mobile-map-actions.png" });
     await card.getByRole("button", { name: "목록 보기", exact: true }).click();
-    await expect(
-      page
-        .locator(".community-explorer > .mobile-explorer-actions")
-        .getByRole("link", { name: "장소 제안", exact: true }),
-    ).toBeVisible();
+    await expect(page.locator(".mobile-propose-floating")).toBeVisible();
     await page.getByRole("button", { name: "지도 보기", exact: true }).click();
     await expect(card).toBeVisible();
   }

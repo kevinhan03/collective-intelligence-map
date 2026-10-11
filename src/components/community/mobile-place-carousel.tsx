@@ -124,41 +124,45 @@ export function MobilePlaceCarousel({
             inert={i !== index}
             aria-hidden={i !== index}
           >
-            <h2 className="truncate text-lg font-semibold">{place.name}</h2>
-            <p className="mt-1 line-clamp-2 text-base leading-6 text-muted-foreground">
-              {place.rationale}
-            </p>
-            <div className="mobile-place-buttons mt-2 flex items-center gap-2">
+            <div className="mobile-place-heading flex min-w-0 items-center justify-between gap-3">
+              <h2 className="min-w-0 flex-1 truncate text-lg font-semibold">
+                {place.name}
+              </h2>
               <Badge asChild className="mobile-action-badge">
                 <button type="button" onClick={() => onOpen(place.id)}>
                   상세 보기
                 </button>
               </Badge>
-              <Badge
-                asChild
-                variant={isSaved(place.id) ? "secondary" : "outline"}
-                className="mobile-action-badge"
-              >
-                <button
-                  type="button"
-                  aria-label={`${place.name} ${isSaved(place.id) ? "저장 해제" : "저장"}`}
-                  aria-pressed={isSaved(place.id)}
-                  disabled={disabled}
-                  onClick={() => onSave(place.id)}
-                >
-                  <Bookmark
-                    size={12}
-                    data-icon="inline-start"
-                    fill={isSaved(place.id) ? "currentColor" : "none"}
-                  />
-                  {isSaved(place.id) ? "저장됨" : "저장"}
-                </button>
-              </Badge>
             </div>
+            <p className="mt-1 line-clamp-2 text-base leading-6 text-muted-foreground">
+              {place.rationale}
+            </p>
           </article>
         ))}
       </div>
-      {controls}
+      <div className="mobile-explorer-actions">
+        {controls}
+        <Badge
+          asChild
+          variant={isSaved(currentPlace.id) ? "secondary" : "outline"}
+          className="mobile-action-badge"
+        >
+          <button
+            type="button"
+            aria-label={`${currentPlace.name} ${isSaved(currentPlace.id) ? "저장 해제" : "저장"}`}
+            aria-pressed={isSaved(currentPlace.id)}
+            disabled={disabled}
+            onClick={() => onSave(currentPlace.id)}
+          >
+            <Bookmark
+              size={12}
+              data-icon="inline-start"
+              fill={isSaved(currentPlace.id) ? "currentColor" : "none"}
+            />
+            {isSaved(currentPlace.id) ? "저장됨" : "저장"}
+          </button>
+        </Badge>
+      </div>
     </section>
   );
 }

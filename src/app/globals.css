@@ -1486,8 +1486,8 @@ button:not(:disabled),
     font-size: 14px;
     line-height: 20px;
   }
-  .community-explorer[data-mobile-view="map"] .mobile-place-slide > div {
-    margin-top: 8px;
+  .community-explorer[data-mobile-view="map"] .mobile-place-heading {
+    margin-top: 0;
   }
   .community-explorer[data-mobile-view="map"] .search-area-button {
     top: calc(64px + env(safe-area-inset-top));
@@ -1986,10 +1986,24 @@ button:not(:disabled),
     color: var(--secondary-foreground);
     border-color: var(--border);
   }
-  .community-explorer .mobile-propose-badge {
+  .mobile-propose-floating {
+    position: fixed;
+    top: calc(64px + env(safe-area-inset-top));
+    right: 14px;
+    z-index: 35;
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 1px solid #ffffff30;
+    background: #202731;
     color: var(--primary);
-    border-color: color-mix(in srgb, var(--primary) 40%, transparent);
-    background: transparent;
+    box-shadow: 0 2px 12px #0003;
+  }
+  .mobile-propose-floating:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 3px;
   }
   .mobile-action-badge svg {
     width: 12px;

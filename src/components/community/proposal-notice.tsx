@@ -24,10 +24,16 @@ export function ProposalNotice({
       className="mx-auto max-w-7xl px-6 py-3 text-sm text-primary"
     >
       {message}{" "}
-      <Link className="underline" href={`/maps/${mapSlug}?proposal=${encodeURIComponent(id)}`}>
+      <Link
+        className="underline"
+        href={`/maps/${mapSlug}?proposal=${encodeURIComponent(id)}`}
+      >
         장소 보기
       </Link>{" "}
-      · <Link className="underline" href="/my-proposals">내 제안</Link>
+      ·{" "}
+      <Link className="underline" href="/my-proposals">
+        내 제안
+      </Link>
     </p>
   );
 }

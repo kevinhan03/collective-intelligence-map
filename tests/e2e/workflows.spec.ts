@@ -502,7 +502,7 @@ test("unauthenticated users cannot open admin moderation", async ({ page }) => {
   await page.goto("/admin/moderation");
   await expect(page).toHaveURL(/\/login/);
 });
-test("automatic suggestions are immediate, respect composition and search externally only without internal matches", async ({
+test("automatic suggestions wait 400ms, respect composition and search externally only without internal matches", async ({
   page,
 }) => {
   const requests: { query: string; external: boolean }[] = [];
@@ -540,8 +540,8 @@ test("automatic suggestions are immediate, respect composition and search extern
   await input.fill("かな");
   await page.waitForTimeout(650);
   expect(requests).toHaveLength(0);
-  // Freeze timers before committing the IME. A debounce timer could not fire,
-  // whereas the input-event search must still reach the API.
+  // Freeze timers before committing the IME. Committing searches immediately
+  // without waiting for the 400ms typing debounce.
   await page.clock.install();
   await page.clock.pauseAt(new Date());
   await input.fill("がけ");
@@ -555,6 +555,9 @@ test("automatic suggestions are immediate, respect composition and search extern
     }),
   ]);
   await input.fill("등록");
+  await page.clock.runFor(300);
+  expect(requests.filter((r) => r.query === "등록")).toHaveLength(0);
+  await page.clock.runFor(150);
   await expect(
     page.getByRole("button", { name: /등록된 가게.*추천 가능/ }),
   ).toBeVisible();
@@ -585,6 +588,7 @@ test("complete Korean syllables search while focused before composition ends", a
   await input.dispatchEvent("compositionstart");
   await input.fill("ㅅ");
   await input.fill("스타");
+  await page.clock.runFor(450);
   await expect(
     page.getByRole("button", { name: /스타 장소 후보/ }),
   ).toBeVisible();
@@ -598,6 +602,7 @@ test("complete Korean syllables search while focused before composition ends", a
   await input.dispatchEvent("compositionstart");
   await input.fill("스타ㅂ");
   await input.fill("스타벅");
+  await page.clock.runFor(450);
   await expect.poll(() => queries).toEqual(["스타", "스타벅"]);
   await expect(input).toBeFocused();
 });

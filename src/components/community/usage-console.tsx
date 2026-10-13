@@ -31,7 +31,9 @@ export function UsageConsole({ data }: { data: UsageSnapshot }) {
   // Kakao rows can remain in the database as historical usage, but this MVP
   // now sends every live lookup to Google Places.
   const googleSettings = data.settings.filter((s) => s.provider === "google");
-  const googleEvents = data.events.filter((event) => event.provider === "google");
+  const googleEvents = data.events.filter(
+    (event) => event.provider === "google",
+  );
   return (
     <div className="space-y-8">
       <p className="rounded-lg bg-secondary p-4 text-sm leading-6">
@@ -69,11 +71,10 @@ export function UsageConsole({ data }: { data: UsageSnapshot }) {
               }
             }}
           >
-              <h2 className="text-xl font-semibold">Google Places API</h2>
+            <h2 className="text-xl font-semibold">Google Places API</h2>
             <p className="text-xs text-muted-foreground">
               이번 달{" "}
-              {data.totals.find((t) => t.provider === "google")?.requests ??
-                0}
+              {data.totals.find((t) => t.provider === "google")?.requests ?? 0}
               회 · 추정 $
               {(
                 (data.totals.find((t) => t.provider === "google")

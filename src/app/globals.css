@@ -3077,7 +3077,8 @@ body:has(.profile-page) {
 }
 .profile-owner-actions [data-slot="button"] {
   position: relative;
-  transition-property: color, background-color, border-color, box-shadow, transform;
+  transition-property:
+    color, background-color, border-color, box-shadow, transform;
 }
 .profile-owner-actions [data-slot="button"]::after {
   content: "";
@@ -3825,5 +3826,121 @@ body:has(.profile-page) {
   }
   .profile-identity h1 {
     font-size: 24px;
+  }
+}
+
+/* Mobile overview sheet: all places on the map until one is picked. */
+@media (max-width: 1023px) {
+  .community-explorer[data-mobile-view="map"] .mobile-place-overview {
+    position: absolute;
+    z-index: 20;
+    bottom: 10px;
+    left: 12px;
+    right: 12px;
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100dvh - 120px);
+    border-radius: 24px;
+    background: #202731f5;
+    box-shadow: 0 4px 24px #0005;
+    overflow: hidden;
+    overscroll-behavior: contain;
+    transition:
+      transform 200ms ease,
+      height 200ms ease;
+  }
+  .community-explorer[data-mobile-view="map"]
+    .mobile-place-overview[data-sheet-stage="summary"] {
+    height: min(52dvh, 460px);
+  }
+  .mobile-place-overview .place-sheet-drag-zone {
+    border-radius: 24px 24px 0 0;
+  }
+  .community-explorer .mobile-place-overview .place-sheet-handle {
+    height: 22px;
+    min-height: 22px;
+  }
+  .mobile-place-overview .place-sheet-title-row {
+    padding: 0 12px 0 20px;
+  }
+  .mobile-place-overview .place-sheet-title {
+    font-size: 18px;
+    line-height: 24px;
+  }
+  .mobile-place-overview .place-sheet-title-row {
+    min-height: 0;
+    height: 36px;
+  }
+  .community-explorer .mobile-place-overview .place-sheet-close {
+    width: 32px;
+    height: 32px;
+    min-width: 0;
+    min-height: 0;
+  }
+  .mobile-place-overview .place-sheet-intro {
+    margin: 0;
+    padding-bottom: 6px;
+    line-height: 16px;
+  }
+  .mobile-place-overview .mobile-explorer-actions {
+    padding-block: 5px;
+  }
+  .mobile-place-overview-list {
+    flex: 1;
+    min-height: 0;
+    padding: 0 14px;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    scrollbar-width: none;
+  }
+  .mobile-place-overview-list::-webkit-scrollbar {
+    display: none;
+  }
+  .mobile-place-overview .mobile-explorer-actions {
+    flex-shrink: 0;
+    justify-content: center;
+    border-top: 1px solid #ffffff1a;
+  }
+}
+
+/* Tighter mobile place card: less empty space around the drag handle. */
+@media (max-width: 1023px) {
+  .community-explorer .mobile-place-carousel .place-sheet-handle {
+    height: 22px;
+    min-height: 22px;
+  }
+  .mobile-place-carousel .place-sheet-title-row {
+    min-height: 0;
+    height: 36px;
+    padding: 0 12px 0 20px;
+  }
+  .mobile-place-carousel .place-sheet-title {
+    font-size: 18px;
+    line-height: 24px;
+  }
+  .community-explorer .mobile-place-carousel .place-sheet-close {
+    width: 32px;
+    height: 32px;
+    min-width: 0;
+    min-height: 0;
+  }
+  .mobile-place-carousel .place-sheet-intro {
+    margin: 0;
+    padding-bottom: 6px;
+    line-height: 16px;
+  }
+  .mobile-place-carousel .mobile-place-meta {
+    height: 36px;
+    min-height: 36px;
+    padding: 0 12px 0 20px;
+  }
+  .community-explorer .mobile-place-carousel .mobile-place-arrow {
+    width: 32px;
+    height: 32px;
+    min-width: 0;
+    min-height: 0;
+  }
+  .mobile-place-carousel .mobile-explorer-actions {
+    padding-block: 5px;
   }
 }

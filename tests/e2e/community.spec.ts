@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { openFirstMobilePlace } from "./mobile-sheet";
 async function expandMobileDetail(page: Page) {
   const collapsed = page.getByRole("button", {
     name: "장소 카드 펼치기",
@@ -358,7 +359,7 @@ test("mobile view switching preserves scroll position and detail returns focus",
 }) => {
   test.skip(!isMobile, "Mobile view switching");
   await page.goto("/maps/tokyo-fashion");
-  const list = page.getByRole("region", { name: "장소 목록" });
+  const list = page.locator("#explorer-list");
   const map = page.getByRole("region", { name: "장소 지도" });
   await expect(map).toBeVisible();
   await expect(list).toBeHidden();
@@ -528,6 +529,7 @@ for (const width of [360, 390, 430, 768, 1024, 1440, 1920]) {
         page.getByRole("combobox", { name: "장소 지역" }),
       ).toBeVisible();
       await page.locator(".mobile-map-filter-menu summary").click();
+      await openFirstMobilePlace(page);
       const carousel = page.getByRole("region", { name: "장소 미리보기" });
       await expect(carousel).toBeVisible();
       const cardBox = (await carousel.boundingBox())!;
@@ -602,7 +604,7 @@ for (const width of [360, 390, 430, 768, 1024, 1440, 1920]) {
       await page
         .getByRole("button", { name: "검색 조건 초기화", exact: true })
         .click();
-      await expect(carousel).toBeVisible();
+      await expect(page.locator(".mobile-place-overview")).toBeVisible();
     } else {
       await expect(
         page.getByRole("navigation", { name: "모바일 주요 메뉴" }),
@@ -669,6 +671,7 @@ test("mobile enlarged content and carousel scrolling remain usable", async ({
 }, testInfo) => {
   test.skip(!isMobile);
   await page.goto("/maps/tokyo-fashion");
+  await openFirstMobilePlace(page);
   const carousel = page.getByRole("region", { name: "장소 미리보기" });
   await expect(carousel).toBeVisible();
   await carousel
@@ -686,7 +689,9 @@ test("mobile enlarged content and carousel scrolling remain usable", async ({
     .getByRole("combobox", { name: "장소 정렬" })
     .selectOption("newest");
   await page.locator(".mobile-map-filter-menu summary").click();
-  await expect(carousel.getByRole("heading")).toHaveText("Sunday Vintage");
+  await expect(
+    page.locator(".mobile-place-overview .mobile-list-title-text").first(),
+  ).toHaveText("Sunday Vintage");
   await page.getByRole("button", { name: "목록 보기", exact: true }).click();
   await expect(
     page

@@ -64,8 +64,8 @@ for (const action of ["suggestion", "enter"] as const) {
       }),
     );
     await page.goto("/maps/tokyo-fashion");
-    await page.getByRole("button", { name: "장소 카드 닫기" }).click();
-    await expect(page.locator(".mobile-place-carousel")).toHaveCount(0);
+    await page.getByRole("button", { name: "장소 목록 닫기" }).click();
+    await expect(page.locator(".mobile-place-overview")).toHaveCount(0);
     await page.getByRole("button", { name: "장소 검색 열기" }).click();
     const input = page.getByRole("combobox", {
       name: "이 맵의 장소 검색",

@@ -3,7 +3,13 @@ import { useState } from "react";
 import { browserDb } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { loginReturnCookie, safeReturnPath } from "@/domain/login-return";
-export function AuthForm({ enabled, next }: { enabled: boolean; next: string }) {
+export function AuthForm({
+  enabled,
+  next,
+}: {
+  enabled: boolean;
+  next: string;
+}) {
   const [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
   async function loginWithGoogle() {

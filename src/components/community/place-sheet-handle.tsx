@@ -5,18 +5,24 @@ export function PlaceSheetHandle({
   stage,
   onExpand,
   onCollapse,
+  onActivate,
+  subject = "장소 카드",
 }: {
   stage: "collapsed" | "summary" | "detail";
   onExpand?: () => void;
   onCollapse?: () => void;
+  onActivate?: () => void;
+  subject?: string;
 }) {
   const lastWheel = useRef(0);
   const label =
     stage === "collapsed"
-      ? "장소 카드 펼치기"
+      ? `${subject} 펼치기`
       : stage === "summary"
-        ? "장소 상세 펼치기"
-        : "장소 카드 요약으로 접기";
+        ? subject === "장소 카드"
+          ? "장소 상세 펼치기"
+          : `${subject} 접기`
+        : `${subject} 요약으로 접기`;
   return (
     <button
       type="button"
@@ -25,7 +31,8 @@ export function PlaceSheetHandle({
       aria-expanded={stage !== "collapsed"}
       title="위로 쓸어 펼치고 아래로 쓸어 접기"
       onClick={() => {
-        if (stage === "detail") onCollapse?.();
+        if (onActivate) onActivate();
+        else if (stage === "detail") onCollapse?.();
         else onExpand?.();
       }}
       onKeyDown={(event) => {

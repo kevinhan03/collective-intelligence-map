@@ -7,7 +7,7 @@ import { PlacePhotos } from "./place-photos";
 import { Badge } from "@/components/ui/badge";
 import { usePlaceSwipe } from "@/hooks/use-place-swipe";
 import { usePlaceSheetDrag } from "@/hooks/use-place-sheet-drag";
-import { animateSheetFrom, sheetOrigin } from "./place-sheet-motion";
+import { useSheetStageMotion } from "@/hooks/use-sheet-stage-motion";
 import { placeArea } from "@/domain/place-location";
 
 export function MobilePlaceCarousel({
@@ -42,44 +42,7 @@ export function MobilePlaceCarousel({
   showHint: boolean;
 }) {
   const card = useRef<HTMLElement>(null);
-  const previousGeometry = useRef<{ top: number; height: number } | null>(null);
-  const previousStage = useRef(stage);
-  useEffect(() => {
-    const element = card.current;
-    if (!element) return;
-    const observer = new ResizeObserver(() => {
-      if (
-        element.hasAttribute("data-dragging") ||
-        element
-          .getAnimations()
-          .some((animation) => animation.playState === "running")
-      )
-        return;
-      const rect = element.getBoundingClientRect();
-      previousGeometry.current = { top: rect.top, height: rect.height };
-    });
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
-  useLayoutEffect(() => {
-    const element = card.current;
-    if (!element) return;
-    const current = sheetOrigin(element);
-    if (previousGeometry.current && previousStage.current !== stage) {
-      animateSheetFrom(element, {
-        ...previousGeometry.current,
-        top:
-          current.top !== element.getBoundingClientRect().top
-            ? current.top
-            : previousGeometry.current.top,
-      });
-    }
-    previousGeometry.current = {
-      top: element.getBoundingClientRect().top,
-      height: current.height,
-    };
-    previousStage.current = stage;
-  }, [stage]);
+  useSheetStageMotion(card, stage);
   const track = useRef<HTMLDivElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const index = Math.max(

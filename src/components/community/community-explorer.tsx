@@ -60,6 +60,7 @@ import { CreatorMapReport } from "@/components/creator/map-report";
 import { PlaceDetail } from "./place-detail";
 import { MobilePlaceCarousel } from "./mobile-place-carousel";
 import { MobilePlaceList } from "./mobile-place-list";
+import { MobilePlaceOverview } from "./mobile-place-overview";
 import { PlacePreview } from "./place-preview";
 import { PendingReview } from "./pending-review";
 import { post } from "./api";
@@ -302,6 +303,14 @@ export function CommunityExplorer({
           ?.focus({ preventScroll: true });
     });
   }
+  function backToOverview() {
+    setRestoreBounds(viewport);
+    setDetailId(null);
+    setPreviewId(null);
+    setSelected(null);
+    setStationFocus(null);
+    setSearchStationHighlighted(false);
+  }
   function collapseDetail() {
     setDetailId(null);
     const next = mobileView === "map" ? "summary" : browsingSheetStage.current;
@@ -437,17 +446,17 @@ export function CommunityExplorer({
       ),
     [places],
   );
-  const firstPlaceId = filtered[0]?.id ?? null;
+  // No place is preselected: the sheet lists every place until one is picked.
   const activePreviewId =
-    sheetStage === "closed"
-      ? null
-      : filtered.some((p) => p.id === previewId)
-        ? previewId
-        : firstPlaceId;
+    sheetStage !== "closed" && filtered.some((p) => p.id === previewId)
+      ? previewId
+      : null;
   const mobileBounds = useMemo(
     () =>
       boundsForPlaces(
-        region ? filtered : filtered.filter((p) => p.id === activePreviewId),
+        region || !activePreviewId
+          ? filtered
+          : filtered.filter((p) => p.id === activePreviewId),
         map.bounds,
       ),
     [region, filtered, activePreviewId, map.bounds],
@@ -472,6 +481,16 @@ export function CommunityExplorer({
     setPreviewId(id);
     setFocusRequest((request) => request + 1);
   };
+  const listStation =
+    searchStation && search.result?.station?.id === searchStation.id
+      ? {
+          name: searchStation.name,
+          distance: (place: MapPlace) =>
+            (place as SearchPlace).station_distance_m != null
+              ? formatDistance((place as SearchPlace).station_distance_m!)
+              : null,
+        }
+      : undefined;
   const visiblePlaces = useMemo(
     () => (search.active ? filtered : filtered.slice(0, page * 20)),
     [filtered, page, search.active],
@@ -1394,19 +1413,7 @@ export function CommunityExplorer({
               isSaved={isSaved}
               onOpen={focusPlace}
               onSave={(id) => void savePlace(id)}
-              station={
-                searchStation && search.result?.station?.id === searchStation.id
-                  ? {
-                      name: searchStation.name,
-                      distance: (place) =>
-                        (place as SearchPlace).station_distance_m != null
-                          ? formatDistance(
-                              (place as SearchPlace).station_distance_m!,
-                            )
-                          : null,
-                    }
-                  : undefined
-              }
+              station={listStation}
             />
           )}
           {!mobile &&
@@ -1683,18 +1690,39 @@ export function CommunityExplorer({
             filtered.length ? (
               sheetStage === "closed" ? (
                 <div className="mobile-closed-controls">
-                  <span className="mobile-result-count">
-                    장소 {resultCount}곳
-                  </span>
+                  <button
+                    type="button"
+                    className="mobile-result-count"
+                    onClick={() => setSheetStage("collapsed")}
+                  >
+                    {resultCount}곳
+                  </button>
                   {mobileControls}
                 </div>
+              ) : !activePreviewId ? (
+                <MobilePlaceOverview
+                  demo={demo}
+                  busy={busy || readOnly}
+                  stage={sheetStage === "collapsed" ? "collapsed" : "summary"}
+                  onStageChange={changeSheetStage}
+                  onClose={closeSheet}
+                  controls={mobileControls}
+                  places={filtered}
+                  onOpen={(id) => {
+                    changeSheetStage("collapsed");
+                    selectPreview(id);
+                  }}
+                  onSave={(id) => void savePlace(id)}
+                  isSaved={isSaved}
+                  station={listStation}
+                />
               ) : (
                 <MobilePlaceCarousel
                   creator={map.kind === "creator"}
                   demo={demo}
                   stage={sheetStage === "collapsed" ? "collapsed" : "summary"}
                   onStageChange={changeSheetStage}
-                  onClose={closeSheet}
+                  onClose={backToOverview}
                   showHint={sheetHint && sheetStage === "collapsed"}
                   controls={mobileControls}
                   places={filtered}

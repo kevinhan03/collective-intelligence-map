@@ -47,10 +47,7 @@ export function PendingReview({
         {places.map((p) => {
           const myVote = votes[p.id] ?? 0;
           return (
-            <article
-              key={p.id}
-              className="place-glass-card w-72 shrink-0 p-4"
-            >
+            <article key={p.id} className="place-glass-card w-72 shrink-0 p-4">
               <p className="truncate text-sm font-semibold">{p.name}</p>
               <p className="mt-1 text-[11px] text-muted-foreground">
                 {p.category} · @{p.handle}

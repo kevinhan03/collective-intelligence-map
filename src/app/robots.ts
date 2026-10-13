@@ -7,7 +7,7 @@ export default function robots(): MetadataRoute.Robots {
       userAgent: "*",
       allow: canIndex ? "/" : undefined,
       disallow: canIndex
-        ? ["/api/", "/auth/", "/admin/", "/settings/", "/go/"]
+        ? ["/api/", "/auth/", "/admin/", "/settings/", "/studio/", "/go/"]
         : "/",
     },
     sitemap: canIndex ? `${siteOrigin}/sitemap.xml` : undefined,

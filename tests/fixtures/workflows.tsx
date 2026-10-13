@@ -1,4 +1,9 @@
+import { CreatorStudio } from "@/components/creator/studio";
+import { RecommendationsExplorer } from "@/components/creator/recommendations-explorer";
+import { ProfileForm } from "@/components/community/profile-form";
+import { ProfilePresentation } from "@/components/creator/profile-presentation";
 import { useState } from "react";
+import { MobilePlaceList } from "@/components/community/mobile-place-list";
 import { MobileDiscovery } from "@/components/community/mobile-discovery";
 import { MobilePlaceCarousel } from "@/components/community/mobile-place-carousel";
 import { PlaceDetail } from "@/components/community/place-detail";
@@ -128,6 +133,43 @@ const sheetPlace: MapPlace = {
   created_at: "2026-10-12",
   last_verified_at: null,
 };
+function ListFixture() {
+  const [active, setActive] = useState(true);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [saved, setSaved] = useState<string[]>([]);
+  const places = Array.from({ length: 12 }, (_, index) => ({
+    ...sheetPlace,
+    id: `list-${index}`,
+    place_id: `11111111-1111-4111-8111-${String(index + 1).padStart(12, "0")}`,
+    name: index === 0 ? sheetPlace.name : `장소 ${index + 1}`,
+  }));
+  return (
+    <section className="community-explorer" data-mobile-view="list">
+      <button onClick={() => setActive(!active)}>지도 전환</button>
+      <output aria-label="선택 장소">{selected ?? "선택 없음"}</output>
+      <section className="place-list">
+        {active && (
+          <MobilePlaceList
+            places={places}
+            selected={selected}
+            active
+            demo={false}
+            busy={false}
+            isSaved={(id) => saved.includes(id)}
+            onOpen={setSelected}
+            onSave={(id) =>
+              setSaved((old) =>
+                old.includes(id)
+                  ? old.filter((item) => item !== id)
+                  : [...old, id],
+              )
+            }
+          />
+        )}
+      </section>
+    </section>
+  );
+}
 function SheetFixture() {
   const [stage, setStage] = useState<PlaceSheetStage>("collapsed");
   const [saved, setSaved] = useState(false);
@@ -176,7 +218,152 @@ function SheetFixture() {
   );
 }
 createRoot(document.getElementById("root")!).render(
-  new URLSearchParams(location.search).get("fixture") === "home-cards" ? (
+  new URLSearchParams(location.search).get("fixture") === "recommendations" ? (
+    <RecommendationsExplorer
+      handle="creator"
+      displayName="Kevin"
+      config={{ provider: "preview", key: "" }}
+      viewer={{
+        id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        handle: "visitor",
+        bio: "",
+        avatar_path: null,
+        role: "member",
+      }}
+      myState={{ saves: [], votes: {} }}
+      places={Array.from({ length: 503 }, (_, i) => ({
+        ...sheetPlace,
+        id: `11111111-1111-4111-8111-${String(i + 1).padStart(12, "0")}`,
+        place_id: `22222222-2222-4222-8222-${String(i + 1).padStart(12, "0")}`,
+        name: `추천 장소 ${i + 1}`,
+        lat: 37.5 + i * 0.00001,
+        lng: 127.1 + i * 0.00001,
+        source_map_slug: "test-map",
+        source_map_title: "테마 지도",
+        source_map_kind: "community" as const,
+      }))}
+    />
+  ) : new URLSearchParams(location.search).get("fixture") ===
+    "profile-editor" ? (
+    <main className="page-wrap profile-page">
+      <ProfileForm
+        editing
+        recommendationCount={6}
+        viewer={{
+          id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          handle: "creator",
+          bio: "미식, 여행지, 쇼핑",
+          avatar_path: null,
+          role: "member",
+        }}
+        snapshot={{
+          profile: {
+            display_name: "Kevin",
+            instagram: "https://www.instagram.com/creator/",
+            featured_map_id: null,
+          },
+          maps: [],
+        }}
+      />
+    </main>
+  ) : ["profile-overview", "profile-overview-maps"].includes(
+      new URLSearchParams(location.search).get("fixture") || "",
+    ) ? (
+    <main className="page-wrap profile-page profile-editor-page">
+      <ProfileForm
+        recommendationCount={6}
+        viewer={{
+          id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          handle: "creator",
+          bio: "미식, 여행지, 쇼핑",
+          avatar_path: null,
+          role: "member",
+        }}
+        snapshot={{
+          profile: {
+            display_name: "Kevin",
+            instagram: "https://www.instagram.com/creator/",
+            featured_map_id: null,
+          },
+          maps:
+            new URLSearchParams(location.search).get("fixture") ===
+            "profile-overview-maps"
+              ? [0, 1].map((i) => ({
+                  ...map,
+                  id: `owner-map-${i}`,
+                  title: `내 지도 ${i + 1}`,
+                  slug: `own-map-${i}`,
+                  kind: "creator" as const,
+                  owner_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+                  status: "published" as const,
+                  position: i,
+                  cover_path: null,
+                  hidden_at: null,
+                }))
+              : [],
+        }}
+      />
+    </main>
+  ) : new URLSearchParams(location.search).get("fixture") ===
+    "profile-public" ? (
+    <main className="page-wrap profile-page profile-public-page">
+      <ProfilePresentation
+        handle="creator"
+        displayName="Kevin"
+        bio="미식, 여행지, 쇼핑. 직접 고른 장소를 모읍니다."
+        instagram="https://www.instagram.com/creator/"
+        featuredId={map.id}
+        maps={[
+          {
+            ...map,
+            kind: "creator",
+            owner_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            status: "published",
+            position: 0,
+            cover_path: "test-cover.webp",
+            hidden_at: null,
+          },
+          {
+            ...map,
+            id: "22222222-2222-4222-8222-222222222222",
+            title: "도쿄 골목 산책",
+            slug: "tokyo",
+            kind: "creator",
+            owner_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            status: "published",
+            position: 1,
+            cover_path: null,
+            hidden_at: null,
+          },
+        ]}
+      />
+    </main>
+  ) : new URLSearchParams(location.search).get("fixture") ===
+    "creator-studio" ? (
+    <CreatorStudio
+      initial={{
+        profile: null,
+        maps: [
+          {
+            ...map,
+            kind: "creator",
+            owner_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            status: "draft",
+            position: 0,
+            cover_path: null,
+            hidden_at: null,
+          },
+        ],
+      }}
+      viewer={{
+        id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        handle: "creator",
+        bio: "기존 소개",
+        avatar_path: null,
+        role: "member",
+      }}
+    />
+  ) : new URLSearchParams(location.search).get("fixture") === "home-cards" ? (
     <MobileDiscovery
       maps={Array.from({ length: 7 }, (_, index) => ({
         ...map,
@@ -189,6 +376,8 @@ createRoot(document.getElementById("root")!).render(
       locationTerms={{}}
       demo
     />
+  ) : new URLSearchParams(location.search).get("fixture") === "mobile-list" ? (
+    <ListFixture />
   ) : new URLSearchParams(location.search).get("fixture") === "place-sheet" ? (
     <SheetFixture />
   ) : new URLSearchParams(location.search).get("fixture") === "admin" ? (

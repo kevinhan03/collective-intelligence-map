@@ -2,14 +2,18 @@ import "server-only";
 import sharp from "sharp";
 import { PHOTO_TYPES, PHOTO_UPLOAD_LIMIT } from "@/domain/place-photo";
 import { HttpError } from "./http";
-export async function processPhoto(buffer: Buffer, contentType: string) {
+export async function processPhoto(
+  buffer: Buffer,
+  contentType: string,
+  inputLimit = PHOTO_UPLOAD_LIMIT,
+) {
   if (
     !PHOTO_TYPES.includes(contentType) ||
-    buffer.length > PHOTO_UPLOAD_LIMIT ||
+    buffer.length > inputLimit ||
     !buffer.length
   )
     throw new HttpError(
-      "3MB 이하 JPG, PNG, WebP 이미지만 등록할 수 있습니다.",
+      `${Math.floor(inputLimit / 1024 / 1024)}MB 이하 JPG, PNG, WebP 이미지만 등록할 수 있습니다.`,
       400,
     );
   try {

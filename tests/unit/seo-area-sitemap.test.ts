@@ -5,6 +5,7 @@ vi.mock("@/lib/seo", () => ({
   canIndex: true,
   siteOrigin: "https://example.com",
 }));
+vi.mock("@/server/creator", () => ({ creatorCatalog: vi.fn(async () => []) }));
 vi.mock("@/server/queries", () => ({ getMaps: vi.fn() }));
 vi.mock("@/server/seo-queries", () => ({ getPublicPlaceUrls: vi.fn() }));
 import { getMaps } from "@/server/queries";
@@ -39,4 +40,29 @@ it("includes eligible regional URLs alongside unique place URLs and excludes thi
   );
   expect(urls.filter((url) => url.includes("/places/place-"))).toHaveLength(5);
   expect(new Set(urls).size).toBe(urls.length);
+});
+
+it("includes public creator maps and profile URLs in the sitemap", async () => {
+  const { creatorCatalog } = await import("@/server/creator");
+  vi.mocked(creatorCatalog).mockResolvedValue([
+    {
+      map: {
+        ...demoMap,
+        kind: "creator",
+        owner_id: "owner",
+        status: "published",
+        position: 0,
+        cover_path: null,
+        hidden_at: null,
+        slug: "c-public",
+      },
+      handle: "creator",
+      profile: null,
+    },
+  ]);
+  vi.mocked(getMaps).mockResolvedValue([]);
+  vi.mocked(getPublicPlaceUrls).mockResolvedValue([]);
+  const urls = (await sitemap()).map((x) => x.url);
+  expect(urls).toContain("https://example.com/u/creator");
+  expect(urls).toContain("https://example.com/maps/c-public");
 });

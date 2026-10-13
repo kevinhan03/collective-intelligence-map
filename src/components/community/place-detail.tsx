@@ -23,6 +23,7 @@ import {
   ChevronDown,
   ExternalLink,
   Flag,
+  MapPin,
   MessageCircle,
   ThumbsDown,
   TrainFront,
@@ -39,12 +40,15 @@ export function PlaceDetail({
   userLocation,
   onClose,
   onCollapse,
+  onViewMap,
   viewer,
   loginHref,
   vote,
   saved,
   onChange,
   demo,
+  readOnly = false,
+  creator = false,
   sharePath,
   onStationSelect,
 }: {
@@ -52,12 +56,15 @@ export function PlaceDetail({
   userLocation: Coordinate | null;
   onClose: () => void;
   onCollapse?: () => void;
+  onViewMap?: () => void;
   viewer: Viewer | null;
   loginHref: string;
   vote: number;
   saved: boolean;
   onChange: () => void;
   demo: boolean;
+  readOnly?: boolean;
+  creator?: boolean;
   sharePath: string;
   onStationSelect: (station: RailStation) => void;
 }) {
@@ -141,6 +148,7 @@ export function PlaceDetail({
     return () => controller.abort();
   }, [place]);
   async function act(payload: unknown) {
+    if (readOnly) return false;
     setBusy(true);
     setError("");
     try {
@@ -156,8 +164,8 @@ export function PlaceDetail({
   }
   if (!place) return null;
   const total = place.positive + place.negative;
-  const enabled = Boolean(viewer) && !demo;
-  const votingEnabled = !demo;
+  const enabled = Boolean(viewer) && !demo && !readOnly;
+  const votingEnabled = !demo && !readOnly && !creator;
   const rationaleSection = (
     <div className="rounded-xl bg-secondary/60 p-5">
       <p className="kicker mb-2">이 테마에 추천하는 이유</p>
@@ -176,7 +184,8 @@ export function PlaceDetail({
     <PlacePhotos
       key={`photos:${place.place_id}`}
       placeId={place.place_id}
-      viewer={viewer}
+      viewer={readOnly ? null : viewer}
+      readOnly={readOnly}
       loginHref={loginHref}
       demo={demo}
     />
@@ -288,8 +297,14 @@ export function PlaceDetail({
                 revision={checksRevision}
               />
               {!mobile && stationSection}
-              <div className="flex flex-wrap items-center gap-3">
-                {!mobile && (
+              <div
+                className={
+                  mobile
+                    ? "place-detail-share-row flex items-start justify-between gap-3"
+                    : "flex flex-wrap items-center gap-3"
+                }
+              >
+                {!mobile && !readOnly && (
                   <a
                     href={sharePath}
                     className="text-xs text-primary underline"
@@ -297,7 +312,25 @@ export function PlaceDetail({
                     장소 소개 페이지 보기
                   </a>
                 )}
-                <ShareButton path={sharePath} title={place.name} />
+                {!readOnly && (
+                  <ShareButton path={sharePath} title={place.name} />
+                )}
+                {mobile && onViewMap && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="shrink-0 self-start rounded-full"
+                    onClick={() => exitPlaceSheet(onViewMap, true)}
+                  >
+                    <MapPin
+                      size={14}
+                      className="text-primary"
+                      aria-hidden="true"
+                    />
+                    지도에서 보기
+                  </Button>
+                )}
               </div>
             </header>
             {mobile ? (
@@ -312,60 +345,62 @@ export function PlaceDetail({
                 {rationaleSection}
               </>
             )}
-            <ParticipationSection mobile={mobile} title="이 주제에 맞나요?">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold">이 주제에 맞나요?</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {total
-                      ? `${total}명 중 ${place.positive}명이 이 주제에 맞다고 했어요.`
-                      : "아직 검증이 없어요. 첫 경험을 더해 주세요."}
-                  </p>
+            {!creator && (
+              <ParticipationSection mobile={mobile} title="이 주제에 맞나요?">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold">이 주제에 맞나요?</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {total
+                        ? `${total}명 중 ${place.positive}명이 이 주제에 맞다고 했어요.`
+                        : "아직 검증이 없어요. 첫 경험을 더해 주세요."}
+                    </p>
+                  </div>
                 </div>
-              </div>
-              <p className="text-xs leading-5 text-muted-foreground">
-                주제 적합성에 대한 의견이에요. 실제 방문 확인과는 별개예요.
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant={vote === 1 ? "default" : "outline"}
-                  disabled={!votingEnabled || busy}
-                  onClick={() =>
-                    act({
-                      action: "vote",
-                      id: place.id,
-                      value: vote === 1 ? 0 : 1,
-                    })
-                  }
-                >
-                  <Check size={15} />
-                  적합해요 {place.positive}
-                </Button>
-                <Button
-                  variant={vote === -1 ? "default" : "outline"}
-                  disabled={!votingEnabled || busy}
-                  onClick={() =>
-                    act({
-                      action: "vote",
-                      id: place.id,
-                      value: vote === -1 ? 0 : -1,
-                    })
-                  }
-                >
-                  <ThumbsDown size={14} />
-                  맞지 않아요 {place.negative}
-                </Button>
-              </div>
-              {!enabled && (
-                <p className="text-xs text-muted-foreground">
-                  {demo
-                    ? "가상 예시에서는 참여 기능을 사용할 수 없습니다."
-                    : "투표 외 저장·댓글·장소 제안에는 로그인이 필요합니다."}
+                <p className="text-xs leading-5 text-muted-foreground">
+                  주제 적합성에 대한 의견이에요. 실제 방문 확인과는 별개예요.
                 </p>
-              )}
-            </ParticipationSection>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant={vote === 1 ? "default" : "outline"}
+                    disabled={!votingEnabled || busy}
+                    onClick={() =>
+                      act({
+                        action: "vote",
+                        id: place.id,
+                        value: vote === 1 ? 0 : 1,
+                      })
+                    }
+                  >
+                    <Check size={15} />
+                    적합해요 {place.positive}
+                  </Button>
+                  <Button
+                    variant={vote === -1 ? "default" : "outline"}
+                    disabled={!votingEnabled || busy}
+                    onClick={() =>
+                      act({
+                        action: "vote",
+                        id: place.id,
+                        value: vote === -1 ? 0 : -1,
+                      })
+                    }
+                  >
+                    <ThumbsDown size={14} />
+                    맞지 않아요 {place.negative}
+                  </Button>
+                </div>
+                {!enabled && (
+                  <p className="text-xs text-muted-foreground">
+                    {demo
+                      ? "가상 예시에서는 참여 기능을 사용할 수 없습니다."
+                      : "투표 외 저장·댓글·장소 제안에는 로그인이 필요합니다."}
+                  </p>
+                )}
+              </ParticipationSection>
+            )}
             <ParticipationSection mobile={mobile} title="더 보기">
-              {mobile && (
+              {mobile && !readOnly && (
                 <a
                   href={sharePath}
                   className="inline-flex min-h-11 items-center text-sm text-primary underline"
@@ -533,7 +568,7 @@ export function PlaceDetail({
             </p>
           )}
           <div className="grid grid-cols-2 gap-2">
-            {!viewer && !demo ? (
+            {!viewer && !demo && !readOnly ? (
               <Button asChild className="h-12">
                 <Link href={loginHref}>
                   <Bookmark size={17} /> 저장하기
@@ -569,7 +604,7 @@ export function PlaceDetail({
                       : "저장하기"}
               </Button>
             )}
-            {demo ? (
+            {demo || readOnly ? (
               <Button variant="outline" className="h-12" disabled>
                 <ExternalLink size={17} /> 길찾기
               </Button>

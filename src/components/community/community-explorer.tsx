@@ -56,8 +56,10 @@ import {
 } from "@/components/ui/dialog";
 import { MapCanvas } from "@/components/map/map-canvas";
 import { boundsForPlaces } from "@/domain/map-bounds";
+import { CreatorMapReport } from "@/components/creator/map-report";
 import { PlaceDetail } from "./place-detail";
 import { MobilePlaceCarousel } from "./mobile-place-carousel";
+import { MobilePlaceList } from "./mobile-place-list";
 import { PlacePreview } from "./place-preview";
 import { PendingReview } from "./pending-review";
 import { post } from "./api";
@@ -93,6 +95,7 @@ export function CommunityExplorer({
   config,
   myState: initialMyState,
   demo,
+  readOnly = false,
 }: {
   map: ThemeMap;
   initialPlaces: MapPlace[];
@@ -105,6 +108,7 @@ export function CommunityExplorer({
     followed: boolean;
   };
   demo: boolean;
+  readOnly?: boolean;
 }) {
   const mobile = useMobile();
   const [pinHintOpen, setPinHintOpen] = useState(true);
@@ -327,10 +331,8 @@ export function CommunityExplorer({
     [detailId, setDetailId] = useState<string | null>(null),
     [focusRequest, setFocusRequest] = useState(0),
     [viewport, setViewport] = useState<Bounds | null>(null),
-    [loaded, setLoaded] = useState<MapPlace[] | null>(null),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
-    [truncated, setTruncated] = useState(initialPlaces.length > 500),
     [page, setPage] = useState(1),
     [showPending, setShowPending] = useState(false);
   const [searchStation, setSearchStation] = useState<SearchStation | null>(
@@ -348,14 +350,11 @@ export function CommunityExplorer({
   const [restoreBounds, setRestoreBounds] = useState<Bounds | null>(null);
   const browsingBounds = useRef<Bounds | null>(null);
   const wasSearching = useRef(false);
-  const latest = useRef(0);
   const hasInitialViewport = useRef(false);
   const openedPlaceId = useRef<string | null>(null);
   const searchTracked = useRef(false);
-  const places = useMemo(
-    () => loaded ?? initialPlaces.slice(0, 500),
-    [initialPlaces, loaded],
-  );
+  const places = useMemo(() => initialPlaces.slice(0, 500), [initialPlaces]);
+  const truncated = initialPlaces.length > 500;
   const searchArgs = useMemo(
     () => ({
       q: query,
@@ -375,11 +374,9 @@ export function CommunityExplorer({
       userLocation?.lng,
     ],
   );
-  const search = useMapSearch(map.id, searchArgs, places, composing);
+  const search = useMapSearch(map.id, searchArgs, places, composing, !readOnly);
   const saveBrowsingBounds = useEffectEvent(() => {
     browsingBounds.current = viewport;
-    latest.current++;
-    setBusy(false);
   });
   useEffect(() => {
     if (search.active && !wasSearching.current) saveBrowsingBounds();
@@ -413,6 +410,11 @@ export function CommunityExplorer({
             ),
             sort,
             userLocation ?? undefined,
+          ).sort((a, b) =>
+            map.kind === "creator" && sort === "relevance"
+              ? (a.position ?? 0) - (b.position ?? 0) ||
+                a.id.localeCompare(b.id)
+              : 0,
           ),
     [
       search.active,
@@ -425,6 +427,7 @@ export function CommunityExplorer({
       region,
       sort,
       userLocation,
+      map.kind,
     ],
   );
   const regions = useMemo(
@@ -516,28 +519,6 @@ export function CommunityExplorer({
       return b;
     });
   }, []);
-  async function searchArea() {
-    if (!viewport || search.active) return;
-    const requestId = ++latest.current;
-    setBusy(true);
-    setError("");
-    try {
-      const r = await fetch(
-        `/api/maps/${map.id}/places?${new URLSearchParams(Object.entries(viewport).map(([k, v]) => [k, String(v)]))}`,
-      );
-      const data = await r.json();
-      if (!r.ok) throw new Error(data.error);
-      if (requestId === latest.current) {
-        setLoaded(data.items);
-        setTruncated(data.truncated);
-        setPage(1);
-      }
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      if (requestId === latest.current) setBusy(false);
-    }
-  }
   const selectedPlace =
     [
       ...filtered,
@@ -550,6 +531,7 @@ export function CommunityExplorer({
       (p) => p.id === previewId,
     ) ?? null;
   const toggleFollow = async () => {
+    if (readOnly) return;
     if (!viewer) {
       router.push(loginHref(`/maps/${map.slug}`));
       return;
@@ -569,7 +551,7 @@ export function CommunityExplorer({
     }
   };
   const votePlace = async (id: string, value: 1 | -1) => {
-    if (demo) return;
+    if (demo || readOnly || map.kind === "creator") return;
     setBusy(true);
     setError("");
     try {
@@ -586,7 +568,7 @@ export function CommunityExplorer({
     }
   };
   const savePlace = async (id: string, undo = false) => {
-    if (demo || busy) return;
+    if (demo || readOnly || busy) return;
     if (!viewer) {
       const place = places.find((item) => item.id === id);
       router.push(
@@ -881,16 +863,23 @@ export function CommunityExplorer({
             </Button>
             <Button
               variant={myState.followed ? "secondary" : "outline"}
-              disabled={busy}
+              disabled={busy || readOnly}
               onClick={toggleFollow}
             >
               {myState.followed ? <Check size={14} /> : <Plus size={14} />}{" "}
               {myState.followed ? "팔로우 중" : "팔로우"}
             </Button>
             <Button asChild>
-              <Link href={`/maps/${map.slug}/submit`} prefetch={false}>
+              <Link
+                href={
+                  map.kind === "creator"
+                    ? `/u/${map.creator_handle ?? ""}`
+                    : `/maps/${map.slug}/submit`
+                }
+                prefetch={false}
+              >
                 <Plus size={15} />
-                장소 제안
+                {map.kind === "creator" ? "크리에이터 프로필" : "장소 제안"}
               </Link>
             </Button>
           </div>
@@ -916,6 +905,19 @@ export function CommunityExplorer({
             <p className="pt-3 leading-6">{map.rules}</p>
           </details>
         </div>
+        {readOnly && (
+          <p role="status" className="mt-3 text-sm text-primary">
+            초안 미리보기 · 저장과 참여 기능은 비활성화됩니다.
+          </p>
+        )}
+        {map.creator_handle && (
+          <Link
+            className="mt-2 inline-block text-sm text-primary"
+            href={`/u/${map.creator_handle}`}
+          >
+            @{map.creator_handle}의 지도
+          </Link>
+        )}
         {demo && (
           <p className="map-hero-demo mt-1.5 flex items-center gap-2 text-[11px] text-muted-foreground">
             <Info size={13} />
@@ -947,7 +949,15 @@ export function CommunityExplorer({
                 </Button>
               </DialogClose>
             </div>
-            <ShareButton path={`/maps/${map.slug}`} title={map.title} />
+            {!readOnly && (
+              <ShareButton path={`/maps/${map.slug}`} title={map.title} />
+            )}
+            {map.kind === "creator" && !readOnly && (
+              <CreatorMapReport
+                mapId={map.id}
+                admin={viewer?.role === "admin"}
+              />
+            )}
             <a
               href={`/maps/${map.slug}/places`}
               className="text-sm text-primary underline"
@@ -978,25 +988,36 @@ export function CommunityExplorer({
           <div className="grid grid-cols-2 gap-2 border-t p-5 pb-[calc(20px+env(safe-area-inset-bottom))]">
             <Button
               variant={myState.followed ? "secondary" : "outline"}
-              disabled={busy}
+              disabled={busy || readOnly}
               onClick={toggleFollow}
             >
               {myState.followed ? <Check size={15} /> : <Plus size={15} />}
               {myState.followed ? "팔로우 중" : "팔로우"}
             </Button>
             <Button asChild>
-              <Link href={`/maps/${map.slug}/submit`} prefetch={false}>
+              <Link
+                href={
+                  map.kind === "creator"
+                    ? `/u/${map.creator_handle ?? ""}`
+                    : `/maps/${map.slug}/submit`
+                }
+                prefetch={false}
+              >
                 <Plus size={15} />
-                장소 제안
+                {map.kind === "creator" ? "크리에이터 프로필" : "장소 제안"}
               </Link>
             </Button>
           </div>
         </DialogContent>
       </Dialog>
       <Link
-        href={`/maps/${map.slug}/submit`}
+        href={
+          map.kind === "creator"
+            ? `/u/${map.creator_handle ?? ""}`
+            : `/maps/${map.slug}/submit`
+        }
         prefetch={false}
-        className="mobile-propose-floating lg:hidden"
+        className={`mobile-propose-floating lg:hidden ${map.kind === "creator" || readOnly ? "!hidden" : ""}`}
         aria-label="장소 제안"
       >
         <Plus size={22} aria-hidden="true" />
@@ -1165,14 +1186,19 @@ export function CommunityExplorer({
                   });
                 }}
               >
-                {search.active && option.value === "relevance"
-                  ? "검색 일치순"
-                  : option.label}
+                {map.kind === "creator" && option.value === "relevance"
+                  ? "크리에이터 순"
+                  : search.active && option.value === "relevance"
+                    ? "검색 일치순"
+                    : option.label}
               </button>
             ))}
           </div>
         </div>
-        <details className="mobile-map-filter-menu lg:hidden">
+        <details
+          className="mobile-map-filter-menu lg:hidden"
+          open={mobileView === "list" ? true : undefined}
+        >
           <summary>
             필터{region || sort !== "relevance" ? " · 적용 중" : ""}
           </summary>
@@ -1210,11 +1236,13 @@ export function CommunityExplorer({
             >
               {sortOptions.map((option) => (
                 <option key={option.value} value={option.value}>
-                  {option.value === "relevance"
-                    ? search.active
-                      ? "검색 일치순"
-                      : option.label
-                    : option.label}
+                  {map.kind === "creator" && option.value === "relevance"
+                    ? "크리에이터 순"
+                    : option.value === "relevance"
+                      ? search.active
+                        ? "검색 일치순"
+                        : option.label
+                      : option.label}
                 </option>
               ))}
             </select>
@@ -1242,12 +1270,6 @@ export function CommunityExplorer({
           </Button>
         )}
       </div>
-      {mobile && (truncated || loaded !== null) && (
-        <p className="px-4 py-2 text-sm text-muted-foreground" role="status">
-          현재 불러온 {places.length}곳에서 탐색 중
-          {truncated ? " · 일부 결과" : ""}
-        </p>
-      )}
       {error && (
         <p
           role="alert"
@@ -1362,131 +1384,159 @@ export function CommunityExplorer({
               {!search.active && truncated && " · 일부 결과"}
             </span>
           </div>
-          {visiblePlaces.map((p, i) => {
-            return (
-              <article
-                key={p.id}
-                onClick={() => focusPlace(p.id)}
-                data-selected={selected === p.id}
-                className="place-glass-card group cursor-pointer p-3 transition-colors"
-              >
-                <div className="flex items-start gap-2">
-                  <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-secondary text-[11px] font-semibold text-primary">
-                    {i + 1}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <button
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          focusPlace(p.id);
-                        }}
-                        className="text-left text-sm font-semibold tracking-tight hover:underline"
-                      >
-                        {p.name}
-                      </button>
-                      {!demo && isNew(p) && (
-                        <span className="place-badge place-badge-new">NEW</span>
-                      )}
-                      {!demo && isControversial(p) && (
-                        <span className="place-badge place-badge-controversial">
-                          논쟁 중
-                        </span>
-                      )}
-                      {!demo && isVerified(p) && (
-                        <span className="place-badge place-badge-verified">
-                          검증됨
-                        </span>
-                      )}
-                    </div>
-                    {(demo || placeArea(p.address)) && (
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {[demo ? "가상 예시" : null, placeArea(p.address)]
-                          .filter(Boolean)
-                          .join(" · ")}
-                      </p>
-                    )}
-                    {p.rationale && (
-                      <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground">
-                        {p.rationale}
-                      </p>
-                    )}
-                    {searchStation &&
-                      search.result?.station?.id === searchStation.id &&
-                      (p as SearchPlace).station_distance_m != null && (
+          {mobile && mobileView === "list" && (
+            <MobilePlaceList
+              places={visiblePlaces}
+              selected={selected}
+              active={!detailId}
+              demo={demo}
+              busy={busy || readOnly}
+              isSaved={isSaved}
+              onOpen={focusPlace}
+              onSave={(id) => void savePlace(id)}
+              station={
+                searchStation && search.result?.station?.id === searchStation.id
+                  ? {
+                      name: searchStation.name,
+                      distance: (place) =>
+                        (place as SearchPlace).station_distance_m != null
+                          ? formatDistance(
+                              (place as SearchPlace).station_distance_m!,
+                            )
+                          : null,
+                    }
+                  : undefined
+              }
+            />
+          )}
+          {!mobile &&
+            visiblePlaces.map((p, i) => {
+              return (
+                <article
+                  key={p.id}
+                  onClick={() => focusPlace(p.id)}
+                  data-selected={selected === p.id}
+                  className="place-glass-card group cursor-pointer p-3 transition-colors"
+                >
+                  <div className="flex items-start gap-2">
+                    <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-secondary text-[11px] font-semibold text-primary">
+                      {i + 1}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <button
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            focusPlace(p.id);
+                          }}
+                          className="text-left text-sm font-semibold tracking-tight hover:underline"
+                        >
+                          {p.name}
+                        </button>
+                        {!demo && isNew(p) && (
+                          <span className="place-badge place-badge-new">
+                            NEW
+                          </span>
+                        )}
+                        {!demo && isControversial(p) && (
+                          <span className="place-badge place-badge-controversial">
+                            논쟁 중
+                          </span>
+                        )}
+                        {!demo && isVerified(p) && (
+                          <span className="place-badge place-badge-verified">
+                            검증됨
+                          </span>
+                        )}
+                      </div>
+                      {(demo || placeArea(p.address)) && (
                         <p className="mt-1 text-xs text-muted-foreground">
-                          {searchStation.name} · 직선거리{" "}
-                          {formatDistance(
-                            (p as SearchPlace).station_distance_m!,
-                          )}
+                          {[demo ? "가상 예시" : null, placeArea(p.address)]
+                            .filter(Boolean)
+                            .join(" · ")}
                         </p>
                       )}
-                  </div>
-                  <button
-                    aria-label={`${p.name} 상세 보기`}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      focusPlace(p.id);
-                    }}
-                    className="p-1 text-muted-foreground"
-                  >
-                    <ArrowUpRight size={16} />
-                  </button>
-                </div>
-                <div className="mt-2 ml-8 flex items-center justify-between">
-                  <div
-                    className="place-card-votes hidden lg:flex items-center gap-1.5"
-                    aria-label={`${p.name} 주제 적합성 투표`}
-                  >
+                      {p.rationale && (
+                        <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground">
+                          {p.rationale}
+                        </p>
+                      )}
+                      {searchStation &&
+                        search.result?.station?.id === searchStation.id &&
+                        (p as SearchPlace).station_distance_m != null && (
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {searchStation.name} · 직선거리{" "}
+                            {formatDistance(
+                              (p as SearchPlace).station_distance_m!,
+                            )}
+                          </p>
+                        )}
+                    </div>
                     <button
-                      type="button"
-                      className="vote-control"
-                      aria-label={`${p.name} 테마에 잘 맞아요 ${p.positive}`}
-                      aria-pressed={myState.votes[p.id] === 1}
-                      disabled={demo || busy}
+                      aria-label={`${p.name} 상세 보기`}
                       onClick={(event) => {
                         event.stopPropagation();
-                        void votePlace(p.id, 1);
+                        focusPlace(p.id);
                       }}
+                      className="p-1 text-muted-foreground"
                     >
-                      <ThumbsUp size={13} fill="none" strokeWidth={1.8} />
-                      <span>{p.positive}</span>
-                    </button>
-                    <button
-                      type="button"
-                      className="vote-control"
-                      aria-label={`${p.name} 테마와 달라요 ${p.negative}`}
-                      aria-pressed={myState.votes[p.id] === -1}
-                      disabled={demo || busy}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        void votePlace(p.id, -1);
-                      }}
-                    >
-                      <ThumbsDown size={13} fill="none" strokeWidth={1.8} />
-                      <span>{p.negative}</span>
+                      <ArrowUpRight size={16} />
                     </button>
                   </div>
-                  <button
-                    type="button"
-                    aria-label={`${p.name} ${isSaved(p.id) ? "저장 해제" : "저장"}`}
-                    aria-pressed={isSaved(p.id)}
-                    disabled={demo || busy}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      void savePlace(p.id);
-                    }}
-                    className="p-1 text-muted-foreground"
-                  >
-                    <Bookmark
-                      size={15}
-                      fill={isSaved(p.id) ? "currentColor" : "none"}
-                    />
-                  </button>
-                </div>
-              </article>
-            );
-          })}
+                  <div className="mt-2 ml-8 flex items-center justify-between">
+                    <div
+                      className={`place-card-votes hidden ${map.kind !== "creator" ? "lg:flex" : ""} items-center gap-1.5`}
+                      aria-label={`${p.name} 주제 적합성 투표`}
+                    >
+                      <button
+                        type="button"
+                        className="vote-control"
+                        aria-label={`${p.name} 테마에 잘 맞아요 ${p.positive}`}
+                        aria-pressed={myState.votes[p.id] === 1}
+                        disabled={demo || readOnly || busy}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void votePlace(p.id, 1);
+                        }}
+                      >
+                        <ThumbsUp size={13} fill="none" strokeWidth={1.8} />
+                        <span>{p.positive}</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="vote-control"
+                        aria-label={`${p.name} 테마와 달라요 ${p.negative}`}
+                        aria-pressed={myState.votes[p.id] === -1}
+                        disabled={demo || readOnly || busy}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void votePlace(p.id, -1);
+                        }}
+                      >
+                        <ThumbsDown size={13} fill="none" strokeWidth={1.8} />
+                        <span>{p.negative}</span>
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      aria-label={`${p.name} ${isSaved(p.id) ? "저장 해제" : "저장"}`}
+                      aria-pressed={isSaved(p.id)}
+                      disabled={demo || readOnly || busy}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        void savePlace(p.id);
+                      }}
+                      className="p-1 text-muted-foreground"
+                    >
+                      <Bookmark
+                        size={15}
+                        fill={isSaved(p.id) ? "currentColor" : "none"}
+                      />
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
           {filtered.length === 0 && !search.loading && !search.error && (
             <div className="px-8 py-18 text-center">
               <MapPin className="mx-auto mb-4 text-muted-foreground" />
@@ -1505,8 +1555,17 @@ export function CommunityExplorer({
                 </Button>
               )}
               <Button asChild variant="outline" className="mt-5">
-                <Link href={`/maps/${map.slug}/submit`} prefetch={false}>
-                  장소 제안하기
+                <Link
+                  href={
+                    map.kind === "creator"
+                      ? `/u/${map.creator_handle ?? ""}`
+                      : `/maps/${map.slug}/submit`
+                  }
+                  prefetch={false}
+                >
+                  {map.kind === "creator"
+                    ? "크리에이터 프로필"
+                    : "장소 제안하기"}
                 </Link>
               </Button>
             </div>
@@ -1620,16 +1679,6 @@ export function CommunityExplorer({
                 </button>
               </div>
             )}
-          {viewport && !search.active && config.provider !== "preview" && (
-            <Button
-              className="search-area-button absolute top-5 left-1/2 -translate-x-1/2 rounded-full shadow-lg"
-              disabled={busy}
-              onClick={searchArea}
-            >
-              <Search size={14} />
-              {busy ? "불러오는 중" : "이 지역에서 다시 찾기"}
-            </Button>
-          )}
           {mobile ? (
             filtered.length ? (
               sheetStage === "closed" ? (
@@ -1641,6 +1690,7 @@ export function CommunityExplorer({
                 </div>
               ) : (
                 <MobilePlaceCarousel
+                  creator={map.kind === "creator"}
                   demo={demo}
                   stage={sheetStage === "collapsed" ? "collapsed" : "summary"}
                   onStageChange={changeSheetStage}
@@ -1657,7 +1707,7 @@ export function CommunityExplorer({
                   }}
                   onSave={(id) => void savePlace(id)}
                   isSaved={isSaved}
-                  disabled={demo || busy}
+                  disabled={demo || readOnly || busy}
                 />
               )
             ) : (
@@ -1684,6 +1734,7 @@ export function CommunityExplorer({
             )
           ) : previewPlace ? (
             <PlacePreview
+              creator={map.kind === "creator"}
               onStationSelect={(station) =>
                 selectStation(station, previewPlace)
               }
@@ -1695,7 +1746,7 @@ export function CommunityExplorer({
               vote={myState.votes[previewPlace.id] ?? 0}
               demo={demo}
               signedIn={Boolean(viewer)}
-              busy={busy}
+              busy={busy || readOnly}
               onClose={() => {
                 setPreviewId(null);
                 setSelected(null);
@@ -1714,17 +1765,23 @@ export function CommunityExplorer({
           ) : (
             <>
               <Link
-                href={`/maps/${map.slug}/submit`}
+                href={
+                  map.kind === "creator"
+                    ? `/u/${map.creator_handle ?? ""}`
+                    : `/maps/${map.slug}/submit`
+                }
                 prefetch={false}
                 className="absolute right-4 bottom-16 z-10 hidden min-h-11 items-center gap-1.5 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-lg max-lg:inline-flex"
               >
                 <Plus size={16} aria-hidden="true" />
-                장소 제안
+                {map.kind === "creator" ? "크리에이터 프로필" : "장소 제안"}
               </Link>
             </>
           )}
         </section>
         <PlaceDetail
+          readOnly={readOnly}
+          creator={map.kind === "creator"}
           userLocation={userLocation}
           key={detailId ?? "closed"}
           sharePath={
@@ -1741,13 +1798,31 @@ export function CommunityExplorer({
           )}
           onClose={mobile ? closeSheet : () => setDetailId(null)}
           onCollapse={mobile ? collapseDetail : () => setDetailId(null)}
+          onViewMap={
+            mobile
+              ? () => {
+                  if (!selectedPlace) return;
+                  changeView("map");
+                  setDetailId(null);
+                  changeSheetStage("summary");
+                  selectPreview(selectedPlace.id);
+                  setSearchOpen(false);
+                  requestAnimationFrame(() =>
+                    explorerRoot.current
+                      ?.querySelector<HTMLButtonElement>(
+                        ".mobile-place-carousel .place-sheet-handle",
+                      )
+                      ?.focus({ preventScroll: true }),
+                  );
+                }
+              : undefined
+          }
           viewer={viewer}
           vote={myState.votes[detailId ?? ""] ?? 0}
           saved={isSaved(detailId ?? "")}
           demo={demo}
           onChange={() => {
             setSavedOverrides({});
-            setLoaded(null);
             router.refresh();
           }}
         />

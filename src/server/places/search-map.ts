@@ -11,8 +11,16 @@ export async function getSearchMap(id: string): Promise<ThemeMap> {
     .from("theme_maps")
     .select("*")
     .eq("id", id)
-    .eq("status", "published")
     .maybeSingle();
+  if (
+    data &&
+    data.status !== "published" &&
+    !(
+      data.kind === "creator" &&
+      data.owner_id === (await client.auth.getUser()).data.user?.id
+    )
+  )
+    throw new HttpError("맵이 없습니다.", 404);
   if (error) throw new HttpError("맵 정보를 확인하지 못했습니다.", 503);
   if (data && !data.country && data.search_scope !== "world")
     throw new HttpError("지도 검색 범위 설정을 확인해 주세요.", 503);

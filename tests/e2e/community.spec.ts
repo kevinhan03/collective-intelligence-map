@@ -264,6 +264,8 @@ test("discover community, filter venues, open context and protect participation"
       .click();
   await expect(page.getByRole("button", { name: "적합해요 0" })).toBeDisabled();
   await page.keyboard.press("Escape");
+  if (isMobile)
+    await page.getByRole("button", { name: "장소 검색 열기" }).click();
   await page
     .getByRole("combobox", { name: "이 맵의 장소 검색" })
     .fill("not-a-place");
@@ -857,3 +859,38 @@ test("mobile home centers only the latest preview and cancels a closed preview",
       .evaluate((element) => (element as HTMLElement).style.paddingTop),
   ).toBe("");
 });
+
+for (const width of [320, 390, 768]) {
+  test(`mobile list shows brand header without covering map controls at ${width}px`, async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(!isMobile);
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto("/maps/tokyo-fashion");
+    const logo = page.getByRole("link", { name: "Ting map 홈", exact: true });
+    await expect(logo).toBeHidden();
+    for (let i = 0; i < 2; i++) {
+      await page
+        .getByRole("button", { name: "목록 보기", exact: true })
+        .click();
+      await expect(logo).toBeVisible();
+      await expect(logo).toContainText("Ting");
+      const brand = (await page.locator(".glass-header").boundingBox())!;
+      const hero = (await page.locator(".map-hero").boundingBox())!;
+      expect(hero.y).toBeGreaterThanOrEqual(brand.y + brand.height);
+      await page.getByRole("button", { name: "장소 검색 열기" }).click();
+      await expect(
+        page.getByRole("combobox", { name: "이 맵의 장소 검색", exact: true }),
+      ).toBeVisible();
+      await page
+        .getByRole("button", { name: "지도 보기", exact: true })
+        .click();
+      await expect(logo).toBeHidden();
+    }
+    await page.getByRole("button", { name: "목록 보기", exact: true }).click();
+    await logo.click();
+    await expect(page).toHaveURL("/");
+    await expect(logo).toBeVisible();
+  });
+}

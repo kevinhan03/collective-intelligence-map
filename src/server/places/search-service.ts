@@ -87,15 +87,24 @@ async function runSearchPlaces(
   const internalWithStatus = matches.map((place) => {
     const current = mapPlaces.get(place.id);
     const publicStatus =
-      current && ["approved", "pending", "disputed"].includes(current.status);
+      current &&
+      [
+        "approved",
+        "pending",
+        "disputed",
+        ...(map.kind === "creator" ? ["draft"] : []),
+      ].includes(current.status);
     return {
       ...place,
       currentMapPlaceId: publicStatus ? current.id : null,
-      currentMapStatus: current
-        ? publicStatus || current.added_by === viewer.id
-          ? current.status
-          : "reviewed"
-        : null,
+      currentMapStatus:
+        map.kind === "creator" && current?.status === "archived"
+          ? null
+          : current
+            ? publicStatus || current.added_by === viewer.id
+              ? current.status
+              : "reviewed"
+            : null,
     };
   });
   productEvent("place_search_internal", {
@@ -247,17 +256,25 @@ export async function selectCandidate(
     throw new HttpError("지도 등록 여부를 확인하지 못했습니다.", 503);
   const publicStatus =
     currentMapPlace?.data &&
-    ["approved", "pending", "disputed"].includes(currentMapPlace.data.status);
+    [
+      "approved",
+      "pending",
+      "disputed",
+      ...(map.kind === "creator" ? ["draft"] : []),
+    ].includes(currentMapPlace.data.status);
   return {
     placeId: existing?.placeId ?? null,
     currentMapPlaceId: publicStatus
       ? (currentMapPlace?.data?.id ?? null)
       : null,
-    currentMapStatus: currentMapPlace?.data
-      ? publicStatus || currentMapPlace.data.added_by === viewer.id
-        ? currentMapPlace.data.status
-        : "reviewed"
-      : null,
+    currentMapStatus:
+      map.kind === "creator" && currentMapPlace?.data?.status === "archived"
+        ? null
+        : currentMapPlace?.data
+          ? publicStatus || currentMapPlace.data.added_by === viewer.id
+            ? currentMapPlace.data.status
+            : "reviewed"
+          : null,
     candidate: {
       ...selected,
       token: signCandidate({

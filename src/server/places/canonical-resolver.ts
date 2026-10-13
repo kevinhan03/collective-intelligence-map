@@ -1,4 +1,5 @@
 import "server-only";
+import { db } from "@/lib/supabase/server";
 import { serviceDb } from "@/lib/supabase/admin";
 import { HttpError } from "@/server/http";
 export type CanonicalPlace = {
@@ -36,5 +37,18 @@ export async function resolveExistingPlaceDetails(
     external_id_value: externalId,
   });
   if (error) throw new HttpError("장소 연결을 확인하지 못했습니다.", 503);
-  return (data as CanonicalPlace | null) ?? null;
+  if (!data) return null;
+  const candidate = data as CanonicalPlace;
+  // Provider references are server-only. Verify the caller's RLS access before
+  // returning any canonical fields, including newly added creator drafts.
+  const visible = await (
+    await db()
+  )
+    .from("places")
+    .select("id")
+    .eq("id", candidate.placeId)
+    .maybeSingle();
+  if (visible.error)
+    throw new HttpError("장소 공개 상태를 확인하지 못했습니다.", 503);
+  return visible.data ? candidate : null;
 }

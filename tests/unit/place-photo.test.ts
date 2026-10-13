@@ -62,3 +62,22 @@ describe("place photos", () => {
     ).toBe(false);
   });
 });
+
+it("accepts a valid 3–5MB cover while keeping the existing photo upload limit", async () => {
+  const jpg = await sharp({
+    create: { width: 20, height: 12, channels: 3, background: "blue" },
+  })
+    .jpeg()
+    .toBuffer();
+  const padded = Buffer.concat([jpg, Buffer.alloc(3 * 1024 * 1024 + 20)]);
+  await expect(processPhoto(padded, "image/jpeg")).rejects.toThrow("3MB");
+  const output = await processPhoto(padded, "image/jpeg", 5 * 1024 * 1024);
+  expect((await sharp(output.image).metadata()).exif).toBeUndefined();
+  await expect(
+    processPhoto(
+      Buffer.alloc(5 * 1024 * 1024 + 1),
+      "image/jpeg",
+      5 * 1024 * 1024,
+    ),
+  ).rejects.toThrow("5MB");
+});

@@ -117,6 +117,10 @@ export async function generateMetadata({
 }) {
   const map = await getMap((await params).slug);
   if (!map) return { title: "Theme Map" };
+  const images =
+    map.kind === "creator" && map.cover_path
+      ? [`/maps/${map.slug}/cover`]
+      : [ogImage];
   return {
     title: mapSearchTitle(map),
     description: map.description,
@@ -125,12 +129,12 @@ export async function generateMetadata({
       title: mapSearchTitle(map),
       description: map.description,
       url: `/maps/${map.slug}`,
-      images: [ogImage],
+      images,
     },
     twitter: {
       title: mapSearchTitle(map),
       description: map.description,
-      images: [ogImage],
+      images,
     },
   };
 }

@@ -13,8 +13,10 @@ export function useMapSearch(
   input: MapSearchInput,
   places: MapPlace[],
   composing: boolean,
+  enabled = true,
 ) {
-  const active = Boolean(normalizeSearch(input.q) || input.stationId);
+  const active =
+    enabled && Boolean(normalizeSearch(input.q) || input.stationId);
   const key = JSON.stringify([
     mapId,
     input.q,

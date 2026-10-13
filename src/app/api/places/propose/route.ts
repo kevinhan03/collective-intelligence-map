@@ -44,6 +44,11 @@ export async function POST(request: Request) {
         409,
       );
     const map = await getSearchMap(input.mapId);
+    if (map.kind === "creator")
+      throw new HttpError(
+        "크리에이터 지도는 소유자 관리 화면에서 추가해 주세요.",
+        403,
+      );
     if (
       claims &&
       (!claims.countryCode ||

@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import fs from "node:fs/promises";
 import assert from "node:assert/strict";
+import { testCreatorMaps } from "./test-creator-db.mjs";
 import { testProposalSearch } from "./test-proposal-search-db.mjs";
 import { testMapSearch } from "./test-map-search-db.mjs";
 const url =
@@ -1183,6 +1184,7 @@ create function storage.foldername(text) returns text[] language sql immutable a
     "PASS: proposal search SQL Editor script repeats safely and all three checks are true",
   );
   await testProposalSearch(c);
+  await testCreatorMaps(c);
   const functions = (
     await c.query(
       "select n.nspname,p.proname from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.prosecdef",

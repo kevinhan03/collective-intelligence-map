@@ -29,6 +29,7 @@ export function PlacePhotos({
   viewer,
   loginHref,
   demo,
+  readOnly = false,
   preview = false,
   onOpenDetail,
 }: {
@@ -36,6 +37,7 @@ export function PlacePhotos({
   viewer: Viewer | null;
   loginHref: string;
   demo: boolean;
+  readOnly?: boolean;
   preview?: boolean;
   onOpenDetail?: () => void;
 }) {
@@ -260,7 +262,7 @@ export function PlacePhotos({
           <Camera size={16} />
           방문자 사진
         </h3>
-        {!viewer && !demo ? (
+        {!viewer && !demo && !readOnly ? (
           <Button asChild size="sm" variant="outline">
             <Link href={loginHref}>사진 추가</Link>
           </Button>
@@ -268,7 +270,7 @@ export function PlacePhotos({
           <Button
             size="sm"
             variant="outline"
-            disabled={demo}
+            disabled={readOnly || demo}
             onClick={(e) => open("upload", e.currentTarget)}
           >
             사진 추가
@@ -542,7 +544,7 @@ export function PlacePhotos({
                     timeZone: "Asia/Seoul",
                   })}
                 </p>
-                {viewer && !demo && (
+                {viewer && !demo && !readOnly && (
                   <div className="flex gap-2">
                     {viewer.id === photo.author_id && (
                       <Button

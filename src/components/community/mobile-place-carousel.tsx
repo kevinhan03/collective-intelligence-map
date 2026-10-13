@@ -20,6 +20,7 @@ export function MobilePlaceCarousel({
   disabled,
   controls,
   demo,
+  creator = false,
   stage,
   onStageChange,
   onClose,
@@ -34,6 +35,7 @@ export function MobilePlaceCarousel({
   disabled: boolean;
   controls: ReactNode;
   demo: boolean;
+  creator?: boolean;
   stage: "collapsed" | "summary";
   onStageChange: (stage: "collapsed" | "summary") => void;
   onClose: () => void;
@@ -249,7 +251,9 @@ export function MobilePlaceCarousel({
                   {place.rationale}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  주제 추천 {place.positive} · 다른 의견 {place.negative}
+                  {creator
+                    ? "크리에이터가 직접 고른 장소"
+                    : `주제 추천 ${place.positive} · 다른 의견 ${place.negative}`}
                 </p>
                 {i === index && (
                   <PlacePhotos

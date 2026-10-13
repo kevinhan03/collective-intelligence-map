@@ -22,6 +22,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   mocks.role.mockResolvedValue({ data: "admin", error: null });
   vi.spyOn(console, "error").mockImplementation(() => {});
+  vi.spyOn(console, "warn").mockImplementation(() => {});
 });
 it("recovers from a transient profile failure", async () => {
   mocks.profile
@@ -62,4 +63,50 @@ it("does not grant admin privileges when role lookup fails", async () => {
   mocks.profile.mockResolvedValue({ data: profile, error: null, status: 200 });
   mocks.role.mockResolvedValue({ data: "admin", error: { code: "503" } });
   expect(await getViewer()).toMatchObject({ role: "member" });
+});
+it("retries a transient role lookup and recovers the verified role", async () => {
+  mocks.profile.mockResolvedValue({ data: profile, error: null, status: 200 });
+  mocks.role
+    .mockResolvedValueOnce({
+      data: null,
+      error: { code: "", message: "unavailable" },
+      status: 503,
+    })
+    .mockResolvedValueOnce({ data: "admin", error: null, status: 200 });
+  expect(await getViewer()).toMatchObject({ role: "admin" });
+  expect(mocks.role).toHaveBeenCalledTimes(2);
+  expect(mocks.profile).toHaveBeenCalledTimes(1);
+  expect(console.error).not.toHaveBeenCalled();
+});
+it("handles repeated transport failures as a warning without exposing raw details", async () => {
+  mocks.profile.mockResolvedValue({ data: profile, error: null, status: 200 });
+  mocks.role.mockResolvedValue({
+    data: "admin",
+    error: { message: "secret transport details" },
+    status: 0,
+  });
+  expect(await getViewer()).toMatchObject({ role: "member" });
+  expect(mocks.role).toHaveBeenCalledTimes(2);
+  expect(console.warn).toHaveBeenCalledWith("viewer_role_unavailable", {
+    code: "transport_error",
+    status: 0,
+    category: "temporary",
+    retried: true,
+  });
+  expect(console.error).not.toHaveBeenCalled();
+});
+it.each([
+  [403, "42501"],
+  [404, "PGRST202"],
+])("does not retry persistent role failures (%s)", async (status, code) => {
+  mocks.profile.mockResolvedValue({ data: profile, error: null, status: 200 });
+  mocks.role.mockResolvedValue({ data: null, error: { code }, status });
+  expect(await getViewer()).toMatchObject({ role: "member" });
+  expect(mocks.role).toHaveBeenCalledTimes(1);
+  expect(console.error).toHaveBeenCalledWith("viewer_role_unavailable", {
+    code,
+    status,
+    category: "permission_or_schema",
+    retried: false,
+  });
 });

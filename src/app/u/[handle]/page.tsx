@@ -1,74 +1,68 @@
-import Image from "next/image";
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { configured, db } from "@/lib/supabase/server";
+import { connection } from "next/server";
+import { creatorCatalog, publicCreatorIdentity } from "@/server/creator";
+import { publicDb } from "@/lib/supabase/public";
+import { canIndex, noIndex } from "@/lib/seo";
+import { configured } from "@/lib/supabase/server";
+import { ProfilePresentation } from "@/components/creator/profile-presentation";
+import { recommendedPlaces } from "@/server/profile";
 export default async function PublicProfile({
   params,
 }: {
   params: Promise<{ handle: string }>;
 }) {
   if (!configured()) notFound();
+  await connection();
   const { handle } = await params;
-  const client = await db();
+  const client = publicDb();
   const { data: profile } = await client
     .from("profiles")
-    .select("id,handle,bio,created_at,avatar_path")
+    .select("id,handle,bio")
     .eq("handle", handle)
     .maybeSingle();
   if (!profile) notFound();
-  const { data: contributions, error } = await client
-    .from("map_places")
-    .select("id,place_id,rationale,places(name),theme_maps(slug,title)")
-    .eq("added_by", profile.id)
-    .eq("status", "approved")
-    .limit(100);
-  if (error) throw new Error("기여 이력을 불러올 수 없습니다.");
+  const [catalog, identity, contributions] = await Promise.all([
+    creatorCatalog(),
+    publicCreatorIdentity(profile.id),
+    recommendedPlaces(profile.id),
+  ]);
+  const own = catalog.filter((c) => c.handle === handle);
   return (
-    <main id="main" className="page-wrap max-w-2xl">
-      <p className="kicker">Community contributor</p>
-      {profile.avatar_path && (
-        <Image
-          unoptimized
-          src={
-            client.storage.from("avatars").getPublicUrl(profile.avatar_path)
-              .data.publicUrl
-          }
-          alt={`${profile.handle} 프로필`}
-          width={72}
-          height={72}
-          className="mt-5 size-18 rounded-full object-cover"
-        />
-      )}
-      <h1 className="mt-3 text-3xl font-semibold">@{profile.handle}</h1>
-      <p className="mt-4 whitespace-pre-wrap leading-7 text-muted-foreground">
-        {profile.bio || "아직 소개가 없습니다."}
-      </p>
-      <h2 className="mt-10 mb-5 text-lg font-semibold">
-        추천한 장소 {contributions?.length ?? 0}
-      </h2>
-      {contributions?.map((c) => {
-        const m = c.theme_maps as unknown as { slug: string; title: string };
-        const place = c.places as unknown as { name: string };
-        return (
-          <article key={c.id} className="border-b py-5">
-            <Link
-              href={`/maps/${m.slug}?place=${c.place_id}`}
-              className="text-base font-semibold text-foreground hover:underline"
-            >
-              {place.name}
-            </Link>
-            <p className="mt-1 text-xs text-primary">{m.title}</p>
-            <p className="mt-2 text-sm leading-6">{c.rationale}</p>
-          </article>
-        );
-      })}
-      {!contributions?.length && (
-        <p className="text-sm text-muted-foreground">
-          아직 공개된 기여가 없습니다.
-        </p>
-      )}
+    <main id="main" className="page-wrap profile-page profile-public-page">
+      <ProfilePresentation
+        handle={profile.handle}
+        displayName={identity?.display_name}
+        instagram={identity?.instagram}
+        bio={profile.bio}
+        maps={own.map((c) => c.map)}
+        featuredId={own[0]?.profile?.featured_map_id}
+        recommendationCount={contributions.length}
+      />
     </main>
   );
 }
-// Keep authenticated flows blocking during the incremental cache migration.
 export const instant = false;
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ handle: string }>;
+}) {
+  const { handle } = await params;
+  const maps = (await creatorCatalog()).filter(
+    (item) => item.handle === handle,
+  );
+  const p = maps[0]?.profile;
+  return {
+    title: `${p?.display_name || handle}의 장소 지도`,
+    description: "크리에이터가 직접 고른 장소를 지도에서 찾아보세요.",
+    alternates: { canonical: `/u/${handle}` },
+    robots: canIndex && maps.length ? { index: true, follow: true } : noIndex,
+    openGraph: {
+      title: `${p?.display_name || handle}의 장소 지도`,
+      url: `/u/${handle}`,
+      images: maps[0]?.map.cover_path
+        ? [`/maps/${maps[0].map.slug}/cover`]
+        : undefined,
+    },
+  };
+}

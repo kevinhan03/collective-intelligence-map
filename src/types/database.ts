@@ -9,6 +9,28 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      creator_profiles: {
+        Row: {
+          user_id: string;
+          display_name: string;
+          instagram: string;
+          featured_map_id: string | null;
+        };
+        Insert: {
+          user_id: string;
+          display_name?: string;
+          instagram?: string;
+          featured_map_id?: string | null;
+        };
+        Update: {
+          user_id?: string;
+          display_name?: string;
+          instagram?: string;
+          featured_map_id?: string | null;
+        };
+        Relationships: [];
+      };
+
       rail_station_regions: {
         Row: {
           id: string;
@@ -230,6 +252,7 @@ export type Database = {
       };
       map_places: {
         Row: {
+          position: number;
           added_by: string | null;
           created_at: string;
           id: string;
@@ -241,6 +264,7 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          position?: number;
           added_by?: string | null;
           created_at?: string;
           id?: string;
@@ -252,6 +276,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          position?: number;
           added_by?: string | null;
           created_at?: string;
           id?: string;
@@ -645,6 +670,12 @@ export type Database = {
       };
       theme_maps: {
         Row: {
+          kind: "community" | "creator";
+          owner_id: string | null;
+          position: number;
+          cover_path: string | null;
+          hidden_at: string | null;
+          hidden_reason: string | null;
           bounds: Json;
           city: string;
           country: string | null;
@@ -659,6 +690,12 @@ export type Database = {
           title: string;
         };
         Insert: {
+          kind?: "community" | "creator";
+          owner_id?: string | null;
+          position?: number;
+          cover_path?: string | null;
+          hidden_at?: string | null;
+          hidden_reason?: string | null;
           bounds: Json;
           city: string;
           country: string | null;
@@ -673,6 +710,12 @@ export type Database = {
           title: string;
         };
         Update: {
+          kind?: "community" | "creator";
+          owner_id?: string | null;
+          position?: number;
+          cover_path?: string | null;
+          hidden_at?: string | null;
+          hidden_reason?: string | null;
           bounds?: Json;
           city?: string;
           country?: string | null;
@@ -738,6 +781,33 @@ export type Database = {
       };
     };
     Functions: {
+      creator_add_resolved: {
+        Args: {
+          payload: Json;
+          u: string;
+          p: string;
+          external_id_value: string;
+        };
+        Returns: Json;
+      };
+      creator_report: {
+        Args: { m: string; reason: string };
+        Returns: undefined;
+      };
+      creator_resolve_report: {
+        Args: { target: string; reason: string };
+        Returns: undefined;
+      };
+      creator_admin_snapshot: {
+        Args: Record<PropertyKey, never>;
+        Returns: Json;
+      };
+      creator_command: { Args: { payload: Json }; Returns: Json };
+      creator_snapshot: { Args: Record<PropertyKey, never>; Returns: Json };
+      creator_catalog: { Args: Record<PropertyKey, never>; Returns: Json };
+      creator_places: { Args: { m: string }; Returns: Json };
+      creator_cover_jobs: { Args: Record<PropertyKey, never>; Returns: Json };
+      creator_cover_cleaned: { Args: { target: string }; Returns: undefined };
       proposal_search_ready: {
         Args: Record<PropertyKey, never>;
         Returns: boolean;

@@ -30,18 +30,18 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
       .select("handle,bio,avatar_path")
       .eq("id", user.id)
       .maybeSingle();
-  const [initialProfileResult, roleResult] = await Promise.all([
+  const readRole = () => client.rpc("viewer_role");
+  const [initialProfileResult, initialRoleResult] = await Promise.all([
     readProfile(),
-    client.rpc("viewer_role"),
+    readRole(),
   ]);
-  let profileResult = initialProfileResult;
   // Retry transport/server failures once, but not permission or schema errors.
-  if (
-    profileResult.error &&
-    (profileResult.status === 0 || profileResult.status >= 500)
-  ) {
-    profileResult = await readProfile();
-  }
+  const transient = (result: { error: unknown; status: number }) =>
+    Boolean(result.error) && (result.status === 0 || result.status >= 500);
+  const [profileResult, roleResult] = await Promise.all([
+    transient(initialProfileResult) ? readProfile() : initialProfileResult,
+    transient(initialRoleResult) ? readRole() : initialRoleResult,
+  ]);
   if (profileResult.error || !profileResult.data) {
     console.error("viewer_profile_unavailable", {
       code: profileResult.error?.code ?? "profile_missing",
@@ -50,8 +50,21 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
     // Fail closed: public browsing stays available without a fabricated viewer.
     return null;
   }
-  if (roleResult.error)
-    console.error("viewer_role_unavailable", { code: roleResult.error.code });
+  if (roleResult.error) {
+    const temporary = transient(roleResult);
+    // A temporary read failure is handled below without granting privileges.
+    // Keep schema/permission failures at error severity; never log raw responses
+    // or credentials, which may appear in transport error details.
+    const log = temporary ? console.warn : console.error;
+    log("viewer_role_unavailable", {
+      code:
+        roleResult.error.code ||
+        (temporary ? "transport_error" : "unknown_error"),
+      status: roleResult.status,
+      category: temporary ? "temporary" : "permission_or_schema",
+      retried: transient(initialRoleResult),
+    });
+  }
   return {
     id: user.id,
     ...profileResult.data,
@@ -94,18 +107,20 @@ export const getMaps = cache(async (): Promise<ThemeMap[]> => {
       },
     ]),
   );
-  return (data ?? []).map((row) => {
-    const counts = statsById.get(row.id) ?? {
-      place_count: 0,
-      follower_count: 0,
-      contributor_count: 0,
-    };
-    return {
-      ...row,
-      ...counts,
-      bounds: row.bounds as unknown as Bounds,
-    } as ThemeMap;
-  });
+  return (data ?? [])
+    .filter((row) => row.kind !== "creator")
+    .map((row) => {
+      const counts = statsById.get(row.id) ?? {
+        place_count: 0,
+        follower_count: 0,
+        contributor_count: 0,
+      };
+      return {
+        ...row,
+        ...counts,
+        bounds: row.bounds as unknown as Bounds,
+      } as ThemeMap;
+    });
 });
 export const getMap = cache(async (slug: string): Promise<ThemeMap | null> => {
   "use cache";
@@ -137,8 +152,19 @@ export const getMap = cache(async (slug: string): Promise<ThemeMap | null> => {
       contributor_count: 0,
     })
     .parse(stats);
+  const creator =
+    row.kind === "creator" && row.owner_id
+      ? (
+          await client
+            .from("profiles")
+            .select("handle")
+            .eq("id", row.owner_id)
+            .maybeSingle()
+        ).data
+      : null;
   return {
     ...row,
+    creator_handle: creator?.handle,
     ...counts,
     bounds: row.bounds as unknown as Bounds,
   } as ThemeMap;
@@ -210,6 +236,8 @@ export async function getHomeLocationTerms(maps: ThemeMap[]) {
 }
 
 async function readPlaces(map: ThemeMap, b: Bounds): Promise<MapPlace[]> {
+  if (map.kind === "creator")
+    return (await import("./creator")).creatorPlaces(map.id);
   if (!configured()) return demoPlaces.filter((p) => inBounds(p.lat, p.lng, b));
   const client = publicDb();
   const { data, error } = await client.rpc("map_places_in_bounds", {

@@ -27,7 +27,6 @@ for (const failureCode of [1, 3]) {
       await page
         .getByRole("button", { name: "목록 보기", exact: true })
         .click();
-      await page.locator(".mobile-map-filter-menu summary").click();
       await page
         .getByRole("combobox", { name: "장소 정렬" })
         .selectOption("newest");
@@ -728,3 +727,84 @@ test("mobile place cards swipe horizontally in collapsed and summary stages", as
     card.getByRole("button", { name: "다음 장소", exact: true }),
   ).toBeDisabled();
 });
+
+for (const width of [320, 390, 768]) {
+  test(`detail map action aligns with share and preserves list context at ${width}px`, async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(!isMobile);
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto("/maps/tokyo-fashion");
+    await page.getByRole("button", { name: "목록 보기", exact: true }).click();
+    const sort = page.getByRole("combobox", { name: "장소 정렬", exact: true });
+    await sort.selectOption("newest");
+    const title = page.locator(".mobile-list-title").last();
+    const name = await title.innerText();
+    await title.scrollIntoViewIfNeeded();
+    const before = await page.evaluate(() => window.scrollY);
+    await title.click();
+    const detail = page.locator(".mobile-place-dialog");
+    await expect(detail).toBeVisible();
+    const action = detail.getByRole("button", {
+      name: "지도에서 보기",
+      exact: true,
+    });
+    await expect
+      .poll(() =>
+        detail.evaluate(
+          (element) =>
+            element
+              .getAnimations()
+              .filter((animation) => animation.playState === "running").length,
+        ),
+      )
+      .toBe(0);
+    const share = detail.getByRole("button", {
+      name: `${name} 공유`,
+      exact: true,
+    });
+    const actionBox = (await action.boundingBox())!;
+    const shareBox = (await share.boundingBox())!;
+    expect(Math.abs(actionBox.y - shareBox.y)).toBeLessThan(2);
+    expect(actionBox.height).toBe(shareBox.height);
+    expect(actionBox.x).toBeGreaterThan(shareBox.x + shareBox.width);
+    await action.click();
+    await expect(detail).toHaveCount(0);
+    await expect(page.locator(".community-explorer")).toHaveAttribute(
+      "data-mobile-view",
+      "map",
+    );
+    await expect(
+      page.locator(".mobile-place-carousel").getByRole("heading"),
+    ).toHaveText(name);
+    await expect(
+      page.locator('.map-pin[data-selected="true"]'),
+    ).toHaveAttribute("aria-label", new RegExp(name));
+    await expect(
+      page.locator(".mobile-place-carousel .place-sheet-handle"),
+    ).toBeFocused();
+    await page.getByRole("button", { name: "목록 보기", exact: true }).click();
+    await expect(sort).toHaveValue("newest");
+    await expect
+      .poll(() => page.evaluate(() => window.scrollY))
+      .toBeCloseTo(before, 0);
+    // Searching remains scoped when returning from detail to the map.
+    const input = page.getByRole("combobox", {
+      name: "이 맵의 장소 검색",
+      exact: true,
+    });
+    await input.fill("Archive");
+    await page
+      .locator(".mobile-list-title")
+      .getByText("Archive Room", { exact: true })
+      .click();
+    await page
+      .locator(".mobile-place-dialog")
+      .getByRole("button", { name: "지도에서 보기", exact: true })
+      .click();
+    await expect(page.locator(".mobile-place-dialog")).toHaveCount(0);
+    await page.getByRole("button", { name: "목록 보기", exact: true }).click();
+    await expect(input).toHaveValue("Archive");
+  });
+}

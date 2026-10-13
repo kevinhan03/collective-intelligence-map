@@ -2,6 +2,259 @@ import { test, expect, type Page } from "@playwright/test";
 import { build } from "vite";
 import { resolve } from "node:path";
 import { readFileSync, readdirSync } from "node:fs";
+test("recommended collection keeps all pins and preserves list selection", async ({
+  page,
+}, testInfo) => {
+  await page.route("**/api/places/*/photos", (route) =>
+    route.fulfill({ json: { photos: [], nextCursor: null } }),
+  );
+  await page.route("**/api/map-places/*/comments", (route) =>
+    route.fulfill({ json: { comments: [] } }),
+  );
+  await page.route("**/api/map-places/*/checks", (route) =>
+    route.fulfill({ json: { checks: [], summary: {} } }),
+  );
+  await page.route("**/api/places/*/stations", (route) =>
+    route.fulfill({ json: { stations: [], status: "unsupported" } }),
+  );
+  const calls: unknown[] = [];
+  await page.route("**/api/community", (route) => {
+    calls.push(route.request().postDataJSON());
+    return route.fulfill({ json: { ok: true } });
+  });
+  await open(page, "recommendations");
+  await expect(
+    page.getByRole("heading", { name: "내가 추천한 장소", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".recommendations-count")).toContainText("503곳");
+  await page
+    .getByRole("button", { name: "추천 장소 1 저장", exact: true })
+    .click();
+  expect(calls).toHaveLength(1);
+  await expect(
+    page.getByRole("button", { name: "추천 장소 1 저장 해제", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    page.getByRole("button", { name: "추천 장소 1", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "지도", exact: true }).click();
+  await expect(
+    page
+      .locator("#recommendations-map")
+      .getByRole("button", { name: /테스트 핀$/ }),
+  ).toHaveCount(503);
+  await page
+    .getByRole("button", { name: "추천 장소 503 테스트 핀", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "추천 장소 503", exact: true }),
+  ).toBeVisible();
+  if (testInfo.project.name === "desktop") {
+    await expect(page.locator("#recommendations-map")).toHaveClass(
+      /has-detail/,
+    );
+    await expect(
+      page.locator("#recommendations-map > .place-detail-panel"),
+    ).toBeVisible();
+  }
+  await page
+    .getByRole("button", { name: "장소 상세 닫기", exact: true })
+    .click();
+  await page.getByRole("button", { name: "목록", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "추천 장소 503", exact: true }),
+  ).toHaveCount(1);
+  await page.getByLabel("추천 장소 검색").fill("추천 장소 503");
+  await expect(page.locator(".recommendations-count")).toContainText("1곳");
+  for (const width of [320, 390, 768, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+  }
+  await page.setViewportSize({
+    width: testInfo.project.name === "mobile" ? 390 : 1440,
+    height: 900,
+  });
+  await page.screenshot({
+    path: `test-results/recommendations-${testInfo.project.name}.png`,
+    fullPage: true,
+  });
+});
+test("profile editor saves input and keeps partial-save feedback", async ({
+  page,
+}, testInfo) => {
+  const calls: Record<string, unknown>[] = [];
+  await page.route("**/api/community", async (route) => {
+    calls.push(route.request().postDataJSON());
+    await route.fulfill({ json: { ok: true } });
+  });
+  let fail = true;
+  await page.route("**/api/creator/maps", async (route) => {
+    calls.push(route.request().postDataJSON());
+    await route.fulfill({
+      status: fail ? 500 : 200,
+      json: fail ? { error: "연결 오류" } : { ok: true },
+    });
+  });
+  await open(page, "profile-editor");
+  await expect(page.locator('input[type="file"]')).toHaveCount(0);
+  if (testInfo.project.name === "desktop") {
+    const preview = page.locator(".profile-desktop-preview");
+    await expect(
+      preview.getByRole("link", { name: "내가 추천한 장소", exact: true }),
+    ).toHaveAttribute("href", "/u/creator/recommendations");
+    await expect(
+      preview.locator(".profile-map-grid > a").first(),
+    ).toHaveAttribute("aria-label", "내가 추천한 장소");
+    await expect(
+      preview.getByRole("link", { name: "첫 지도 만들기" }),
+    ).toHaveAttribute("href", "/studio");
+    await expect(
+      preview.getByText("공개 장소 6곳 · 목록과 지도로 보기"),
+    ).toBeVisible();
+  } else {
+    await expect(page.locator(".profile-mobile-preview")).toHaveCount(0);
+  }
+  await page.getByLabel("표시 이름", { exact: true }).fill("나의 취향");
+  await page.getByLabel("사용자 이름", { exact: false }).fill("new_creator");
+  await page.getByRole("button", { name: "변경사항 저장" }).click();
+  await expect(page.getByRole("status")).toContainText(
+    "사용자 이름·소개는 저장됐습니다",
+  );
+  await expect(page.getByLabel("표시 이름", { exact: true })).toHaveValue(
+    "나의 취향",
+  );
+  await expect(
+    page.getByRole("link", { name: "공개 프로필 보기", exact: true }),
+  ).toHaveAttribute("href", "/u/new_creator");
+  fail = false;
+  await page.getByRole("button", { name: "변경사항 저장" }).click();
+  await expect(page.getByRole("status")).toHaveText("프로필을 저장했습니다.");
+  expect(calls.filter((c) => c.action === "profile")).toHaveLength(4);
+  for (const width of [320, 390, 768, 1440]) {
+    await page.setViewportSize({ width, height: 960 });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+  }
+  await page.screenshot({
+    path: `test-results/profile-editor-${testInfo.project.name}.png`,
+    fullPage: true,
+  });
+  if (testInfo.project.name === "desktop") {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await expect(
+      page.locator(".profile-desktop-preview .profile-card-gradient").first(),
+    ).toBeVisible();
+    expect(
+      await page
+        .locator(".profile-desktop-preview .profile-card-gradient")
+        .first()
+        .evaluate((element) => getComputedStyle(element).animationName),
+    ).toBe("none");
+  }
+});
+test("profile overview keeps maps visible and moves editing behind one action", async ({
+  page,
+}, testInfo) => {
+  await open(page, "profile-overview");
+  await expect(
+    page.getByRole("heading", { name: "프로필", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "프로필 편집", exact: true }),
+  ).toHaveAttribute("href", "/settings/profile?edit=1");
+  await expect(
+    page.getByRole("link", { name: "내가 추천한 장소", exact: true }),
+  ).toHaveAttribute("href", "/u/creator/recommendations");
+  await expect(page.locator(".profile-mobile-preview")).toHaveCount(0);
+  await expect(page.getByLabel("표시 이름", { exact: true })).toHaveCount(0);
+  await expect(
+    page.locator(".profile-settings-overview .profile-identity img"),
+  ).toHaveCount(0);
+  for (const width of [320, 390, 768]) {
+    await page.setViewportSize({ width, height: 900 });
+    const actions = page.locator(".profile-owner-actions");
+    const share = await actions
+      .getByRole("button", { name: "Kevin 공유" })
+      .boundingBox();
+    const edit = await actions.locator("a.profile-action > span").boundingBox();
+    expect(share).not.toBeNull();
+    expect(edit).not.toBeNull();
+    expect(Math.abs(share!.width - edit!.width)).toBeLessThanOrEqual(1);
+    expect(Math.abs(share!.height - edit!.height)).toBeLessThanOrEqual(1);
+    expect(Math.abs(share!.y - edit!.y)).toBeLessThanOrEqual(1);
+    expect(edit!.x).toBeGreaterThan(share!.x + share!.width);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+  }
+  await page.setViewportSize({
+    width: testInfo.project.name === "mobile" ? 390 : 1440,
+    height: 900,
+  });
+  await page.screenshot({
+    path: `test-results/profile-overview-${testInfo.project.name}.png`,
+    fullPage: true,
+  });
+  await open(page, "profile-overview-maps");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByRole("link", { name: "첫 지도 만들기" })).toHaveCount(
+    0,
+  );
+  const cards = page.locator(".profile-map-grid > a");
+  await expect(cards).toHaveCount(3);
+  await expect(cards.nth(0)).toHaveAttribute("aria-label", "내가 추천한 장소");
+  await expect(cards.nth(1)).toHaveAttribute("href", "/studio?map=owner-map-0");
+  const first = await cards.nth(1).boundingBox();
+  const second = await cards.nth(2).boundingBox();
+  expect(first!.y).toBe(second!.y);
+  expect(second!.x).toBeGreaterThan(first!.x + first!.width);
+  await page.screenshot({
+    path: `test-results/profile-overview-maps-${testInfo.project.name}.png`,
+    fullPage: true,
+  });
+});
+test("public profile presents map links without cover placeholders", async ({
+  page,
+}, testInfo) => {
+  await page.route("**/maps/test-map/cover", (route) =>
+    route.fulfill({
+      contentType: "image/webp",
+      body: readFileSync(resolve("public/glass-neighborhood.webp")),
+    }),
+  );
+  await open(page, "profile-public");
+  await expect(page.locator(".profile-identity img")).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Kevin", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole("link", { name: /테스트 지도/ })).toHaveAttribute(
+    "href",
+    "/maps/test-map",
+  );
+  await expect(page.getByText("대표 지도", { exact: true })).toHaveCount(1);
+  for (const width of [320, 390, 768, 1440]) {
+    await page.setViewportSize({ width, height: 844 });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({
+    path: `test-results/profile-public-${testInfo.project.name}.png`,
+    fullPage: true,
+  });
+});
 let bundle = "";
 let css = "";
 test.beforeAll(async () => {
@@ -73,7 +326,7 @@ async function open(page: Page, fixture = "proposal") {
   await page.route("**/workflow-fixture*", (route) =>
     route.fulfill({
       contentType: "text/html",
-      body: `<html lang="ko" class="dark"><head><meta name="viewport" content="width=device-width, initial-scale=1"><style>${css}</style></head><body><main id="root" class="page-wrap ${fixture === "admin" ? "max-w-4xl" : "max-w-2xl"}"></main></body></html>`,
+      body: `<html lang="ko" class="dark"><head><meta name="viewport" content="width=device-width, initial-scale=1"><style>${css}</style></head><body><div id="root" class="${fixture.startsWith("profile-") || fixture === "recommendations" ? "" : `page-wrap ${fixture === "admin" ? "max-w-4xl" : "max-w-2xl"}`}"></div></body></html>`,
     }),
   );
   await page.goto(`/workflow-fixture?fixture=${fixture}`);
@@ -756,4 +1009,204 @@ test("seven mobile home cards center the latest selection and close the previous
     .toBeLessThan(3);
   await expect(cards.first()).toHaveAttribute("data-expanded", "false");
   await page.screenshot({ path: "artifacts/home-seven-cards-centered.png" });
+});
+
+for (const width of [320, 390, 768]) {
+  test(`mobile list mixed photos, text fallback and separate save at ${width}px`, async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(!isMobile);
+    await page.setViewportSize({ width, height: 844 });
+    await page.route("**/api/places/*/photos", (route) =>
+      route.fulfill({
+        json: {
+          photos: route.request().url().includes("000000000001/")
+            ? [{ id: "list-photo" }]
+            : [],
+        },
+      }),
+    );
+    await page.route("**/api/photos/*/image?*", (route) =>
+      route.fulfill({
+        contentType: "image/svg+xml",
+        body: '<svg xmlns="http://www.w3.org/2000/svg" width="76" height="76"><rect width="76" height="76" fill="#abc"/></svg>',
+      }),
+    );
+    await open(page, "mobile-list");
+    const rows = page.locator(".mobile-list-place");
+    await expect(rows.first().locator("img")).toBeVisible();
+    await expect(rows.nth(1).locator("img")).toHaveCount(0);
+    const photo = (await rows.first().locator("img").boundingBox())!;
+    expect(photo.width).toBe(76);
+    expect(photo.height).toBe(76);
+    const titleText = (await rows
+      .first()
+      .locator(".mobile-list-title-text")
+      .boundingBox())!;
+    expect(titleText.height).toBeLessThanOrEqual(48);
+    const titleBox = (await rows
+      .first()
+      .locator(".mobile-list-title")
+      .boundingBox())!;
+    const badgeBox = (await rows
+      .first()
+      .locator(".mobile-list-badges")
+      .boundingBox())!;
+    expect(titleBox.y + titleBox.height).toBeLessThanOrEqual(badgeBox.y);
+    const titleX = (await rows
+      .first()
+      .locator(".mobile-list-title")
+      .boundingBox())!.x;
+    expect(titleX).toBeGreaterThanOrEqual(photo.x + photo.width + 12);
+    const plainTitle = (await rows
+      .nth(1)
+      .locator(".mobile-list-title")
+      .boundingBox())!;
+    const plainCopy = (await rows
+      .nth(1)
+      .locator(".mobile-list-copy")
+      .boundingBox())!;
+    expect(plainTitle.x).toBe(plainCopy.x);
+    expect(plainTitle.x).toBe(photo.x);
+    const save = rows.first().locator(".mobile-list-save");
+    await save.click();
+    await expect(save).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByLabel("선택 장소")).toHaveText("선택 없음");
+    await rows.first().locator(".mobile-list-title").focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByLabel("선택 장소")).toHaveText("list-0");
+    await expect(rows.first()).toHaveAttribute("data-selected", "true");
+    await page.screenshot({ path: `artifacts/mobile-list-${width}.png` });
+    await page.getByRole("button", { name: "지도 전환" }).click();
+    await expect(rows).toHaveCount(0);
+  });
+}
+
+test("mobile list limits pending photos, survives failures and cancels on exit", async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(!isMobile);
+  const pending: import("@playwright/test").Route[] = [];
+  await page.route("**/api/places/*/photos", (route) => {
+    pending.push(route);
+  });
+  await open(page, "mobile-list");
+  await expect.poll(() => pending.length).toBe(3);
+  await pending[0].fulfill({ status: 500, json: { error: "failed" } });
+  await expect.poll(() => pending.length).toBe(4);
+  await expect(
+    page.locator(".mobile-list-place").first().locator("img"),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "지도 전환" }).click();
+  await expect(page.locator(".mobile-list-place")).toHaveCount(0);
+});
+
+test("mobile list drops unavailable images without leaving a placeholder", async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(!isMobile);
+  let imageRequests = 0;
+  await page.route("**/api/places/*/photos", (route) =>
+    route.fulfill({ json: { photos: [{ id: "hidden-photo" }] } }),
+  );
+  await page.route("**/api/photos/*/image?*", (route) => {
+    imageRequests++;
+    return route.fulfill({ status: 404, body: "" });
+  });
+  await open(page, "mobile-list");
+  await expect.poll(() => imageRequests).toBeGreaterThan(0);
+  await expect(
+    page.locator(".mobile-list-place").first().locator("img"),
+  ).toHaveCount(0);
+  await expect(
+    page.locator(".mobile-list-place").first().locator(".mobile-list-reason"),
+  ).toBeVisible();
+  await expect(page.getByLabel("선택 장소")).toHaveText("선택 없음");
+});
+
+test("creator studio manages profile, maps and covers on desktop and mobile", async ({
+  page,
+}, testInfo) => {
+  if (testInfo.project.name === "mobile")
+    await page.setViewportSize({ width: 390, height: 844 });
+  const id = "11111111-1111-4111-8111-111111111111";
+  const creatorMap = {
+    id,
+    slug: "test-map",
+    title: "테스트 지도",
+    city: "서울",
+    country: "KR",
+    search_scope: "country",
+    description: "",
+    rules: "",
+    tags: [],
+    bounds: { west: 126, east: 128, south: 36, north: 38 },
+    created_at: "",
+    kind: "creator",
+    owner_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    status: "draft",
+    position: 0,
+    cover_path: null,
+    hidden_at: null,
+  };
+  const snapshot = { profile: null as unknown, maps: [creatorMap] };
+  const calls: Record<string, unknown>[] = [];
+  await page.route("**/api/creator/maps", async (route) => {
+    if (route.request().method() === "POST") {
+      const command = route.request().postDataJSON();
+      calls.push(command);
+      if (command.action === "status") snapshot.maps[0].status = command.status;
+      if (command.action === "update") snapshot.maps[0].title = command.title;
+      await route.fulfill({ json: { ok: true } });
+    } else await route.fulfill({ json: { snapshot } });
+  });
+  await page.route("**/api/creator/maps/*/places", (route) =>
+    route.fulfill({ json: [] }),
+  );
+  await open(page, "creator-studio");
+  await expect(
+    page.getByRole("heading", { name: "크리에이터 스튜디오" }),
+  ).toBeVisible();
+  await page.getByText("대표 지도", { exact: true }).first().click();
+  await page
+    .getByRole("button", { name: "대표 지도 저장", exact: true })
+    .click();
+  await expect
+    .poll(() =>
+      calls.some((x) => x.action === "profile" && x.featuredMapId === ""),
+    )
+    .toBe(true);
+  await expect(page.getByRole("status")).toContainText("저장했어요");
+  await page.getByLabel("지도 제목", { exact: true }).fill("새 지도 제목");
+  await page.getByRole("button", { name: "설정 저장", exact: true }).click();
+  await expect
+    .poll(() =>
+      calls.some((x) => x.action === "update" && x.title === "새 지도 제목"),
+    )
+    .toBe(true);
+  await page.getByRole("button", { name: "공개로 전환", exact: true }).click();
+  await expect(
+    page.getByRole("link", { name: "공개 지도 보기", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "장소 추가", exact: true }),
+  ).toHaveAttribute("href", `/studio/${id}/add`);
+  await page.getByLabel("커버 선택", { exact: false }).setInputFiles({
+    name: "too-large.jpg",
+    mimeType: "image/jpeg",
+    buffer: Buffer.alloc(5 * 1024 * 1024 + 1),
+  });
+  await expect(page.getByRole("alert")).toContainText("5MB 이하");
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: `test-results/creator-studio-${testInfo.project.name}.png`,
+    fullPage: true,
+  });
 });

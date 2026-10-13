@@ -1,9 +1,12 @@
 import Link from "next/link";
+import { connection } from "next/server";
 import { ArrowUpRight, Bookmark, Compass, Map as MapIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getViewer } from "@/server/queries";
 import { ScrollHeader } from "./scroll-header";
 export async function SiteHeader() {
+  // Auth SDK session expiry checks belong to request-time rendering.
+  await connection();
   const viewer = await getViewer();
   return (
     <ScrollHeader>
@@ -44,6 +47,13 @@ export async function SiteHeader() {
           {viewer ? (
             <>
               <Link
+                href="/studio"
+                prefetch={false}
+                className="text-sm text-muted-foreground"
+              >
+                내 지도
+              </Link>
+              <Link
                 href="/my-proposals"
                 prefetch={false}
                 className="text-sm text-muted-foreground"
@@ -58,7 +68,11 @@ export async function SiteHeader() {
                 @{viewer.handle}
               </Link>
               {viewer.role === "admin" && (
-                <Link href="/admin/moderation" prefetch={false} className="text-xs">
+                <Link
+                  href="/admin/moderation"
+                  prefetch={false}
+                  className="text-xs"
+                >
                   관리
                 </Link>
               )}

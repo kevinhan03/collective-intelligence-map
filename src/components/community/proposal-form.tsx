@@ -51,7 +51,9 @@ export function ProposalForm({
   viewerId,
   autoApprove,
   config,
+  creator = false,
 }: {
+  creator?: boolean;
   map: ThemeMap;
   enabled: boolean;
   viewerId?: string;
@@ -106,6 +108,20 @@ export function ProposalForm({
   const [searchError, setSearchError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const searchController = useRef<AbortController | null>(null);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestSearch = useRef<
+    | ((
+        external?: boolean,
+        translate?: boolean,
+        keyword?: string,
+        allowComposition?: boolean,
+      ) => Promise<void>)
+    | null
+  >(null);
+  function cancelDebounce() {
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    debounceTimer.current = null;
+  }
   const activeSearch = useRef<{
     key: string;
     controller: AbortController;
@@ -115,6 +131,7 @@ export function ProposalForm({
   const geocodeController = useRef<AbortController | null>(null);
   useEffect(
     () => () => {
+      cancelDebounce();
       searchController.current?.abort();
       requestId.current++;
       geocodeController.current?.abort();
@@ -132,6 +149,7 @@ export function ProposalForm({
       return;
     const { data } = browserDb().auth.onAuthStateChange((_event, session) => {
       if (session?.user.id !== viewerId) {
+        cancelDebounce();
         searchCache.current.clear();
         searchController.current?.abort();
         requestId.current++;
@@ -150,6 +168,7 @@ export function ProposalForm({
     };
   }, [map.id, viewerId, enabled]);
   function resetProposal() {
+    cancelDebounce();
     searchController.current?.abort();
     requestId.current++;
     setStep(1);
@@ -180,6 +199,7 @@ export function ProposalForm({
     keyword = query,
     allowComposition = false,
   ) {
+    cancelDebounce();
     if (
       !enabled ||
       authChanged ||
@@ -236,6 +256,9 @@ export function ProposalForm({
       }
     }
   }
+  useEffect(() => {
+    latestSearch.current = search;
+  });
   async function choose(candidate: Candidate) {
     searchController.current?.abort();
     const controller = new AbortController();
@@ -405,6 +428,7 @@ export function ProposalForm({
               maxLength={100}
               disabled={!enabled || authChanged || sending}
               onCompositionStart={() => {
+                cancelDebounce();
                 searchController.current?.abort();
                 requestId.current++;
                 setSearching(false);
@@ -420,6 +444,7 @@ export function ProposalForm({
                 // Some IMEs emit a final change after compositionend. Keep its
                 // already-started request when the input has not changed.
                 if (e.target.value === query) return;
+                cancelDebounce();
                 searchController.current?.abort();
                 requestId.current++;
                 setBusy(false);
@@ -444,8 +469,18 @@ export function ProposalForm({
                   !/[\u1100-\u11ff\u3130-\u318f\ua960-\ua97f\ud7b0-\ud7ff]/.test(
                     e.target.value,
                   );
-                if (!inComposition || completeHangul)
-                  void search(true, false, e.target.value, completeHangul);
+                if (!inComposition || completeHangul) {
+                  const value = e.target.value;
+                  debounceTimer.current = setTimeout(() => {
+                    debounceTimer.current = null;
+                    void latestSearch.current?.(
+                      true,
+                      false,
+                      value,
+                      completeHangul,
+                    );
+                  }, 400);
+                }
               }}
             />
             <Button
@@ -506,15 +541,17 @@ export function ProposalForm({
                 {p.locality} · {p.category} · {p.address} · 커뮤니티 장소
               </span>
               <span className="mt-1 block text-xs text-primary">
-                {!p.currentMapStatus
-                  ? "이 지도에 추천 가능"
-                  : p.currentMapStatus === "pending"
-                    ? "검토 대기"
-                    : ["rejected", "archived", "reviewed"].includes(
-                          p.currentMapStatus,
-                        )
-                      ? "이미 검토됨"
-                      : "이 지도에 공개됨"}
+                {creator && p.currentMapStatus
+                  ? "이 지도에 추가됨"
+                  : !p.currentMapStatus
+                    ? "이 지도에 추천 가능"
+                    : p.currentMapStatus === "pending"
+                      ? "검토 대기"
+                      : ["rejected", "archived", "reviewed"].includes(
+                            p.currentMapStatus,
+                          )
+                        ? "이미 검토됨"
+                        : "이 지도에 공개됨"}
               </span>
             </button>
           ))}
@@ -752,31 +789,38 @@ export function ProposalForm({
                 placeId: string;
                 status: string;
                 created: boolean;
-              }>("/api/places/propose", {
-                mapId: map.id,
-                placeId: selection?.placeId,
-                candidateToken: selection?.token,
-                rationale: f.get("rationale"),
-                ...(manual
-                  ? {
-                      name: f.get("name"),
-                      countryCode:
-                        searchScope(map) === "world"
-                          ? manualCountry
-                          : undefined,
-                      address: f.get("address"),
-                      category: f.get("category"),
-                      lat: manualLocation?.lat,
-                      lng: manualLocation?.lng,
-                      sourceNote:
-                        "사용자가 직접 알고 있는 장소 이름과 위치를 등록했습니다.",
-                    }
-                  : {}),
-              });
+              }>(
+                creator
+                  ? `/api/creator/maps/${map.id}/places`
+                  : "/api/places/propose",
+                {
+                  mapId: map.id,
+                  placeId: selection?.placeId,
+                  candidateToken: selection?.token,
+                  rationale: f.get("rationale"),
+                  ...(manual
+                    ? {
+                        name: f.get("name"),
+                        countryCode:
+                          searchScope(map) === "world"
+                            ? manualCountry
+                            : undefined,
+                        address: f.get("address"),
+                        category: f.get("category"),
+                        lat: manualLocation?.lat,
+                        lng: manualLocation?.lng,
+                        sourceNote:
+                          "사용자가 직접 알고 있는 장소 이름과 위치를 등록했습니다.",
+                      }
+                    : {}),
+                },
+              );
               form.reset();
               resetProposal();
               router.replace(
-                `/maps/${map.slug}?proposal=${encodeURIComponent(result.id)}&submitted=1&created=${result.created ? "1" : "0"}`,
+                creator
+                  ? `/studio?map=${map.id}`
+                  : `/maps/${map.slug}?proposal=${encodeURIComponent(result.id)}&submitted=1&created=${result.created ? "1" : "0"}`,
               );
               router.refresh();
             } catch (e) {
@@ -1070,22 +1114,26 @@ export function ProposalForm({
             </p>
             <DialogHeader className="mt-2 gap-2">
               <DialogTitle className="text-2xl leading-tight font-semibold tracking-tight">
-                {["rejected", "archived", "reviewed"].includes(
-                  existingPlace?.currentMapStatus ?? "",
-                )
-                  ? "이미 검토된 장소입니다"
-                  : existingPlace?.currentMapStatus === "pending"
-                    ? "이미 검토 대기 중인 장소입니다"
-                    : "이미 공개된 장소입니다"}
+                {creator
+                  ? "이미 이 지도에 추가한 장소입니다"
+                  : ["rejected", "archived", "reviewed"].includes(
+                        existingPlace?.currentMapStatus ?? "",
+                      )
+                    ? "이미 검토된 장소입니다"
+                    : existingPlace?.currentMapStatus === "pending"
+                      ? "이미 검토 대기 중인 장소입니다"
+                      : "이미 공개된 장소입니다"}
               </DialogTitle>
               <DialogDescription className="max-w-sm leading-6">
-                {existingPlace?.currentMapStatus === "rejected" ||
-                existingPlace?.currentMapStatus === "archived" ||
-                existingPlace?.currentMapStatus === "reviewed"
-                  ? "이 지도에서 이미 검토된 장소입니다. 다른 장소를 선택해 주세요."
-                  : existingPlace?.currentMapStatus === "pending"
-                    ? "이미 접수된 제안입니다. 지도에서 위치와 추천 근거를 확인해 보세요."
-                    : "이 지도에 이미 공개된 장소입니다. 지도에서 위치와 추천 근거를 확인해 보세요."}
+                {creator
+                  ? "관리 화면에서 추천 이유와 순서를 수정할 수 있어요."
+                  : existingPlace?.currentMapStatus === "rejected" ||
+                      existingPlace?.currentMapStatus === "archived" ||
+                      existingPlace?.currentMapStatus === "reviewed"
+                    ? "이 지도에서 이미 검토된 장소입니다. 다른 장소를 선택해 주세요."
+                    : existingPlace?.currentMapStatus === "pending"
+                      ? "이미 접수된 제안입니다. 지도에서 위치와 추천 근거를 확인해 보세요."
+                      : "이 지도에 이미 공개된 장소입니다. 지도에서 위치와 추천 근거를 확인해 보세요."}
               </DialogDescription>
             </DialogHeader>
           </div>
@@ -1114,7 +1162,9 @@ export function ProposalForm({
                   onClick={() => {
                     if (!existingPlace?.currentMapPlaceId) return;
                     router.push(
-                      `/maps/${map.slug}?proposal=${encodeURIComponent(existingPlace.currentMapPlaceId)}`,
+                      creator
+                        ? `/studio/${map.id}/preview`
+                        : `/maps/${map.slug}?proposal=${encodeURIComponent(existingPlace.currentMapPlaceId)}`,
                     );
                     setExistingPlace(null);
                   }}
@@ -1129,9 +1179,11 @@ export function ProposalForm({
       </Dialog>
       <p className="proposal-policy">
         <Info size={15} aria-hidden="true" />
-        {autoApprove
-          ? "운영자 제안은 제출 즉시 일반 목록에 공개됩니다."
-          : "제안은 검토 대기 핀으로 표시되며, 승인 후 일반 목록에 공개됩니다."}
+        {creator
+          ? "초안의 장소는 지도 공개 후 표시되며, 공개 지도에 추가하면 즉시 표시됩니다."
+          : autoApprove
+            ? "운영자 제안은 제출 즉시 일반 목록에 공개됩니다."
+            : "제안은 검토 대기 핀으로 표시되며, 승인 후 일반 목록에 공개됩니다."}
       </p>
       <Link
         href={`/maps/${map.slug}`}

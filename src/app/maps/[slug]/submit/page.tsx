@@ -10,7 +10,7 @@ export default async function Submit({
     getMap((await params).slug),
     getViewer(),
   ]);
-  if (!map) notFound();
+  if (!map || map.kind === "creator") notFound();
   return (
     <main id="main" className="page-wrap proposal-page">
       <header className="proposal-intro">

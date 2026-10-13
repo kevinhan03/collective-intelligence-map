@@ -13,6 +13,7 @@ import {
 } from "@/domain/map-search";
 
 const item = z.object({
+  position: z.number().optional(),
   id: z.string(),
   place_id: z.string(),
   map_id: z.string(),

@@ -30,6 +30,12 @@ export function MobileNavigation() {
   }, []);
   const links = [
     {
+      href: "/studio",
+      label: "내 지도 만들기",
+      icon: Compass,
+      active: pathname.startsWith("/studio"),
+    },
+    {
       href: "/",
       label: "발견",
       icon: Compass,

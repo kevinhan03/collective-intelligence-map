@@ -41,15 +41,26 @@ export function Image({
 }
 export function MapCanvas({
   onMapClick,
+  places,
+  onSelect,
 }: {
   onMapClick?: (point: { lat: number; lng: number }) => void;
+  places?: { id: string; name: string }[];
+  onSelect?: (id: string) => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={() => onMapClick?.({ lat: 37.5, lng: 127.1 })}
-    >
-      테스트 지도 위치 조정
-    </button>
+    <div aria-label="테스트 지도">
+      <button
+        type="button"
+        onClick={() => onMapClick?.({ lat: 37.5, lng: 127.1 })}
+      >
+        테스트 지도 위치 조정
+      </button>
+      {places?.map((place) => (
+        <button key={place.id} onClick={() => onSelect?.(place.id)}>
+          {place.name} 테스트 핀
+        </button>
+      ))}
+    </div>
   );
 }

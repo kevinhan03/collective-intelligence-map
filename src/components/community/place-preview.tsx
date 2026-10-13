@@ -12,6 +12,7 @@ export function PlacePreview({
   saved,
   vote,
   demo,
+  creator = false,
   signedIn,
   loginHref,
   busy,
@@ -25,6 +26,7 @@ export function PlacePreview({
   saved: boolean;
   vote: number;
   demo: boolean;
+  creator?: boolean;
   signedIn: boolean;
   loginHref: string;
   busy: boolean;
@@ -69,38 +71,42 @@ export function PlacePreview({
       <p className="mt-2 line-clamp-2 text-sm leading-5 text-muted-foreground">
         {place.rationale}
       </p>
-      <p className="mt-3 text-xs text-muted-foreground">
-        {total
-          ? `${total}명 중 ${place.positive}명이 이 주제에 추천했어요.`
-          : "아직 검증 전인 장소예요."}
-      </p>
-      <div
-        className="place-card-votes mt-3 flex items-center gap-2"
-        aria-label={`${place.name} 주제 적합성 투표`}
-      >
-        <button
-          type="button"
-          className="vote-control"
-          aria-label={`${place.name} 테마에 잘 맞아요 ${place.positive}`}
-          aria-pressed={vote === 1}
-          disabled={demo || busy}
-          onClick={() => onVote(1)}
+      {!creator && (
+        <p className="mt-3 text-xs text-muted-foreground">
+          {total
+            ? `${total}명 중 ${place.positive}명이 이 주제에 추천했어요.`
+            : "아직 검증 전인 장소예요."}
+        </p>
+      )}
+      {!creator && (
+        <div
+          className="place-card-votes mt-3 flex items-center gap-2"
+          aria-label={`${place.name} 주제 적합성 투표`}
         >
-          <ThumbsUp size={14} fill="none" strokeWidth={1.8} />
-          <span>{place.positive}</span>
-        </button>
-        <button
-          type="button"
-          className="vote-control"
-          aria-label={`${place.name} 테마와 달라요 ${place.negative}`}
-          aria-pressed={vote === -1}
-          disabled={demo || busy}
-          onClick={() => onVote(-1)}
-        >
-          <ThumbsDown size={14} fill="none" strokeWidth={1.8} />
-          <span>{place.negative}</span>
-        </button>
-      </div>
+          <button
+            type="button"
+            className="vote-control"
+            aria-label={`${place.name} 테마에 잘 맞아요 ${place.positive}`}
+            aria-pressed={vote === 1}
+            disabled={demo || busy}
+            onClick={() => onVote(1)}
+          >
+            <ThumbsUp size={14} fill="none" strokeWidth={1.8} />
+            <span>{place.positive}</span>
+          </button>
+          <button
+            type="button"
+            className="vote-control"
+            aria-label={`${place.name} 테마와 달라요 ${place.negative}`}
+            aria-pressed={vote === -1}
+            disabled={demo || busy}
+            onClick={() => onVote(-1)}
+          >
+            <ThumbsDown size={14} fill="none" strokeWidth={1.8} />
+            <span>{place.negative}</span>
+          </button>
+        </div>
+      )}
       <div className="mt-4 grid grid-cols-[1fr_auto] gap-2">
         <Button className="h-11" onClick={onOpenDetail}>
           자세히 보기

@@ -1,3 +1,7 @@
+import {
+  CreatorAdminReports,
+  type CreatorAdminSnapshot,
+} from "@/components/creator/admin-reports";
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
 import { getViewer } from "@/server/queries";
@@ -11,6 +15,7 @@ export default async function Moderation() {
   if (!viewer) redirect("/login");
   if (viewer.role !== "admin") notFound();
   const { data, error } = await (await db()).rpc("admin_snapshot");
+  const creator = await (await db()).rpc("creator_admin_snapshot");
   if (error) throw new Error("검토 목록을 불러올 수 없습니다.");
   return (
     <main id="main" className="page-wrap max-w-4xl">
@@ -24,6 +29,11 @@ export default async function Moderation() {
         </Link>
       </div>
       <AdminConsole snapshot={data as AdminSnapshot} />
+      {creator.data && (
+        <CreatorAdminReports
+          snapshot={creator.data as unknown as CreatorAdminSnapshot}
+        />
+      )}
     </main>
   );
 }

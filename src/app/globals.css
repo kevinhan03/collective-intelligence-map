@@ -785,7 +785,7 @@ button:not(:disabled),
     flex-direction: column;
     gap: 4px;
     color: var(--muted-foreground);
-    font-size: 14px;
+    font-size: 13px;
   }
   .mobile-bottom-nav a[aria-current] {
     color: var(--primary);
@@ -860,10 +860,10 @@ button:not(:disabled),
     flex-wrap: nowrap;
   }
   .map-hero h1 {
-    font-size: 17px;
+    font-size: 16px;
   }
   .map-hero .kicker {
-    font-size: 14px;
+    font-size: 13px;
   }
   .map-hero a,
   .map-hero-description,
@@ -879,7 +879,7 @@ button:not(:disabled),
   .community-explorer[data-mobile-view="list"] .map-hero {
     padding-right: 72px;
   }
-  .community-explorer button:not(.map-pin),
+  .community-explorer button:not(.map-pin):not(.map-marker),
   .community-explorer [data-slot="button"],
   .community-explorer select {
     min-height: 44px;
@@ -942,7 +942,7 @@ button:not(:disabled),
     gap: 4px;
     padding: 0 6px;
     border-radius: 10px;
-    font-size: 14px;
+    font-size: 13px;
   }
   .mobile-view-switch svg {
     display: none;
@@ -976,14 +976,14 @@ button:not(:disabled),
   .place-list-heading span,
   .place-glass-card .text-xs,
   .place-glass-card .text-\[11px\] {
-    font-size: 14px;
+    font-size: 13px;
     line-height: 1.5;
   }
   .place-glass-card {
     padding: 16px 12px;
   }
   .place-glass-card button.text-left {
-    font-size: 16px;
+    font-size: 15px;
   }
   .place-glass-card .place-card-votes {
     display: none;
@@ -1110,12 +1110,14 @@ button:not(:disabled),
     min-width: 44px;
   }
   .mobile-place-dialog input,
-  .mobile-place-dialog textarea,
-  .mobile-place-dialog p.text-sm {
+  .mobile-place-dialog textarea {
     font-size: 16px;
   }
+  .mobile-place-dialog p.text-sm {
+    font-size: 15px;
+  }
   .mobile-place-dialog .text-xs {
-    font-size: 14px;
+    font-size: 13px;
   }
   .place-save-bar {
     flex-shrink: 0;
@@ -1140,11 +1142,11 @@ button:not(:disabled),
   }
   .saved-page .text-xs,
   .saved-page .text-\[11px\] {
-    font-size: 14px;
+    font-size: 13px;
   }
   .saved-page .place-glass-card p,
   .saved-page .place-glass-card h2 {
-    font-size: 16px;
+    font-size: 15px;
     line-height: 1.5;
   }
   .saved-page input {
@@ -1322,7 +1324,7 @@ button:not(:disabled),
     gap: 4px;
   }
   .community-explorer[data-mobile-view="map"] .map-hero h1 {
-    font-size: 15px;
+    font-size: 14px;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
@@ -1404,7 +1406,7 @@ button:not(:disabled),
     padding: 0 14px;
     border-radius: 24px;
     background: #202731f2;
-    font-size: 14px;
+    font-size: 13px;
     cursor: pointer;
     list-style: none;
   }
@@ -1473,7 +1475,7 @@ button:not(:disabled),
   }
   .community-explorer[data-mobile-view="map"] .mobile-place-slide p.mt-1 {
     -webkit-line-clamp: 1;
-    font-size: 14px;
+    font-size: 13px;
     line-height: 20px;
   }
   .community-explorer[data-mobile-view="map"] .mobile-place-heading {
@@ -1801,7 +1803,7 @@ button:not(:disabled),
     margin-bottom: 22px;
   }
   .proposal-question p {
-    font-size: 13px;
+    font-size: 12px;
   }
   .proposal-search-icon {
     margin-left: 8px;
@@ -1823,7 +1825,7 @@ button:not(:disabled),
   }
   .proposal-actions button {
     padding-inline: 14px;
-    font-size: 13px;
+    font-size: 12px;
   }
   .proposal-review {
     padding: 20px;
@@ -2136,7 +2138,7 @@ button:not(:disabled),
     flex: 1;
     min-width: 0;
     margin: 0;
-    font-size: 20px;
+    font-size: 18px;
     line-height: 1.4;
     font-weight: 650;
     overflow-wrap: anywhere;
@@ -2252,7 +2254,7 @@ button:not(:disabled),
     border: 0;
     padding: 0;
     margin: 0;
-    font-size: 13px;
+    font-size: 12px;
   }
   .mobile-place-dialog .place-photos-heading > button,
   .mobile-place-dialog .place-photos-heading > a {
@@ -2370,7 +2372,7 @@ button:not(:disabled),
     border-radius: 999px;
     background: transparent;
     color: #c0c5ca;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 500;
     transition: color 180ms ease;
   }
@@ -2683,7 +2685,7 @@ button:not(:disabled),
     min-width: 0;
     padding: 10px 0;
     text-align: left;
-    font-size: 17px;
+    font-size: 16px;
     line-height: 24px;
     font-weight: 650;
     display: block;
@@ -2734,13 +2736,13 @@ button:not(:disabled),
     flex: 1;
   }
   .mobile-list-area {
-    font-size: 13px;
+    font-size: 12px;
     line-height: 20px;
     color: var(--muted-foreground);
   }
   .mobile-list-reason {
     margin-top: 4px;
-    font-size: 14px;
+    font-size: 13px;
     line-height: 22px;
     color: #ced2d7;
     display: -webkit-box;
@@ -3538,7 +3540,7 @@ body:has(.profile-page) {
 }
 @media (max-width: 600px) {
   .recommendations-header h1 {
-    font-size: 25px;
+    font-size: 23px;
   }
   .recommendations-toolbar {
     flex-wrap: wrap;
@@ -3726,7 +3728,7 @@ body:has(.profile-page) {
     display: block;
   }
   .profile-settings-overview .profile-display-name {
-    font-size: 25px;
+    font-size: 23px;
   }
   .profile-settings-overview .profile-bio {
     margin-top: 9px;
@@ -3780,7 +3782,7 @@ body:has(.profile-page) {
     padding: 11px;
   }
   .profile-settings-overview .profile-map-copy h3 {
-    font-size: 14px;
+    font-size: 13px;
   }
   .profile-settings-overview .profile-overview-links {
     margin-top: 20px;
@@ -3825,7 +3827,7 @@ body:has(.profile-page) {
     height: 64px;
   }
   .profile-identity h1 {
-    font-size: 24px;
+    font-size: 22px;
   }
 }
 
@@ -3857,14 +3859,14 @@ body:has(.profile-page) {
     border-radius: 24px 24px 0 0;
   }
   .community-explorer .mobile-place-overview .place-sheet-handle {
-    height: 22px;
-    min-height: 22px;
+    height: 11px;
+    min-height: 11px;
   }
   .mobile-place-overview .place-sheet-title-row {
     padding: 0 12px 0 20px;
   }
   .mobile-place-overview .place-sheet-title {
-    font-size: 18px;
+    font-size: 17px;
     line-height: 24px;
   }
   .mobile-place-overview .place-sheet-title-row {
@@ -3906,8 +3908,8 @@ body:has(.profile-page) {
 /* Tighter mobile place card: less empty space around the drag handle. */
 @media (max-width: 1023px) {
   .community-explorer .mobile-place-carousel .place-sheet-handle {
-    height: 22px;
-    min-height: 22px;
+    height: 11px;
+    min-height: 11px;
   }
   .mobile-place-carousel .place-sheet-title-row {
     min-height: 0;
@@ -3915,7 +3917,7 @@ body:has(.profile-page) {
     padding: 0 12px 0 20px;
   }
   .mobile-place-carousel .place-sheet-title {
-    font-size: 18px;
+    font-size: 17px;
     line-height: 24px;
   }
   .community-explorer .mobile-place-carousel .place-sheet-close {
@@ -3942,5 +3944,65 @@ body:has(.profile-page) {
   }
   .mobile-place-carousel .mobile-explorer-actions {
     padding-block: 5px;
+  }
+}
+
+/* Compact mobile typography and pins; retain control hit areas. */
+@media (max-width: 1023px) {
+  :root {
+    --text-xs: 0.6875rem;
+    --text-sm: 0.8125rem;
+    --text-base: 0.9375rem;
+    --text-lg: 1.0625rem;
+    --text-xl: 1.125rem;
+    --text-2xl: 1.375rem;
+    --text-3xl: 1.75rem;
+    --text-4xl: 2.125rem;
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]),
+  textarea {
+    font-size: 16px;
+  }
+
+  .map-pin,
+  .map-marker {
+    --map-pin-vote-offset: 30px;
+    width: 28px;
+    height: 28px;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .map-pin[data-selected="true"],
+  .map-marker[data-selected="true"] {
+    --map-pin-vote-offset: 37px;
+    width: 35px;
+    height: 35px;
+  }
+
+  .map-pin > span,
+  .map-pin > .map-pin-likes,
+  .map-marker-face > .map-pin-likes {
+    font-size: 11px;
+  }
+
+  .map-marker-face > span {
+    font-size: 12px;
+  }
+
+  .map-pin-likes svg {
+    width: 9px;
+    height: 9px;
+  }
+
+  .map-pin > .map-pin-votes {
+    left: 10px;
+  }
+
+  .map-pin > .map-pin-votes,
+  .map-marker-votes {
+    padding: 3px 6px;
+    font-size: 10px;
   }
 }

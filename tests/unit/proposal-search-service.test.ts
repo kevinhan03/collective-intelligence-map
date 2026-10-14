@@ -55,12 +55,22 @@ it("calls internal RPC once and does not translate automatically", async () => {
   expect(mock.aliases).not.toHaveBeenCalled();
   expect(r.translationAvailable).toBe(true);
 });
-it("stops before regional search when an internal match exists or external is false", async () => {
+it("keeps regional search available when an internal match exists", async () => {
   mock.rpc.mockResolvedValueOnce({ data: [{ id: "place" }], error: null });
-  await searchPlaces(
+  const result = await searchPlaces(
     { mapId: demoMap.id, query: "vintage", external: true },
     viewer,
   );
+  expect(result.internal).toHaveLength(1);
+  expect(mock.regional).toHaveBeenCalledTimes(1);
+
+  await searchPlaces(
+    { mapId: demoMap.id, query: "vintage", external: false },
+    viewer,
+  );
+  expect(mock.regional).toHaveBeenCalledTimes(1);
+});
+it("does not search a provider when external search is disabled", async () => {
   await searchPlaces(
     { mapId: demoMap.id, query: "vintage", external: false },
     viewer,

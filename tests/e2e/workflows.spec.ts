@@ -502,7 +502,7 @@ test("unauthenticated users cannot open admin moderation", async ({ page }) => {
   await page.goto("/admin/moderation");
   await expect(page).toHaveURL(/\/login/);
 });
-test("automatic suggestions wait 400ms, respect composition and search externally only without internal matches", async ({
+test("automatic suggestions wait 400ms, respect composition and keep external search available", async ({
   page,
 }) => {
   const requests: { query: string; external: boolean }[] = [];

@@ -25,3 +25,7 @@ on conflict(id) do nothing;
 insert into public.theme_maps(id,slug,title,description,rules,country,city,tags,bounds,status)
 values('22222222-2222-4222-8222-222222222222','korea-vintage','Korea Vintage Shop','전국 곳곳에 있는 빈티지샵을 모아둔 지도입니다. 오래된 옷부터 희소성 있는 아카이브 제품까지, 개성 있는 빈티지샵을 함께 찾아보고 공유해 보세요.','포함: 빈티지 의류·잡화, 아카이브, 리세일, 독립 빈티지 숍. 제외: 주제 근거 없는 일반 의류 매장, 광고성 등록, 중복 장소. 방문 경험과 구체적인 추천 근거를 남겨 주세요.','KR','Korea',array['빈티지','아카이브','리세일','독립 숍'],'{"west":124.5,"south":33.0,"east":132.0,"north":39.2}','published')
 on conflict(id) do nothing;
+
+insert into public.theme_maps(id,slug,title,description,rules,country,city,tags,bounds,status)
+values('88888888-8888-4888-8888-888888888888','korea-fashion-store','Korea Fashion Store','국내 패션 브랜드의 플래그십 스토어와 쇼룸, 그리고 개성 있는 편집숍을 모아둔 지도입니다. 백화점 매장은 제외하고, 브랜드의 공간과 취향을 직접 경험할 수 있는 매장을 함께 찾아보세요.','포함: 국내 패션 브랜드의 단독 매장·플래그십 스토어·쇼룸, 독립 편집숍. 제외: 백화점에 입점한 브랜드 매장, 일반 쇼핑몰 매장, 광고성 등록, 중복 장소. 방문 경험과 구체적인 추천 이유를 남겨 주세요.','KR','Korea',array['국내 브랜드','플래그십','쇼룸','편집숍'],'{"west":124.5,"south":33.0,"east":132.0,"north":39.2}','published')
+on conflict(id) do nothing;

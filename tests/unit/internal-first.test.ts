@@ -56,25 +56,41 @@ it("allows short queries for both internal and external search", () => {
   ).toMatchObject({ query: "ab", external: false });
 });
 
-it("never searches external inventory when an internal match exists", async () => {
+it("shows external branches alongside an internal name match", async () => {
+  vi.stubEnv("PROVIDER_SIGNING_SECRET", "x".repeat(32));
   mocks.route.mockClear();
+  const search = vi.fn().mockResolvedValue([
+    {
+      provider: "overture",
+      externalId: "other-branch",
+      label: "Shop",
+      address: "서울 마포구",
+      attribution: "Overture Maps",
+    },
+  ]);
+  mocks.route.mockReturnValue({ name: "overture", adapter: { search } });
   mocks.rpc.mockResolvedValue({
     data: [{ id: "internal", name: "Shop" }],
     error: null,
   });
-  const result = await searchPlaces(
-    { mapId: demoMap.id, query: "Shop", external: true },
-    {
-      id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-      handle: "tester",
-      role: "member",
-      bio: "",
-      avatar_path: null,
-    },
-  );
-  expect(result.internal).toHaveLength(1);
-  expect(result.internal[0]).toMatchObject({ currentMapPlaceId: null });
-  expect(mocks.route).not.toHaveBeenCalled();
+  try {
+    const result = await searchPlaces(
+      { mapId: demoMap.id, query: "Shop", external: true },
+      {
+        id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        handle: "tester",
+        role: "member",
+        bio: "",
+        avatar_path: null,
+      },
+    );
+    expect(result.internal).toHaveLength(1);
+    expect(result.internal[0]).toMatchObject({ currentMapPlaceId: null });
+    expect(result.candidates).toMatchObject([{ externalId: "other-branch" }]);
+    expect(search).toHaveBeenCalledTimes(1);
+  } finally {
+    vi.unstubAllEnvs();
+  }
 });
 
 it("marks a place already proposed on the current map", async () => {

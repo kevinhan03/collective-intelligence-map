@@ -115,7 +115,7 @@ async function runSearchPlaces(
     translationAvailable: false,
     coverage: searchScope(map) === "world" ? ("partial" as const) : undefined,
   };
-  if (!input.external || matches.length > 0)
+  if (!input.external)
     return { internal: internalWithStatus, candidates: [], ...metadata };
   const { name, adapter } = routeProvider(map.country, searchScope(map));
   const session = input.session ?? crypto.randomUUID();

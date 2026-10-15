@@ -741,11 +741,8 @@ export function ProposalForm({
             const form = e.currentTarget;
             const f = new FormData(form);
             const errors: Record<string, string> = {};
-            if (
-              step !== 1 &&
-              (rationale.trim().length < 5 || rationale.trim().length > 1000)
-            )
-              errors.rationale = "추천 이유를 5~1,000자로 입력해 주세요.";
+            if (step !== 1 && rationale.trim().length > 1000)
+              errors.rationale = "소개는 1,000자 이내로 입력해 주세요.";
             if (manual && !String(f.get("name") ?? "").trim())
               errors.name = "장소 이름을 입력해 주세요.";
             if (manual && String(f.get("name") ?? "").trim().length > 120)
@@ -1002,26 +999,21 @@ export function ProposalForm({
             </section>
           )}
           <section hidden={step !== 2} className="proposal-fields space-y-4">
-            <Label htmlFor="rationale">추천하는 점 한 줄</Label>
+            <Label htmlFor="rationale">한줄 소개 (선택)</Label>
             <Textarea
               className="min-h-40 resize-y rounded-2xl p-4 text-sm leading-7"
               id="rationale"
               name="rationale"
-              required
-              minLength={5}
               maxLength={1000}
-              placeholder={
-                map.country === "KR"
-                  ? "예: 빈티지 의류를 천천히 살펴보기 좋아요"
-                  : "예: 90년대 일본 빈티지를 찾기 좋아요"
-              }
+              placeholder="어떤 점이 좋았나요? 짧게 남겨주시면 다른 사람에게 도움이 돼요."
               value={rationale}
               onChange={(event) => setRationale(event.target.value)}
               aria-invalid={Boolean(fieldErrors.rationale)}
               aria-describedby="rationale-help rationale-error"
             />
             <p id="rationale-help" className="text-xs text-muted-foreground">
-              5~1,000자 · {rationale.length.toLocaleString()} / 1,000자
+              비워두고 등록해도 괜찮아요. 나중에 소개를 추가할 수 있어요.{" "}
+              {rationale.length.toLocaleString()} / 1,000자
             </p>
             <p
               id="rationale-error"
@@ -1038,12 +1030,16 @@ export function ProposalForm({
               <p className="text-sm text-muted-foreground">
                 {selection?.address ?? manualAddress}
               </p>
-              <div className="mt-6 border-t pt-5">
-                <p className="mb-2 text-xs text-muted-foreground">추천 이유</p>
-                <p className="whitespace-pre-wrap break-words text-sm leading-7">
-                  {rationale}
-                </p>
-              </div>
+              {rationale.trim() && (
+                <div className="mt-6 border-t pt-5">
+                  <p className="mb-2 text-xs text-muted-foreground">
+                    한줄 소개
+                  </p>
+                  <p className="whitespace-pre-wrap break-words text-sm leading-7">
+                    {rationale}
+                  </p>
+                </div>
+              )}
             </section>
           )}
           {error && (

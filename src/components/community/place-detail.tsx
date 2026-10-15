@@ -13,6 +13,7 @@ import { exitPlaceSheet } from "./place-sheet-motion";
 import { PlacePanel } from "./place-panel";
 import { PlacePhotos } from "./place-photos";
 import { PlaceChecks } from "./place-checks";
+import { PlaceIntroductions } from "./place-introductions";
 import { ShareButton } from "./share-button";
 import { NearbyStationInfo } from "./nearby-stations";
 import { OperationSummary } from "./operation-summary";
@@ -167,18 +168,15 @@ export function PlaceDetail({
   const enabled = Boolean(viewer) && !demo && !readOnly;
   const votingEnabled = !demo && !readOnly && !creator;
   const rationaleSection = (
-    <div className="rounded-xl bg-secondary/60 p-5">
-      <p className="kicker mb-2">이 테마에 추천하는 이유</p>
-      <p className="text-sm leading-7">{place.rationale}</p>
-      <p className="mt-3 text-xs text-muted-foreground">
-        {place.added_by ? (
-          <Link href={`/u/${place.handle}`}>@{place.handle}</Link>
-        ) : (
-          place.handle
-        )}{" "}
-        · 추천 근거
-      </p>
-    </div>
+    <PlaceIntroductions
+      key={`introductions:${place.id}:${viewer?.id ?? "guest"}`}
+      place={place}
+      viewer={viewer}
+      demo={demo}
+      readOnly={readOnly}
+      loginHref={loginHref}
+      onReport={setReport}
+    />
   );
   const photoSection = (
     <PlacePhotos

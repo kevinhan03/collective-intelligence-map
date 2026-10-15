@@ -284,7 +284,10 @@ export async function getMapPlaceById(
   if (error) throw new Error("제안한 장소를 불러오지 못했습니다.");
   return (data as MapPlace | null) ?? null;
 }
-export async function getComments(id: string): Promise<Comment[]> {
+export async function getComments(
+  id: string,
+  kind: "comment" | "introduction" = "comment",
+): Promise<Comment[]> {
   "use cache";
   cacheLife({ stale: 60, revalidate: 120, expire: 600 });
   cacheTag("public-community");
@@ -295,6 +298,7 @@ export async function getComments(id: string): Promise<Comment[]> {
     .select("id,map_place_id,author_id,body,created_at,profiles(handle)")
     .eq("map_place_id", id)
     .eq("status", "visible")
+    .eq("kind", kind)
     .order("created_at")
     .limit(100);
   if (error) throw new Error("댓글을 불러올 수 없습니다.");

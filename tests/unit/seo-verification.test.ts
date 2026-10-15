@@ -38,3 +38,20 @@ it("omits empty ownership tokens rather than generating placeholder claims", asy
     bing: undefined,
   });
 });
+
+it("connects the Korean site name to English aliases at the canonical home URL", async () => {
+  const seo = await config("production", "https://example.com/ignored-path");
+  expect(seo.siteTitle).toContain("팅맵 (Ting map)");
+  expect(seo.siteDescription).toContain("팅맵(Ting map)");
+  expect(seo.websiteStructuredData).toMatchObject({
+    "@type": "WebSite",
+    name: "팅맵",
+    alternateName: ["Ting map", "Tingmap"],
+    url: "https://example.com/",
+    "@id": "https://example.com/#website",
+  });
+  expect(
+    (await config("development", "http://localhost:3000"))
+      .websiteStructuredData,
+  ).toBeNull();
+});

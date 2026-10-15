@@ -27,11 +27,7 @@ export const proposalSchema = z
     category: z.string().trim().max(40).default("패션"),
     lat: z.number().min(-90).max(90).optional(),
     lng: z.number().min(-180).max(180).optional(),
-    rationale: z
-      .string()
-      .trim()
-      .min(5, "추천하는 점을 짧게 남겨 주세요. (5자 이상)")
-      .max(1000),
+    rationale: z.string().trim().max(1000).default(""),
     sourceNote: z.string().trim().max(1000).default(""),
     candidateToken: z.string().max(3000).optional(),
     countryCode: z

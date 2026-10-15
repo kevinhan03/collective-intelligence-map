@@ -9,14 +9,22 @@ import { Badge } from "@/components/ui/badge";
 import styles from "./page.module.css";
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { jsonLd } from "@/domain/seo";
+import { websiteStructuredData } from "@/lib/seo";
 export const metadata: Metadata = { alternates: { canonical: "/" } };
 export default function Home() {
   return (
     <>
+      {websiteStructuredData && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: jsonLd(websiteStructuredData) }}
+        />
+      )}
       <noscript>
         <section className="page-wrap pb-10">
           <h1 className="text-3xl font-semibold">
-            Ting map — 취향에 맞는 장소 찾기
+            팅맵 (Ting map) — 취향에 맞는 장소 찾기
           </h1>
           <p className="mt-4 text-muted-foreground">
             빈티지 숍, 타코 맛집, 버거와 음악 공간을 지역과 테마별로 찾아보세요.
@@ -126,7 +134,8 @@ async function HomeContent() {
       <footer
         className={`${styles.footer} flex justify-end border-t text-xs text-muted-foreground`}
       >
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <span>팅맵 · Ting map</span>
           <Link href="/terms" prefetch={false}>
             이용약관
           </Link>

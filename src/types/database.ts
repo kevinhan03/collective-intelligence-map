@@ -127,6 +127,7 @@ export type Database = {
       };
       comments: {
         Row: {
+          kind: string;
           author_id: string | null;
           body: string;
           created_at: string;
@@ -135,6 +136,7 @@ export type Database = {
           status: string;
         };
         Insert: {
+          kind?: string;
           author_id?: string | null;
           body: string;
           created_at?: string;
@@ -143,6 +145,7 @@ export type Database = {
           status?: string;
         };
         Update: {
+          kind?: string;
           author_id?: string | null;
           body?: string;
           created_at?: string;
@@ -829,6 +832,10 @@ export type Database = {
       };
       admin_snapshot: { Args: never; Returns: Json };
       community_command: { Args: { payload: Json }; Returns: Json };
+      save_place_introduction: {
+        Args: { m: string; b: string; c?: string };
+        Returns: string;
+      };
       expire_photo_uploads: { Args: never; Returns: string[] };
       fail_place_photo: {
         Args: { p_id: string; p_lease: string };

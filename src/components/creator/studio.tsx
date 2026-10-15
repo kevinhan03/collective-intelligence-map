@@ -478,19 +478,17 @@ function PlaceEditor({
             }}
           >
             <label className="grid gap-2 text-sm">
-              추천 이유
+              한줄 소개 (선택)
               <Textarea
                 key={p.rationale}
                 name="rationale"
                 defaultValue={p.rationale}
-                minLength={5}
                 maxLength={1000}
-                required
               />
             </label>
             <div className="flex flex-wrap gap-2">
               <Button size="sm" disabled={busy}>
-                이유 저장
+                소개 저장
               </Button>
               <Button
                 size="sm"

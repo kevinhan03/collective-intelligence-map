@@ -37,6 +37,20 @@ describe("theme relevance and geography", () => {
     expect(sortPlaces(places, "relevance")[0].id).toBe(places[1].id);
     expect(places[0].positive).toBe(1);
   });
+  it("accepts omitted, blank and short introductions but limits their length", () => {
+    const input = { mapId: demoMap.id, placeId: demoPlaces[0].place_id };
+    expect(proposalSchema.parse(input).rationale).toBe("");
+    expect(proposalSchema.parse({ ...input, rationale: "  " }).rationale).toBe(
+      "",
+    );
+    expect(
+      proposalSchema.parse({ ...input, rationale: "좋아요" }).rationale,
+    ).toBe("좋아요");
+    expect(
+      proposalSchema.safeParse({ ...input, rationale: "x".repeat(1001) })
+        .success,
+    ).toBe(false);
+  });
   it("rejects arbitrary administrator actions and bad vote values", () => {
     expect(
       commandSchema.safeParse({ action: "promote_me", id: demoMap.id }).success,

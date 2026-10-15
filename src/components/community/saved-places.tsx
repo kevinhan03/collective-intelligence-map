@@ -306,9 +306,11 @@ export function SavedPlaces({
                     <X size={15} />
                   </Button>
                 </div>
-                <p className="mt-3 line-clamp-2 text-xs leading-5 text-muted-foreground">
-                  {place.rationale}
-                </p>
+                {place.rationale && (
+                  <p className="mt-3 line-clamp-2 text-xs leading-5 text-muted-foreground">
+                    {place.rationale}
+                  </p>
+                )}
                 <div className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground">
                   <span className="flex min-w-0 items-center gap-1 truncate">
                     <MapPin size={12} />{" "}

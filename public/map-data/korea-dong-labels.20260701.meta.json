@@ -1,0 +1,12 @@
+{
+  "referenceDate": "2026-07-01",
+  "source": "https://raw.githubusercontent.com/vuski/admdongkor/7360288277dfd12d74e54b959c59bdd66f852e3a/ver20260701/HangJeongDong_ver20260701.geojson",
+  "revision": "7360288277dfd12d74e54b959c59bdd66f852e3a",
+  "sourceSha256": "c01ef44a0eb00978662ba7a6240ccb1da287fb52abd85104a1758969d391132f",
+  "sourceFeatures": 3558,
+  "labelFeatures": 2155,
+  "processing": "Names ending 동 only; largest polygon by net ring area; polylabel 2.1.0 interior point, precision 0.000001 degrees; WGS84 coordinates rounded to 7 decimals.",
+  "license": "CC-BY-4.0",
+  "upstreamLicense": "KOGL Type 1",
+  "licenseUrl": "https://github.com/vuski/admdongkor/blob/7360288277dfd12d74e54b959c59bdd66f852e3a/LICENSE-DATA"
+}

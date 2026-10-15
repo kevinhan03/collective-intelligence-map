@@ -84,7 +84,7 @@ export const creatorCommandSchema = z.discriminatedUnion("action", [
     action: z.literal("edit_place"),
     mapId,
     id: mapId,
-    rationale: z.string().trim().min(5).max(1000),
+    rationale: z.string().trim().max(1000).default(""),
   }),
   z.object({ action: z.literal("remove_place"), mapId, id: mapId }),
   z.object({ action: z.literal("cover"), mapId, path: z.literal("") }),

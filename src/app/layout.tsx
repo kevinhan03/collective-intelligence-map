@@ -5,7 +5,15 @@ import { MobileNavigation } from "@/components/mobile-navigation";
 import { SiteHeader } from "@/components/site-header";
 import { Telemetry } from "@/components/telemetry";
 import "./globals.css";
-import { canIndex, noIndex, siteOrigin, siteVerification } from "@/lib/seo";
+import {
+  canIndex,
+  noIndex,
+  siteOrigin,
+  siteVerification,
+  siteName,
+  siteTitle,
+  siteDescription,
+} from "@/lib/seo";
 const suit = localFont({
   src: "../../node_modules/@sun-typeface/suit/fonts/variable/woff2/SUIT-Variable.woff2",
   weight: "100 900",
@@ -18,9 +26,8 @@ const suitHeavy = localFont({
   display: "swap",
   variable: "--font-suit-heavy",
 });
-const title = "Ting map — 취향이 모이는 지도";
-const description =
-  "빈티지 숍, 타코 맛집, 버거와 음악 공간까지. 지역과 취향별 지도에서 장소를 찾고, 방문자의 추천 이유와 사진을 확인하세요.";
+const title = siteTitle;
+const description = siteDescription;
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
@@ -30,7 +37,7 @@ export const viewport: Viewport = {
 };
 export const metadata: Metadata = {
   metadataBase: new URL(siteOrigin ?? "http://localhost:3000"),
-  title: { default: title, template: "%s · Ting map" },
+  title: { default: title, template: "%s · 팅맵 (Ting map)" },
   description,
   robots: canIndex ? { index: true, follow: true } : noIndex,
   verification: {
@@ -42,7 +49,7 @@ export const metadata: Metadata = {
   openGraph: {
     title,
     description,
-    siteName: "Ting map",
+    siteName,
     images: ["/glass-neighborhood-og.jpg"],
     locale: "ko_KR",
     type: "website",

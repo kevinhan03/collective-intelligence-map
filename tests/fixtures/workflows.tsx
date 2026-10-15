@@ -218,7 +218,33 @@ function SheetFixture() {
   );
 }
 createRoot(document.getElementById("root")!).render(
-  new URLSearchParams(location.search).get("fixture") === "recommendations" ? (
+  new URLSearchParams(location.search).get("fixture") ===
+    "place-introductions" ? (
+    <PlaceDetail
+      place={{
+        ...sheetPlace,
+        rationale: "",
+        added_by: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      }}
+      userLocation={null}
+      onClose={() => {}}
+      viewer={{
+        id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        handle: "visitor",
+        bio: "",
+        avatar_path: null,
+        role: "member",
+      }}
+      loginHref="/login"
+      vote={0}
+      saved={false}
+      onChange={() => {}}
+      demo={false}
+      sharePath="/maps/test-map"
+      onStationSelect={() => {}}
+    />
+  ) : new URLSearchParams(location.search).get("fixture") ===
+    "recommendations" ? (
     <RecommendationsExplorer
       handle="creator"
       displayName="Kevin"

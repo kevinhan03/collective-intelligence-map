@@ -8,6 +8,7 @@ import assert from "node:assert/strict";
 import { testCreatorMaps } from "./test-creator-db.mjs";
 import { testProposalSearch } from "./test-proposal-search-db.mjs";
 import { testMapSearch } from "./test-map-search-db.mjs";
+import { testIntroductions } from "./test-introductions-db.mjs";
 const url =
   process.env.TEST_DATABASE_URL ??
   `postgresql://${process.env.USER}@127.0.0.1:55432/cim_test`;
@@ -1185,6 +1186,7 @@ create function storage.foldername(text) returns text[] language sql immutable a
   );
   await testProposalSearch(c);
   await testCreatorMaps(c);
+  await testIntroductions(c);
   const functions = (
     await c.query(
       "select n.nspname,p.proname from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.prosecdef",

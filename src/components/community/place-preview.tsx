@@ -68,9 +68,11 @@ export function PlacePreview({
         demo={demo}
         onSelect={onStationSelect}
       />
-      <p className="mt-2 line-clamp-2 text-sm leading-5 text-muted-foreground">
-        {place.rationale}
-      </p>
+      {place.rationale && (
+        <p className="mt-2 line-clamp-2 text-sm leading-5 text-muted-foreground">
+          {place.rationale}
+        </p>
+      )}
       {!creator && (
         <p className="mt-3 text-xs text-muted-foreground">
           {total

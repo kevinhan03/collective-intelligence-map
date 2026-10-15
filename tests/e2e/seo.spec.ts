@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { demoMap, demoPlaces } from "../../src/server/demo";
 import { placePath } from "../../src/domain/seo";
 
-for (const userAgent of ["bingbot", "OAI-SearchBot", "PerplexityBot"]) {
+for (const userAgent of ["Googlebot", "bingbot", "OAI-SearchBot", "PerplexityBot"]) {
   test(`${userAgent} can read public content and follow links without JavaScript`, async ({
     browser,
   }) => {
@@ -12,9 +12,18 @@ for (const userAgent of ["bingbot", "OAI-SearchBot", "PerplexityBot"]) {
     });
     const page = await context.newPage();
     await page.goto("/");
+    await expect(page).toHaveTitle("팅맵 (Ting map) — 취향이 모이는 지도");
+    await expect(page.locator('meta[property="og:site_name"]')).toHaveAttribute(
+      "content",
+      "팅맵",
+    );
+    await expect(page.locator('meta[name="description"]')).toHaveAttribute(
+      "content",
+      /팅맵\(Ting map\)/,
+    );
     await expect(
       page.getByRole("heading", {
-        name: "Ting map — 취향에 맞는 장소 찾기",
+        name: "팅맵 (Ting map) — 취향에 맞는 장소 찾기",
         exact: true,
       }),
     ).toBeVisible();

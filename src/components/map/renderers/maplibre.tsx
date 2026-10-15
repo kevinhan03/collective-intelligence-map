@@ -7,23 +7,10 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { ensureMapLibreWorkerReady } from "./maplibre-worker";
 import type { MapProps } from "../types";
 import { appendPinLikes } from "../pin-content";
-
-// Keep subway/train station names and icons, excluding bus and tram stops.
-function hideBasemapPoiLayers(map: maplibregl.Map) {
-  for (const layer of map.getStyle().layers ?? []) {
-    if (layer.type !== "symbol" || layer["source-layer"] !== "poi") continue;
-    if (layer.id === "Station") {
-      map.setFilter(layer.id, [
-        "all",
-        ["==", "class", "railway"],
-        ["in", "subclass", "station", "subway"],
-        ["has", "name"],
-      ]);
-      continue;
-    }
-    map.setLayoutProperty(layer.id, "visibility", "none");
-  }
-}
+import {
+  configureBasemapLabels,
+  NEIGHBORHOOD_SOURCE_ID,
+} from "../basemap-labels";
 
 function boundsMatch(a: MapProps["bounds"], b: MapProps["bounds"]) {
   const tolerance = 0.000001;
@@ -68,12 +55,17 @@ export default function MapLibreMap(props: MapProps) {
       return;
     }
     instance.current = map;
+    let disposeLabels: (() => void) | undefined;
     map.addControl(new maplibregl.NavigationControl(), "top-right");
     map.on("load", () => {
-      hideBasemapPoiLayers(map);
+      disposeLabels = configureBasemapLabels(map);
       setLoadedStyle(apiKey);
     });
-    map.on("error", () => setError(true));
+    map.on("error", (event) => {
+      if (!("sourceId" in event) || event.sourceId !== NEIGHBORHOOD_SOURCE_ID) {
+        setError(true);
+      }
+    });
     map.on("idle", () => setError(false));
     map.on("moveend", () => {
       setViewRevision((revision) => revision + 1);
@@ -103,6 +95,7 @@ export default function MapLibreMap(props: MapProps) {
     observer.observe(container.current);
     return () => {
       observer.disconnect();
+      disposeLabels?.();
       map.remove();
       instance.current = null;
     };

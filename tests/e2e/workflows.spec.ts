@@ -332,6 +332,107 @@ async function open(page: Page, fixture = "proposal") {
   await page.goto(`/workflow-fixture?fixture=${fixture}`);
   await page.addScriptTag({ content: bundle });
 }
+
+test("visitors can add introductions to someone else's place and edit only their own", async ({
+  page,
+}) => {
+  const user = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  const original = {
+    id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    body: "먼저 다녀간 사람의 소개입니다.",
+    author_id: "other",
+    handle: "other",
+    created_at: "2026-10-15",
+  };
+  let entries = [original];
+  await page.route("**/api/map-places/*/introductions", async (route) => {
+    if (route.request().method() === "POST") {
+      const input = route.request().postDataJSON();
+      if (input.id)
+        entries = entries.map((entry) =>
+          entry.id === input.id ? { ...entry, body: input.body } : entry,
+        );
+      else
+        entries.push({
+          ...original,
+          id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+          body: input.body,
+          author_id: user,
+          handle: "visitor",
+        });
+      return route.fulfill({ json: { id: input.id ?? entries.at(-1)!.id } });
+    }
+    return route.fulfill({ json: { introductions: entries } });
+  });
+  await page.route("**/api/map-places/*/comments", (route) =>
+    route.fulfill({ json: { comments: [] } }),
+  );
+  await page.route("**/api/map-places/*/checks", (route) =>
+    route.fulfill({ json: {} }),
+  );
+  await page.route("**/api/places/*/photos*", (route) =>
+    route.fulfill({ json: { photos: [], nextCursor: null } }),
+  );
+  await page.route("**/api/places/*/stations", (route) =>
+    route.fulfill({ json: { stations: [], status: "unsupported" } }),
+  );
+  await page.route("**/api/community", (route) => {
+    const input = route.request().postDataJSON();
+    if (input.action === "delete_comment")
+      entries = entries.filter((entry) => entry.id !== input.id);
+    return route.fulfill({ json: {} });
+  });
+  await open(page, "place-introductions");
+  const section = page.getByRole("region", { name: "장소 소개", exact: true });
+  await expect(section.getByText(original.body)).toBeVisible();
+  await expect(
+    section.getByRole("button", { name: "수정", exact: true }),
+  ).toHaveCount(0);
+  await section.getByRole("button", { name: "소개 추가하기" }).click();
+  await section
+    .getByLabel("장소 소개 추가")
+    .fill("등록자가 아닌 방문자의 새 소개입니다.");
+  await section.getByRole("button", { name: "소개 저장" }).click();
+  await expect(
+    section.getByText("등록자가 아닌 방문자의 새 소개입니다."),
+  ).toBeVisible();
+  await expect(section.getByText(original.body)).toBeVisible();
+  await section.getByRole("button", { name: "수정", exact: true }).click();
+  await section.getByLabel("내 소개 수정").fill("내 소개만 수정한 내용입니다.");
+  await section.getByRole("button", { name: "소개 저장" }).click();
+  await expect(section.getByText("내 소개만 수정한 내용입니다.")).toBeVisible();
+  await section.getByRole("button", { name: "삭제", exact: true }).click();
+  await expect(section.getByText("내 소개만 수정한 내용입니다.")).toHaveCount(
+    0,
+  );
+  await expect(section.getByText(original.body)).toBeVisible();
+});
+
+test("proposals can be submitted without an introduction", async ({ page }) => {
+  let submission: { rationale?: string } | null = null;
+  await page.route("**/api/places/search", (route) =>
+    route.fulfill({
+      json: { internal: [internalPlace("새로 추천할 장소")], candidates: [] },
+    }),
+  );
+  await page.route("**/api/places/propose", (route) => {
+    submission = route.request().postDataJSON();
+    return route.fulfill({
+      json: { id: "proposal", status: "pending", created: true },
+    });
+  });
+  await open(page);
+  await page
+    .getByRole("textbox", { name: "제안할 장소 검색" })
+    .fill("새로 추천");
+  await page
+    .getByRole("button", { name: /새로 추천할 장소.*추천 가능/ })
+    .click();
+  await expect(page.getByLabel("한줄 소개 (선택)")).toHaveValue("");
+  await page.getByRole("button", { name: "제안 내용 확인" }).click();
+  await page.getByRole("button", { name: "장소 제안하기" }).click();
+  await expect.poll(() => submission).toMatchObject({ rationale: "" });
+});
 const internalPlace = (name: string, status: string | null = null) => ({
   id: "22222222-2222-4222-8222-222222222222",
   name,
@@ -454,14 +555,14 @@ test("existing statuses guide users and a selected place submits only once", asy
   await expect(page.getByText("선택한 장소: 확인할 가게")).toContainText(
     "서울 용산구",
   );
-  await page.getByLabel("추천하는 점 한 줄").fill("추천하는 이유입니다");
+  await page.getByLabel("한줄 소개 (선택)").fill("추천하는 이유입니다");
   await page.getByRole("button", { name: "제안 내용 확인" }).click();
   expect(count).toBe(0);
   await expect(
     page.getByRole("region", { name: "제출할 제안 내용" }),
   ).toContainText("추천하는 이유입니다");
   await page.getByRole("button", { name: "이전 단계" }).click();
-  await expect(page.getByLabel("추천하는 점 한 줄")).toHaveValue(
+  await expect(page.getByLabel("한줄 소개 (선택)")).toHaveValue(
     "추천하는 이유입니다",
   );
   await page.getByRole("button", { name: "제안 내용 확인" }).click();
@@ -633,13 +734,14 @@ test("manual entry validates fields, adjusts location and retains input after su
   await page.getByRole("button", { name: "이 장소로 계속" }).click();
   await page.getByRole("button", { name: "제안 내용 확인" }).click();
   await expect(
-    page.getByText("추천 이유를 5~1,000자로 입력해 주세요."),
+    page.getByRole("region", { name: "제출할 제안 내용" }),
   ).toBeVisible();
-  await page.getByLabel("추천하는 점 한 줄").fill("추천할 만한 가게입니다");
+  await page.getByRole("button", { name: "이전 단계" }).click();
+  await page.getByLabel("한줄 소개 (선택)").fill("추천할 만한 가게입니다");
   await page.getByRole("button", { name: "제안 내용 확인" }).click();
   await page.getByRole("button", { name: "장소 제안하기" }).click();
   await expect(page.getByText("일시적인 저장 오류")).toBeVisible();
-  await expect(page.getByLabel("추천하는 점 한 줄")).toHaveValue(
+  await expect(page.getByLabel("한줄 소개 (선택)")).toHaveValue(
     "추천할 만한 가게입니다",
   );
   expect(submissions[0]).toMatchObject({ lat: 37.5, lng: 127.1 });

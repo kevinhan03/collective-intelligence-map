@@ -45,9 +45,19 @@ it("validates creator limits, scopes and Instagram profile URLs without trusting
       action: "edit_place",
       mapId,
       id: mapId,
-      rationale: "4자",
+      rationale: "x".repeat(1001),
     }).success,
   ).toBe(false);
+});
+it("lets creators save an empty introduction", () => {
+  expect(
+    creatorCommandSchema.parse({
+      action: "edit_place",
+      mapId: "dd000000-0000-4000-8000-000000000001",
+      id: "dd000000-0000-4000-8000-000000000002",
+      rationale: " ",
+    }),
+  ).toMatchObject({ rationale: "" });
 });
 
 it("normalizes copied Instagram profile links without asserting identity", () => {

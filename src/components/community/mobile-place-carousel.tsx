@@ -210,9 +210,11 @@ export function MobilePlaceCarousel({
           >
             {stage === "summary" && (
               <div className="mobile-place-summary space-y-3">
-                <p className="line-clamp-2 text-sm leading-6 text-muted-foreground">
-                  {place.rationale}
-                </p>
+                {place.rationale && (
+                  <p className="line-clamp-2 text-sm leading-6 text-muted-foreground">
+                    {place.rationale}
+                  </p>
+                )}
                 <p className="text-xs text-muted-foreground">
                   {creator
                     ? "크리에이터가 직접 고른 장소"

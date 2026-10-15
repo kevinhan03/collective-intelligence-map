@@ -48,7 +48,8 @@ export default function MapLibreMap(props: MapProps) {
           [b.east, b.north],
         ],
         fitBoundsOptions: { padding: 35 },
-        attributionControl: {},
+        attributionControl: false,
+        locale: { "AttributionControl.ToggleAttribution": "지도 출처 보기" },
       });
     } catch {
       queueMicrotask(() => setError(true));
@@ -57,7 +58,17 @@ export default function MapLibreMap(props: MapProps) {
     instance.current = map;
     let disposeLabels: (() => void) | undefined;
     map.addControl(new maplibregl.NavigationControl(), "top-right");
+    map.addControl(
+      new maplibregl.AttributionControl({ compact: true }),
+      "top-left",
+    );
     map.on("load", () => {
+      // MapLibre initially expands compact attribution; start with its info button.
+      const attribution = map
+        .getContainer()
+        .querySelector<HTMLDetailsElement>(".maplibregl-ctrl-attrib");
+      attribution?.classList.remove("maplibregl-compact-show");
+      attribution?.removeAttribute("open");
       disposeLabels = configureBasemapLabels(map);
       setLoadedStyle(apiKey);
     });
@@ -228,7 +239,7 @@ export default function MapLibreMap(props: MapProps) {
     };
   }, [props.stationFocus, loadedStyle, apiKey]);
   return (
-    <div className="relative h-full min-h-[420px]">
+    <div className="maplibre-map relative h-full min-h-[420px]">
       <div ref={container} style={{ position: "absolute", inset: 0 }} />
       {loadedStyle !== apiKey && !error && (
         <div className="absolute inset-0 z-10">

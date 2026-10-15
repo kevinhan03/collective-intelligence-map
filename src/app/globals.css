@@ -4006,3 +4006,69 @@ body:has(.profile-page) {
     font-size: 10px;
   }
 }
+
+/* A dismissed mobile sheet leaves its rounded top edge at the bottom of the map. */
+@media (max-width: 1023px) {
+  .mobile-place-peek {
+    position: absolute;
+    z-index: 20;
+    inset-inline: 12px;
+    bottom: 0;
+    height: calc(44px + env(safe-area-inset-bottom));
+    border-radius: 24px 24px 0 0;
+    background: #202731;
+    box-shadow: 0 -2px 16px #0003;
+    touch-action: none;
+  }
+  .community-explorer .mobile-place-peek .place-sheet-handle {
+    width: 100%;
+    height: 44px;
+    min-height: 44px;
+    border-radius: 24px 24px 0 0;
+  }
+  .mobile-closed-controls {
+    bottom: calc(56px + env(safe-area-inset-bottom));
+  }
+}
+
+/* Keep source credits accessible without covering the mobile place sheet. */
+.maplibre-map .maplibregl-ctrl-top-left .maplibregl-ctrl-attrib {
+  box-sizing: border-box;
+  margin: 12px;
+  max-width: min(360px, calc(100vw - 24px));
+  font-size: 11px;
+  line-height: 1.6;
+}
+.maplibre-map .maplibregl-ctrl-attrib.maplibregl-compact {
+  min-height: 32px;
+  padding: 4px 32px 4px 8px;
+  border-radius: 16px;
+}
+.maplibre-map
+  .maplibregl-ctrl-attrib.maplibregl-compact:not(.maplibregl-compact-show) {
+  width: 32px;
+  padding: 0;
+}
+.maplibre-map
+  .maplibregl-ctrl-top-left
+  .maplibregl-ctrl-attrib.maplibregl-compact-show {
+  padding: 6px 8px 6px 40px;
+}
+.maplibre-map .maplibregl-ctrl-attrib-button {
+  width: 32px;
+  height: 32px;
+  background-position: center;
+}
+.maplibre-map .maplibregl-ctrl-attrib-button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+@media (max-width: 1023px) {
+  .community-explorer
+    .maplibre-map
+    .maplibregl-ctrl-top-left
+    .maplibregl-ctrl-attrib {
+    margin-top: calc(68px + env(safe-area-inset-top));
+    max-width: min(360px, calc(100vw - 88px));
+  }
+}

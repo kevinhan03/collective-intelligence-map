@@ -21,10 +21,7 @@ export function MobilePlaceCarousel({
   controls,
   demo,
   creator = false,
-  stage,
-  onStageChange,
   onClose,
-  showHint,
 }: {
   places: MapPlace[];
   activeId: string | null;
@@ -36,13 +33,10 @@ export function MobilePlaceCarousel({
   controls: ReactNode;
   demo: boolean;
   creator?: boolean;
-  stage: "collapsed" | "summary";
-  onStageChange: (stage: "collapsed" | "summary") => void;
   onClose: () => void;
-  showHint: boolean;
 }) {
   const card = useRef<HTMLElement>(null);
-  useSheetStageMotion(card, stage);
+  useSheetStageMotion(card, "summary");
   const track = useRef<HTMLDivElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const index = Math.max(
@@ -51,10 +45,9 @@ export function MobilePlaceCarousel({
   );
   const currentPlace = places[index];
   const expand = () => {
-    if (stage === "collapsed") onStageChange("summary");
-    else if (currentPlace) onOpen(currentPlace.id);
+    if (currentPlace) onOpen(currentPlace.id);
   };
-  const collapse = () => onStageChange("collapsed");
+  const collapse = onClose;
   const selectAdjacent = (direction: number) => {
     const next = index + direction;
     if (places[next]) onSelect(places[next].id);
@@ -108,7 +101,7 @@ export function MobilePlaceCarousel({
     });
     observer.observe(element);
     return () => observer.disconnect();
-  }, [index, places, stage]);
+  }, [index, places]);
   useEffect(
     () => () => {
       if (timer.current) clearTimeout(timer.current);
@@ -122,12 +115,12 @@ export function MobilePlaceCarousel({
       {...swipe}
       className="mobile-place-carousel"
       data-multiple={places.length > 1}
-      data-sheet-stage={stage}
+      data-sheet-stage="summary"
       aria-label="장소 미리보기"
     >
       <div className="place-sheet-drag-zone" {...drag}>
         <PlaceSheetHandle
-          stage={stage}
+          stage="summary"
           onExpand={expand}
           onCollapse={collapse}
         />
@@ -141,9 +134,6 @@ export function MobilePlaceCarousel({
             <X size={18} />
           </button>
         </div>
-        {showHint && (
-          <p className="place-sheet-intro">위로 올려 장소 정보 보기</p>
-        )}
       </div>
       <div className="mobile-place-meta flex items-center justify-between px-4">
         <span className="text-sm text-muted-foreground" aria-live="polite">
@@ -208,31 +198,29 @@ export function MobilePlaceCarousel({
             inert={i !== index}
             aria-hidden={i !== index}
           >
-            {stage === "summary" && (
-              <div className="mobile-place-summary space-y-3">
-                {place.rationale && (
-                  <p className="line-clamp-2 text-sm leading-6 text-muted-foreground">
-                    {place.rationale}
-                  </p>
-                )}
-                <p className="text-xs text-muted-foreground">
-                  {creator
-                    ? "크리에이터가 직접 고른 장소"
-                    : `주제 추천 ${place.positive} · 다른 의견 ${place.negative}`}
+            <div className="mobile-place-summary space-y-3">
+              {place.rationale && (
+                <p className="line-clamp-2 text-sm leading-6 text-muted-foreground">
+                  {place.rationale}
                 </p>
-                {i === index && (
-                  <PlacePhotos
-                    key={place.place_id}
-                    placeId={place.place_id}
-                    viewer={null}
-                    loginHref=""
-                    demo={demo}
-                    preview
-                    onOpenDetail={() => onOpen(place.id)}
-                  />
-                )}
-              </div>
-            )}
+              )}
+              <p className="text-xs text-muted-foreground">
+                {creator
+                  ? "크리에이터가 직접 고른 장소"
+                  : `주제 추천 ${place.positive} · 다른 의견 ${place.negative}`}
+              </p>
+              {i === index && (
+                <PlacePhotos
+                  key={place.place_id}
+                  placeId={place.place_id}
+                  viewer={null}
+                  loginHref=""
+                  demo={demo}
+                  preview
+                  onOpenDetail={() => onOpen(place.id)}
+                />
+              )}
+            </div>
           </article>
         ))}
       </div>

@@ -5,6 +5,7 @@ import { ProfilePresentation } from "@/components/creator/profile-presentation";
 import { useState } from "react";
 import { MobilePlaceList } from "@/components/community/mobile-place-list";
 import { MobileDiscovery } from "@/components/community/mobile-discovery";
+import { MobilePlacePeek } from "@/components/community/mobile-place-peek";
 import { MobilePlaceCarousel } from "@/components/community/mobile-place-carousel";
 import { PlaceDetail } from "@/components/community/place-detail";
 import type { PlaceSheetStage } from "@/hooks/use-place-sheet-drag";
@@ -171,16 +172,19 @@ function ListFixture() {
   );
 }
 function SheetFixture() {
-  const [stage, setStage] = useState<PlaceSheetStage>("collapsed");
+  const [stage, setStage] = useState<PlaceSheetStage>("summary");
   const [saved, setSaved] = useState(false);
   return (
     <section
       className="community-explorer"
       data-mobile-view="map"
-      style={{ height: "100dvh", position: "relative" }}
+      style={{ height: "100dvh", position: "fixed", inset: 0 }}
     >
       {stage === "closed" ? (
-        <button onClick={() => setStage("collapsed")}>다시 장소 선택</button>
+        <MobilePlacePeek
+          subject="장소 카드"
+          onExpand={() => setStage("summary")}
+        />
       ) : (
         <MobilePlaceCarousel
           places={[sheetPlace]}
@@ -192,10 +196,7 @@ function SheetFixture() {
           disabled={false}
           controls={<span>지도 / 목록</span>}
           demo={false}
-          stage={stage === "collapsed" ? "collapsed" : "summary"}
-          onStageChange={setStage}
           onClose={() => setStage("closed")}
-          showHint={false}
         />
       )}
       {stage === "detail" && (

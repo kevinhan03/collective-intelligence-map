@@ -63,7 +63,7 @@ export function usePlaceSheetDrag(
       )
         return;
       const element = event.currentTarget.closest<HTMLElement>(
-        ".mobile-place-carousel, .mobile-place-overview, .mobile-place-dialog",
+        ".mobile-place-carousel, .mobile-place-overview, .mobile-place-dialog, .mobile-place-peek",
       );
       if (!element) return;
       target.current = element;

@@ -59,6 +59,7 @@ import { boundsForPlaces } from "@/domain/map-bounds";
 import { CreatorMapReport } from "@/components/creator/map-report";
 import { PlaceDetail } from "./place-detail";
 import { MobilePlaceCarousel } from "./mobile-place-carousel";
+import { MobilePlacePeek } from "./mobile-place-peek";
 import { MobilePlaceList } from "./mobile-place-list";
 import { MobilePlaceOverview } from "./mobile-place-overview";
 import { PlacePreview } from "./place-preview";
@@ -201,21 +202,24 @@ export function CommunityExplorer({
       listElement.removeEventListener("scroll", update);
     };
   }, [listElement, mobile]);
-  function changeView(view: "list" | "map", fromProgress?: string) {
-    if (mobileView === "list") listScroll.current = window.scrollY;
-    if (view !== mobileView && explorerRoot.current) {
-      explorerRoot.current.style.setProperty(
-        "--view-start",
-        fromProgress ?? (mobileView === "list" ? "100%" : "0%"),
-      );
-      explorerRoot.current.dataset.viewTransition = view;
-    }
-    setMobileView(view);
-    if (view === "list")
-      requestAnimationFrame(() =>
-        window.scrollTo({ top: listScroll.current, behavior: "instant" }),
-      );
-  }
+  const changeView = useCallback(
+    (view: "list" | "map", fromProgress?: string) => {
+      if (mobileView === "list") listScroll.current = window.scrollY;
+      if (view !== mobileView && explorerRoot.current) {
+        explorerRoot.current.style.setProperty(
+          "--view-start",
+          fromProgress ?? (mobileView === "list" ? "100%" : "0%"),
+        );
+        explorerRoot.current.dataset.viewTransition = view;
+      }
+      setMobileView(view);
+      if (view === "list")
+        requestAnimationFrame(() =>
+          window.scrollTo({ top: listScroll.current, behavior: "instant" }),
+        );
+    },
+    [mobileView],
+  );
   const [searchOpen, setSearchOpen] = useState(false);
   const searchInput = useRef<HTMLInputElement>(null);
   const explorerRoot = useRef<HTMLElement>(null);
@@ -259,57 +263,34 @@ export function CommunityExplorer({
   const infoTrigger = useRef<HTMLButtonElement>(null);
   const [infoOpen, setInfoOpen] = useState(false);
   const [sheetStage, setSheetStage] = useState<PlaceSheetStage>("collapsed");
-  const [sheetHint, setSheetHint] = useState(false);
   const browsingSheetStage = useRef<"collapsed" | "summary">("collapsed");
   const placeTrigger = useRef<HTMLElement | null>(null);
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      try {
-        setSheetHint(sessionStorage.getItem("place-sheet-expanded") !== "true");
-      } catch {
-        setSheetHint(true);
-      }
-    }, 0);
-    return () => clearTimeout(timer);
-  }, []);
   function changeSheetStage(stage: PlaceSheetStage) {
     setSheetStage(stage);
     if (stage === "collapsed" || stage === "summary")
       browsingSheetStage.current = stage;
-    if (stage === "summary" || stage === "detail") {
-      setSheetHint(false);
-      try {
-        sessionStorage.setItem("place-sheet-expanded", "true");
-      } catch {
-        /* Storage may be unavailable. */
-      }
-    }
   }
   function closeSheet() {
     setRestoreBounds(viewport);
     setSheetStage("closed");
-    browsingSheetStage.current = "collapsed";
+    browsingSheetStage.current = "summary";
+    if (detailId) setPreviewId(detailId);
     setDetailId(null);
-    setPreviewId(null);
     setSelected(null);
     setStationFocus(null);
     setSearchStationHighlighted(false);
     requestAnimationFrame(() => {
-      if (placeTrigger.current?.isConnected)
+      const handle = explorerRoot.current?.querySelector<HTMLElement>(
+        ".mobile-place-peek .place-sheet-handle",
+      );
+      if (handle) handle.focus({ preventScroll: true });
+      else if (placeTrigger.current?.isConnected)
         placeTrigger.current.focus({ preventScroll: true });
       else
         explorerRoot.current
           ?.querySelector<HTMLElement>(".explorer-toolbar button")
           ?.focus({ preventScroll: true });
     });
-  }
-  function backToOverview() {
-    setRestoreBounds(viewport);
-    setDetailId(null);
-    setPreviewId(null);
-    setSelected(null);
-    setStationFocus(null);
-    setSearchStationHighlighted(false);
   }
   function collapseDetail() {
     setDetailId(null);
@@ -472,7 +453,7 @@ export function CommunityExplorer({
     return () => window.clearTimeout(timer);
   }, [mobile, activePreviewId, detailId, previewId, region, sheetStage]);
   const selectPreview = (id: string) => {
-    if (sheetStage === "closed") setSheetStage("collapsed");
+    changeSheetStage("summary");
     setRestoreBounds(null);
     setSearchStationHighlighted(false);
     setOpenedSearchPlace(filtered.find((p) => p.id === id) ?? null);
@@ -624,9 +605,7 @@ export function CommunityExplorer({
   const focusPlace = useCallback(
     (id: string) => {
       placeTrigger.current = document.activeElement as HTMLElement | null;
-      setSheetStage((current) =>
-        current === "closed" ? "collapsed" : current,
-      );
+      if (mobile) changeSheetStage("summary");
       setRestoreBounds(null);
       setSearchStationHighlighted(false);
       setOpenedSearchPlace(filtered.find((p) => p.id === id) ?? null);
@@ -643,10 +622,11 @@ export function CommunityExplorer({
           });
           return;
         }
+        changeView("map");
+        setDetailId(null);
         setPreviewId(id);
-        changeSheetStage("detail");
-        setDetailId(id);
-        trackCommunityEvent("place_detail_opened", {
+        setFocusRequest((request) => request + 1);
+        trackCommunityEvent("place_preview_opened", {
           entry: "list",
           provider: config.provider,
         });
@@ -659,7 +639,7 @@ export function CommunityExplorer({
       setDetailId((current) => (current ? id : null));
       setFocusRequest((request) => request + 1);
     },
-    [config.provider, mobile, mobileView, filtered],
+    [config.provider, mobile, mobileView, filtered, changeView],
   );
   const openSearchSelection = useEffectEvent((id: string) => {
     setSearchSelection(null);
@@ -1711,16 +1691,24 @@ export function CommunityExplorer({
           {mobile ? (
             filtered.length ? (
               sheetStage === "closed" ? (
-                <div className="mobile-closed-controls">
-                  <button
-                    type="button"
-                    className="mobile-result-count"
-                    onClick={() => setSheetStage("collapsed")}
-                  >
-                    {resultCount}곳
-                  </button>
-                  {mobileControls}
-                </div>
+                <>
+                  <MobilePlacePeek
+                    subject={
+                      filtered.some((p) => p.id === previewId)
+                        ? "장소 카드"
+                        : "장소 목록"
+                    }
+                    onExpand={() => {
+                      changeSheetStage("summary");
+                      setSelected(
+                        filtered.some((p) => p.id === previewId)
+                          ? previewId
+                          : null,
+                      );
+                    }}
+                  />
+                  <div className="mobile-closed-controls">{mobileControls}</div>
+                </>
               ) : !activePreviewId ? (
                 <MobilePlaceOverview
                   demo={demo}
@@ -1731,7 +1719,6 @@ export function CommunityExplorer({
                   controls={mobileControls}
                   places={filtered}
                   onOpen={(id) => {
-                    changeSheetStage("collapsed");
                     selectPreview(id);
                   }}
                   onSave={(id) => void savePlace(id)}
@@ -1742,10 +1729,7 @@ export function CommunityExplorer({
                 <MobilePlaceCarousel
                   creator={map.kind === "creator"}
                   demo={demo}
-                  stage={sheetStage === "collapsed" ? "collapsed" : "summary"}
-                  onStageChange={changeSheetStage}
-                  onClose={backToOverview}
-                  showHint={sheetHint && sheetStage === "collapsed"}
+                  onClose={closeSheet}
                   controls={mobileControls}
                   places={filtered}
                   activeId={activePreviewId}

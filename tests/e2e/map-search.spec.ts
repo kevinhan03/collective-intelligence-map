@@ -77,7 +77,7 @@ for (const action of ["suggestion", "enter"] as const) {
     if (action === "suggestion") await option.click();
     else await input.press("Enter");
     await expect(
-      page.locator(".mobile-place-carousel").getByRole("heading"),
+      page.locator(".mobile-place-carousel").getByRole("heading", { level: 2 }),
     ).toHaveText("Remote Place 525");
     await expect(
       page.locator('.map-pin[data-selected="true"]'),

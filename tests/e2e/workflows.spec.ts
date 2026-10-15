@@ -970,7 +970,9 @@ for (const photoCount of [0, 1, 6, -1]) {
       ),
     );
     await page.route("**/api/map-places/**", (route) =>
-      route.fulfill({ json: { comments: [], checks: [], summary: {} } }),
+      route.fulfill({
+        json: { comments: [], checks: [], introductions: [], summary: {} },
+      }),
     );
     await page.route("**/api/places/*/stations", (route) =>
       route.fulfill({ json: { stations: [], available: false } }),
@@ -986,19 +988,19 @@ for (const photoCount of [0, 1, 6, -1]) {
     for (const width of [320, 390, 768]) {
       await page.setViewportSize({ width, height: 740 });
       const card = page.locator(".mobile-place-carousel");
-      await expect(card).toHaveAttribute("data-sheet-stage", "collapsed");
-      const name = await card.getByRole("heading").innerText();
+      await expect(card).toHaveAttribute("data-sheet-stage", "summary");
+      const name = await card.getByRole("heading", { level: 2 }).innerText();
       await page.screenshot({
-        path: `artifacts/sheet-collapsed-${photoCount}-${width}.png`,
+        path: `artifacts/sheet-summary-title-${photoCount}-${width}.png`,
       });
-      const title = (await card.getByRole("heading").boundingBox())!;
+      const title = (await card
+        .getByRole("heading", { level: 2 })
+        .boundingBox())!;
       const close = (await card
         .getByRole("button", { name: "장소 카드 닫기" })
         .boundingBox())!;
       expect(title.x + title.width).toBeLessThanOrEqual(close.x);
-      await card
-        .getByRole("button", { name: "장소 카드 펼치기", exact: true })
-        .click();
+
       const preview = card.getByRole("region", {
         name: "방문자 사진 미리보기",
       });
@@ -1024,7 +1026,10 @@ for (const photoCount of [0, 1, 6, -1]) {
         .locator(".place-save-bar")
         .boundingBox())!;
       const scroll = detail.locator(".place-detail-scroll");
-      const reasons = detail.getByText("이 테마에 추천하는 이유");
+      const reasons = detail.getByRole("region", {
+        name: "장소 소개",
+        exact: true,
+      });
       const photoSection = detail.getByRole("region", {
         name: "방문자 사진",
         exact: true,
@@ -1059,7 +1064,15 @@ for (const photoCount of [0, 1, 6, -1]) {
         .getByRole("button", { name: "장소 상세 닫기", exact: true })
         .click();
       await expect(card).toHaveCount(0);
-      await page.getByRole("button", { name: "다시 장소 선택" }).click();
+      const peek = page.getByRole("region", { name: "접힌 장소 카드" });
+      await expect(peek).toBeVisible();
+      const peekBox = (await peek.boundingBox())!;
+      expect(peekBox.width).toBeGreaterThan(width - 30);
+      expect(peekBox.height).toBeLessThanOrEqual(60);
+      expect(peekBox.y + peekBox.height).toBeCloseTo(740, 0);
+      await peek
+        .getByRole("button", { name: "장소 카드 펼치기", exact: true })
+        .click();
     }
     expect(duplicateKeyWarnings).toEqual([]);
   });

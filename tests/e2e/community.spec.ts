@@ -387,7 +387,7 @@ test("mobile view switching preserves scroll position and detail returns focus",
     name: "Second Chapter 미리보기",
   });
   await expect(
-    page.locator(".mobile-place-carousel").getByRole("heading"),
+    page.locator(".mobile-place-carousel").getByRole("heading", { level: 2 }),
   ).toHaveText("Second Chapter");
   await expect(page.getByRole("dialog")).toBeHidden();
   await expandMobileDetail(page);
@@ -534,9 +534,7 @@ for (const width of [360, 390, 430, 768, 1024, 1440, 1920]) {
       await expect(carousel).toBeVisible();
       const cardBox = (await carousel.boundingBox())!;
       expect(900 - cardBox.y - cardBox.height).toBeCloseTo(10, 0);
-      await carousel
-        .getByRole("button", { name: "장소 카드 펼치기", exact: true })
-        .click();
+      await expect(carousel).toHaveAttribute("data-sheet-stage", "summary");
       const trackBox = (await carousel
         .locator(".mobile-place-track")
         .boundingBox())!;
@@ -545,18 +543,24 @@ for (const width of [360, 390, 430, 768, 1024, 1440, 1920]) {
         .first()
         .boundingBox())!;
       expect(currentCard.width).toBeCloseTo(trackBox.width, 0);
-      const initialTitle = await carousel.getByRole("heading").innerText();
+      const initialTitle = await carousel
+        .getByRole("heading", { level: 2 })
+        .innerText();
       await expect(
         carousel.getByRole("button", { name: "이전 장소", exact: true }),
       ).toBeDisabled();
       await carousel
         .getByRole("button", { name: "다음 장소", exact: true })
         .click();
-      await expect(carousel.getByRole("heading")).not.toHaveText(initialTitle);
+      await expect(carousel.getByRole("heading", { level: 2 })).not.toHaveText(
+        initialTitle,
+      );
       await carousel
         .getByRole("button", { name: "이전 장소", exact: true })
         .click();
-      await expect(carousel.getByRole("heading")).toHaveText(initialTitle);
+      await expect(carousel.getByRole("heading", { level: 2 })).toHaveText(
+        initialTitle,
+      );
       await expect(
         page.locator(".map-pin-votes, .map-marker-votes"),
       ).toHaveCount(0);
@@ -574,14 +578,20 @@ for (const width of [360, 390, 430, 768, 1024, 1440, 1920]) {
       await expect(
         page.getByRole("navigation", { name: "모바일 주요 메뉴" }),
       ).toBeHidden();
-      const before = await carousel.getByRole("heading").innerText();
+      const before = await carousel
+        .getByRole("heading", { level: 2 })
+        .innerText();
       await page
         .locator(".mobile-place-track")
         .evaluate((element) =>
           element.scrollTo({ left: element.clientWidth, behavior: "instant" }),
         );
-      await expect(carousel.getByRole("heading")).not.toHaveText(before);
-      const after = await carousel.getByRole("heading").innerText();
+      await expect(carousel.getByRole("heading", { level: 2 })).not.toHaveText(
+        before,
+      );
+      const after = await carousel
+        .getByRole("heading", { level: 2 })
+        .innerText();
       await expect(
         page.getByRole("button", {
           name: `${after} 지도에서 선택`,
@@ -600,8 +610,13 @@ for (const width of [360, 390, 430, 768, 1024, 1440, 1920]) {
         page.getByRole("button", { name: "장소 상세 펼치기", exact: true }),
       ).toBeFocused();
       await search.fill("no-matching-place");
-      await expect(page.getByText("조건에 맞는 장소가 없어요.")).toBeVisible();
+      await expect(
+        page
+          .locator(".mobile-map-empty")
+          .getByText("조건에 맞는 장소가 없어요."),
+      ).toBeVisible();
       await page
+        .locator(".mobile-map-empty")
         .getByRole("button", { name: "검색 조건 초기화", exact: true })
         .click();
       await expect(page.locator(".mobile-place-overview")).toBeVisible();
@@ -674,15 +689,15 @@ test("mobile enlarged content and carousel scrolling remain usable", async ({
   await openFirstMobilePlace(page);
   const carousel = page.getByRole("region", { name: "장소 미리보기" });
   await expect(carousel).toBeVisible();
-  await carousel
-    .getByRole("button", { name: "장소 카드 펼치기", exact: true })
-    .click();
+  await expect(carousel).toHaveAttribute("data-sheet-stage", "summary");
   await page
     .locator(".mobile-place-track")
     .evaluate((element) =>
       element.scrollTo({ left: element.clientWidth * 2, behavior: "instant" }),
     );
-  await expect(carousel.getByRole("heading")).toHaveText("Second Chapter");
+  await expect(carousel.getByRole("heading", { level: 2 })).toHaveText(
+    "Second Chapter",
+  );
   await page.getByRole("button", { name: "장소 검색 열기" }).click();
   await page.locator(".mobile-map-filter-menu summary").click();
   await page
@@ -899,3 +914,77 @@ for (const width of [320, 390, 768]) {
     await expect(logo).toBeVisible();
   });
 }
+
+test("mobile place opens its summary and dismisses to a bottom sheet edge", async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(!isMobile);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/maps/tokyo-fashion");
+  await openFirstMobilePlace(page);
+  const card = page.getByRole("region", { name: "장소 미리보기" });
+  await expect(card).toHaveAttribute("data-sheet-stage", "summary");
+  await expect(
+    card.locator(
+      '.mobile-place-slide[aria-hidden="false"] .mobile-place-summary',
+    ),
+  ).toBeVisible();
+  const firstName = await card.getByRole("heading", { level: 2 }).innerText();
+  await expect(
+    card.getByRole("button", { name: "이전 장소", exact: true }),
+  ).toBeDisabled();
+  await card.getByRole("button", { name: "다음 장소", exact: true }).click();
+  await expect(card.getByRole("heading", { level: 2 })).not.toHaveText(
+    firstName,
+  );
+  const nextName = await card.getByRole("heading", { level: 2 }).innerText();
+  await card
+    .getByRole("button", { name: "장소 카드 닫기", exact: true })
+    .click();
+  await expect(card).toHaveCount(0);
+  await expect(page.locator(".mobile-result-count")).toHaveCount(0);
+  const peek = page.getByRole("region", { name: "접힌 장소 카드" });
+  await expect(peek).toBeVisible();
+  const box = (await peek.boundingBox())!;
+  expect(box.width).toBeGreaterThan(page.viewportSize()!.width - 30);
+  expect(box.height).toBeLessThanOrEqual(60);
+  expect(box.y + box.height).toBeCloseTo(page.viewportSize()!.height, 0);
+  await expect(
+    page.getByRole("button", { name: "목록 보기", exact: true }),
+  ).toBeVisible();
+  const handle = peek.getByRole("button", {
+    name: "장소 카드 펼치기",
+    exact: true,
+  });
+  await expect(handle).toBeFocused();
+  await handle.press("ArrowUp");
+  await expect(card).toHaveAttribute("data-sheet-stage", "summary");
+  await expect(card.getByRole("heading", { level: 2 })).toHaveText(nextName);
+  await card.getByRole("button", { name: "이전 장소", exact: true }).click();
+  await expect(card.getByRole("heading", { level: 2 })).toHaveText(firstName);
+  await card
+    .getByRole("button", { name: "장소 상세 펼치기", exact: true })
+    .press("ArrowDown");
+  await expect(peek).toBeVisible();
+  await handle.click();
+  await card
+    .getByRole("button", { name: "장소 상세 펼치기", exact: true })
+    .click();
+  const detail = page.getByRole("dialog", { name: `${firstName} 장소 상세` });
+  await expect(detail).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(card).toHaveAttribute("data-sheet-stage", "summary");
+  await page.getByRole("button", { name: "목록 보기", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Second Chapter", exact: true })
+    .click();
+  await expect(page.locator(".community-explorer")).toHaveAttribute(
+    "data-mobile-view",
+    "map",
+  );
+  await expect(card).toHaveAttribute("data-sheet-stage", "summary");
+  await expect(card.getByRole("heading", { level: 2 })).toHaveText(
+    "Second Chapter",
+  );
+});

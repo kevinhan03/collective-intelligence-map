@@ -711,6 +711,50 @@ export function CommunityExplorer({
     requestedPlaceId,
     requestedProposalId,
   ]);
+  const emptyMap = map.place_count === 0 && places.length === 0;
+  const hasSearchFilters = Boolean(query.trim() || searchStation || region);
+  const canSuggestPlace = map.kind !== "creator" && !readOnly && !demo;
+  const emptyState = (
+    <>
+      <h2 role="status" className="font-medium">
+        {emptyMap ? "아직 등록된 장소가 없어요." : "조건에 맞는 장소가 없어요."}
+      </h2>
+      <p className="text-sm leading-6 text-muted-foreground">
+        {emptyMap
+          ? map.kind === "creator"
+            ? "크리에이터가 장소를 추가하면 이 지도에서 볼 수 있어요."
+            : canSuggestPlace
+              ? "이 주제에 어울리는 첫 장소를 제안해 주세요."
+              : "장소가 추가되면 이 지도에서 볼 수 있어요."
+          : "검색어나 지역 필터를 바꿔서 다시 찾아보세요."}
+      </p>
+      {!emptyMap && hasSearchFilters && (
+        <Button
+          variant="outline"
+          onClick={() => {
+            clearSearch();
+            setRegion("");
+          }}
+        >
+          검색 조건 초기화
+        </Button>
+      )}
+      {emptyMap && canSuggestPlace && (
+        <Button asChild>
+          <Link href={`/maps/${map.slug}/submit`} prefetch={false}>
+            <Plus size={15} aria-hidden="true" /> 첫 장소 제안하기
+          </Link>
+        </Button>
+      )}
+      {emptyMap && map.kind === "creator" && !readOnly && (
+        <Button asChild variant="outline">
+          <Link href={`/u/${map.creator_handle ?? ""}`} prefetch={false}>
+            크리에이터 프로필
+          </Link>
+        </Button>
+      )}
+    </>
+  );
   const mobileControls = (
     <div className="mobile-view-controls lg:hidden">
       <div
@@ -1546,35 +1590,13 @@ export function CommunityExplorer({
             })}
           {filtered.length === 0 && !search.loading && !search.error && (
             <div className="px-8 py-18 text-center">
-              <MapPin className="mx-auto mb-4 text-muted-foreground" />
-              <h2 className="font-medium">아직 발견된 장소가 없어요.</h2>
-              <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                다른 조건으로 찾아보거나,
-                <br />이 주제에 맞는 첫 장소를 제안해 주세요.
-              </p>
-              {query && (
-                <Button
-                  variant="secondary"
-                  className="mt-5 mr-2"
-                  onClick={clearSearch}
-                >
-                  검색 조건 초기화
-                </Button>
-              )}
-              <Button asChild variant="outline" className="mt-5">
-                <Link
-                  href={
-                    map.kind === "creator"
-                      ? `/u/${map.creator_handle ?? ""}`
-                      : `/maps/${map.slug}/submit`
-                  }
-                  prefetch={false}
-                >
-                  {map.kind === "creator"
-                    ? "크리에이터 프로필"
-                    : "장소 제안하기"}
-                </Link>
-              </Button>
+              <MapPin
+                className="mx-auto mb-4 text-muted-foreground"
+                aria-hidden="true"
+              />
+              <div className="grid justify-items-center gap-3">
+                {emptyState}
+              </div>
             </div>
           )}
           {(search.active
@@ -1740,23 +1762,7 @@ export function CommunityExplorer({
               )
             ) : (
               <div className="mobile-map-empty">
-                <p role="status">조건에 맞는 장소가 없어요.</p>
-                <button
-                  aria-label="빈 결과를 목록으로 보기"
-                  className="text-sm underline"
-                  onClick={() => changeView("list")}
-                >
-                  목록 보기
-                </button>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    clearSearch();
-                    setRegion("");
-                  }}
-                >
-                  검색 조건 초기화
-                </Button>
+                {!search.loading && !search.error && emptyState}
                 <div className="mobile-explorer-actions">{mobileControls}</div>
               </div>
             )

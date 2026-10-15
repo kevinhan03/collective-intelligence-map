@@ -1,6 +1,14 @@
 .discovery {
   padding: 4px 0 76px;
 }
+.introduction {
+  margin: 0 12px 20px;
+  color: var(--foreground);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+}
 .stories {
   display: grid;
   grid-template-columns: minmax(0, 1fr);

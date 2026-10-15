@@ -134,6 +134,10 @@ export function MobileDiscovery({
       aria-label="테마지도 탐색"
     >
       <h1 className="sr-only">취향으로 찾는 테마지도</h1>
+      <p className={styles.introduction}>
+        <span className="text-primary">취향 있는 사람들</span>의 추천을 모은
+        테마별 지도
+      </p>
       <span role="status" className="sr-only">
         {results.length}개 지도
       </span>

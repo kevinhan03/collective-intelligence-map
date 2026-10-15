@@ -80,10 +80,7 @@ async function HomeContent() {
               <span className="block">더 잘 아니까.</span>
             </h1>
             <p className="mt-5 max-w-lg text-sm leading-7 text-muted-foreground">
-              별점만으로는 알 수 없는 장소의 이야기.
-              <br />
-              관심사가 같은 사람들과 추천하고 검증하며, 나에게 맞는 곳을
-              발견하세요.
+              취향 있는 사람들의 추천을 모은 테마별 지도
             </p>
             <div className="mt-[60px] max-w-lg border-t border-white/15 pt-5">
               <p className="kicker mb-3">How it works</p>

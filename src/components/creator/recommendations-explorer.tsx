@@ -234,6 +234,7 @@ export function RecommendationsExplorer({
         </div>
         {current && (
           <PlaceDetail
+            mapTitle={current.source_map_title}
             key={current.id}
             place={current}
             userLocation={null}

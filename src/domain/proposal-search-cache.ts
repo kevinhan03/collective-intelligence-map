@@ -16,7 +16,29 @@ export type ProposalSearchResult = {
   session?: string;
   translationAvailable?: boolean;
   coverage?: "partial";
+  /** External search was skipped because a usage limit was reached. */
+  externalLimit?: ExternalSearchLimit;
 };
+export type ExternalSearchLimit =
+  { kind: "user"; retryAfterMinutes: number | null } | { kind: "budget" };
+/** Reads the hint attached by `private.reserve_provider` to a limit error. */
+export function parseExternalSearchLimit(
+  hint: string | null | undefined,
+): ExternalSearchLimit | null {
+  if (hint === "provider_budget") return { kind: "budget" };
+  const match = /^retry_after_minutes=(\d+)$/.exec(hint ?? "");
+  if (match) return { kind: "user", retryAfterMinutes: Number(match[1]) };
+  return null;
+}
+/** User-facing explanation; internal results stay usable either way. */
+export function externalSearchLimitMessage(limit: ExternalSearchLimit) {
+  if (limit.kind === "budget")
+    return "오늘은 외부 장소 검색을 더 할 수 없어요. 이미 등록된 장소에서 고르거나 직접 등록해 주세요.";
+  const wait = limit.retryAfterMinutes
+    ? `약 ${limit.retryAfterMinutes}분 뒤`
+    : "잠시 후";
+  return `외부 장소 검색을 잠시 쉬어 갈게요. ${wait} 다시 검색할 수 있어요. 그동안 이미 등록된 장소에서 고르거나 직접 등록할 수 있어요.`;
+}
 /** Per-mounted-form memory only; never persisted or shared between viewers. */
 export class ProposalSearchCache {
   private entries = new Map<

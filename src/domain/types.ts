@@ -52,6 +52,9 @@ export type Comment = {
   body: string;
   created_at: string;
   handle: string;
+  avatar_path?: string | null;
+  likes?: number;
+  liked?: boolean;
 };
 export type Viewer = {
   id: string;

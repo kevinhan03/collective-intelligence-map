@@ -7,7 +7,7 @@ import { getSearchMap } from "./search-map";
 import { HttpError } from "@/server/http";
 import { routeProvider } from "./provider-router";
 import { signCandidate, verifyCandidate } from "./candidate-token";
-import { metered } from "./usage";
+import { metered, ProviderLimitError } from "./usage";
 import { japaneseSearchAliases } from "./gemini-search-alias";
 import { searchScope, withinSearchScope } from "@/domain/search-scope";
 import type { SearchTiming } from "./search-timing";
@@ -120,20 +120,34 @@ async function runSearchPlaces(
   const { name, adapter } = routeProvider(map.country, searchScope(map));
   const session = input.session ?? crypto.randomUUID();
   productEvent("place_search_external", { mapId: map.id });
-  let candidates = await measure("regional", () =>
-    name === "overture"
-      ? adapter.search(input.query, { map, session })
-      : metered(
-          {
-            provider: name,
-            operation: "keyword",
-            userId: viewer.id,
-            mapId: map.id,
-            session,
-          },
-          () => adapter.search(input.query, { map, session }),
-        ),
-  );
+  let candidates: Awaited<ReturnType<typeof adapter.search>>;
+  try {
+    candidates = await measure("regional", () =>
+      name === "overture"
+        ? adapter.search(input.query, { map, session })
+        : metered(
+            {
+              provider: name,
+              operation: "keyword",
+              userId: viewer.id,
+              mapId: map.id,
+              session,
+            },
+            () => adapter.search(input.query, { map, session }),
+          ),
+    );
+  } catch (error) {
+    // A usage limit only blocks the external lookup; places already on the
+    // service remain selectable.
+    if (!(error instanceof ProviderLimitError)) throw error;
+    productEvent("place_search_external_limited", { mapId: map.id });
+    return {
+      internal: internalWithStatus,
+      candidates: [],
+      ...metadata,
+      externalLimit: error.limit,
+    };
+  }
   // English-only queries with no Japanese Overture match get one cached Gemini
   // fallback. It translates the query, never provider place data.
   const translationAvailable =

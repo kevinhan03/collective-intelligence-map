@@ -5,6 +5,9 @@ import type { Comment, MapPlace, Viewer } from "@/domain/types";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { post } from "./api";
+import { DropdownMenu } from "radix-ui";
+import { MoreHorizontal } from "lucide-react";
+import { SingleLineText } from "./single-line-text";
 
 export function PlaceIntroductions({
   place,
@@ -62,36 +65,68 @@ export function PlaceIntroductions({
     setText("");
     setError("");
   }
+  const menu = !readOnly && !demo && publicPlace && !open && (
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger asChild>
+        <button
+          type="button"
+          className="introduction-menu-trigger detail-icon-action"
+          aria-label="장소 소개 메뉴"
+        >
+          <MoreHorizontal size={20} aria-hidden="true" />
+        </button>
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content
+          className="place-context-menu"
+          align="end"
+          sideOffset={4}
+        >
+          <DropdownMenu.Item
+            className="place-context-menu-item"
+            asChild={!viewer}
+            onSelect={viewer ? () => setOpen(true) : undefined}
+          >
+            {viewer ? (
+              "소개 추가하기"
+            ) : (
+              <Link href={loginHref}>로그인하고 소개 추가하기</Link>
+            )}
+          </DropdownMenu.Item>
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
+  );
   return (
     <section
-      className="rounded-xl bg-secondary/60 p-5 space-y-4"
+      className="place-introductions relative rounded-2xl p-5 space-y-4"
       aria-label="장소 소개"
     >
-      <div className="flex items-center justify-between gap-3">
-        <h3 className="text-sm font-semibold">장소 소개</h3>
-        {enabled && !open && (
-          <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
-            소개 추가하기
-          </Button>
-        )}
-      </div>
       {place.rationale && (
-        <article>
+        <article className="introduction-primary">
           <p className="whitespace-pre-wrap text-sm leading-7">
             {place.rationale}
           </p>
-          <p className="mt-2 text-xs text-muted-foreground">
-            {place.added_by ? (
-              <Link href={`/u/${place.handle}`}>@{place.handle}</Link>
-            ) : (
-              place.handle
-            )}{" "}
-            · 등록자의 소개
-          </p>
+          <div className="introduction-attribution">
+            <p className="text-xs text-muted-foreground">
+              {place.added_by ? (
+                <Link href={`/u/${place.handle}`}>@{place.handle}</Link>
+              ) : (
+                place.handle
+              )}{" "}
+              · 등록자의 소개
+            </p>
+            {menu}
+          </div>
         </article>
       )}
+      {!place.rationale && menu && (
+        <div className="introduction-attribution introduction-attribution-empty">
+          {menu}
+        </div>
+      )}
       {entries.map((entry) => (
-        <article key={entry.id} className="border-t pt-3">
+        <article key={entry.id} className="pt-2">
           <p className="whitespace-pre-wrap text-sm leading-7">{entry.body}</p>
           <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
             {entry.author_id ? (
@@ -170,15 +205,19 @@ export function PlaceIntroductions({
         </p>
       )}
       {!open && !readOnly && !demo && publicPlace && (
-        <p className="text-xs text-muted-foreground">
+        <div className="introduction-helper text-muted-foreground">
           {viewer ? (
-            "등록자가 아니어도 이 장소의 특징과 추천하는 점을 소개할 수 있어요."
+            <SingleLineText maxFontSize={13}>
+              {
+                "등록자가 아니어도 이 장소의 특징과 추천하는 점을 소개할 수 있어요."
+              }
+            </SingleLineText>
           ) : (
             <Link href={loginHref} className="text-primary underline">
               로그인하고 소개 추가하기
             </Link>
           )}
-        </p>
+        </div>
       )}
       {!readOnly && !demo && !publicPlace && (
         <p className="text-xs text-muted-foreground">

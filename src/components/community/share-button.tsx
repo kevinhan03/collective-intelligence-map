@@ -3,7 +3,15 @@ import { useState } from "react";
 import { Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-export function ShareButton({ path, title }: { path: string; title: string }) {
+export function ShareButton({
+  path,
+  title,
+  iconOnly = false,
+}: {
+  path: string;
+  title: string;
+  iconOnly?: boolean;
+}) {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   async function share() {
@@ -25,19 +33,32 @@ export function ShareButton({ path, title }: { path: string; title: string }) {
     }
   }
   return (
-    <span className="inline-flex flex-col items-start gap-1">
+    <span
+      className={
+        iconOnly
+          ? "detail-share-action"
+          : "inline-flex flex-col items-start gap-1"
+      }
+    >
       <Button
         type="button"
-        size="sm"
-        variant="outline"
+        size={iconOnly ? "icon" : "sm"}
+        variant={iconOnly ? "ghost" : "outline"}
+        className={iconOnly ? "detail-icon-action" : undefined}
         disabled={busy}
         onClick={share}
         aria-label={`${title} 공유`}
       >
-        <Share2 size={14} aria-hidden="true" /> 공유
+        <Share2 size={iconOnly ? 21 : 14} aria-hidden="true" />
+        {!iconOnly && "공유"}
       </Button>
       {message && (
-        <span role="status" className="text-xs text-muted-foreground">
+        <span
+          role="status"
+          className={
+            iconOnly ? "detail-share-feedback" : "text-xs text-muted-foreground"
+          }
+        >
           {message}
         </span>
       )}

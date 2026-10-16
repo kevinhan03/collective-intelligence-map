@@ -836,6 +836,14 @@ export type Database = {
         Args: { m: string; b: string; c?: string };
         Returns: string;
       };
+      place_comment_thread: {
+        Args: { m: string; page_offset?: number; page_size?: number };
+        Returns: Json;
+      };
+      set_comment_like: {
+        Args: { c: string; enabled: boolean };
+        Returns: Json;
+      };
       expire_photo_uploads: { Args: never; Returns: string[] };
       fail_place_photo: {
         Args: { p_id: string; p_lease: string };

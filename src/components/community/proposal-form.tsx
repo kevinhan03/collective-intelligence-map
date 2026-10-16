@@ -32,6 +32,8 @@ import { loginHref } from "@/domain/login-return";
 import { normalizeProposalQuery, searchScope } from "@/domain/search-scope";
 import {
   ProposalSearchCache,
+  externalSearchLimitMessage,
+  type ExternalSearchLimit,
   type ProposalSearchResult,
   type InternalProposalPlace as Internal,
 } from "@/domain/proposal-search-cache";
@@ -106,6 +108,9 @@ export function ProposalForm({
   const [composing, setComposing] = useState(false);
   const [rationale, setRationale] = useState("");
   const [searchError, setSearchError] = useState("");
+  const [externalLimit, setExternalLimit] =
+    useState<ExternalSearchLimit | null>(null);
+  const manualToggle = useRef<HTMLDetailsElement>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const searchController = useRef<AbortController | null>(null);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -190,6 +195,7 @@ export function ProposalForm({
     setFieldErrors({});
     setSearchError("");
     setTranslationAvailable(false);
+    setExternalLimit(null);
     setManualCountry("");
     searchCache.current.clear();
   }
@@ -221,6 +227,7 @@ export function ProposalForm({
     setBusy(true);
     setSearching(true);
     setSearchError("");
+    setExternalLimit(null);
     setSelection(null);
     setManual(false);
     setExistingPlace(null);
@@ -236,9 +243,12 @@ export function ProposalForm({
           controller.signal,
         ));
       if (requestId.current !== id || controller.signal.aborted) return;
-      if (!cached) searchCache.current.set(key, result);
+      // A limited result is retried once the window reopens, so it is not cached.
+      if (!cached && !result.externalLimit)
+        searchCache.current.set(key, result);
       setResultQuery(normalizeProposalQuery(keyword));
       setTranslationAvailable(Boolean(result.translationAvailable));
+      setExternalLimit(result.externalLimit ?? null);
       setInternal(result.internal);
       setCandidates(result.candidates);
       setSearched(true);
@@ -458,6 +468,7 @@ export function ProposalForm({
                 setSearched(false);
                 setShowRelated(false);
                 setTranslationAvailable(false);
+                setExternalLimit(null);
                 setSearchError("");
                 const inComposition =
                   composing || (e.nativeEvent as InputEvent).isComposing;
@@ -622,6 +633,7 @@ export function ProposalForm({
             !searching &&
             !resultStale &&
             !searchError &&
+            !externalLimit &&
             !internal.length &&
             !candidates.length && (
               <p className="text-sm text-muted-foreground">
@@ -629,7 +641,28 @@ export function ProposalForm({
                 있습니다.
               </p>
             )}
+          {externalLimit && !searching && !resultStale && (
+            <div
+              role="status"
+              className="rounded-xl border px-4 py-3 text-sm text-muted-foreground"
+            >
+              {externalSearchLimitMessage(externalLimit)}{" "}
+              <button
+                type="button"
+                className="inline min-h-0 p-0 font-medium text-foreground underline"
+                onClick={() => {
+                  const toggle = manualToggle.current;
+                  if (!toggle) return;
+                  toggle.open = true;
+                  toggle.scrollIntoView({ block: "nearest" });
+                }}
+              >
+                직접 등록하기
+              </button>
+            </div>
+          )}
           <details
+            ref={manualToggle}
             className="proposal-manual-toggle"
             open={manual}
             onToggle={(event) => {
@@ -652,6 +685,7 @@ export function ProposalForm({
                 setInternal([]);
                 setCandidates([]);
                 setTranslationAvailable(false);
+                setExternalLimit(null);
                 setSearched(false);
               }
               setError("");

@@ -1,6 +1,19 @@
 import "server-only";
 import { serviceDb } from "@/lib/supabase/admin";
 import { HttpError } from "@/server/http";
+import {
+  parseExternalSearchLimit,
+  type ExternalSearchLimit,
+} from "@/domain/proposal-search-cache";
+/** A provider call refused by the per-user cap or the shared budget. */
+export class ProviderLimitError extends HttpError {
+  constructor(
+    message: string,
+    public limit: ExternalSearchLimit,
+  ) {
+    super(message, 429);
+  }
+}
 // USD micros at the current Google list price, before the monthly free cap and
 // volume discounts. This is a safety reservation, not an invoice estimate.
 const estimates = { autocomplete: 2830, details: 5000, keyword: 0 };
@@ -23,6 +36,8 @@ export async function metered<T>(
     session_id: args.session,
     cost: estimates[args.operation],
   });
+  const limit = error ? parseExternalSearchLimit(error.hint) : null;
+  if (error && limit) throw new ProviderLimitError(error.message, limit);
   if (error)
     throw new HttpError(
       error.code === "P0001"

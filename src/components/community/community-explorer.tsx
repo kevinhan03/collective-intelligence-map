@@ -319,6 +319,7 @@ export function CommunityExplorer({
     [sort, setSort] = useState<Sort>("relevance"),
     [selected, setSelected] = useState<string | null>(null),
     [detailId, setDetailId] = useState<string | null>(null),
+    [commentsEntryId, setCommentsEntryId] = useState<string | null>(null),
     [focusRequest, setFocusRequest] = useState(0),
     [viewport, setViewport] = useState<Bounds | null>(null),
     [error, setError] = useState(""),
@@ -586,7 +587,7 @@ export function CommunityExplorer({
       await post("/api/community", { action: "save", id, enabled });
       setSavedOverrides((current) => ({ ...current, [id]: enabled }));
       setSaveNotice(
-        undo
+        undo || mobile
           ? null
           : {
               id,
@@ -1075,10 +1076,11 @@ export function CommunityExplorer({
         className="glass-toolbar explorer-toolbar flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3 md:px-9"
       >
         <div className="search-sort-group flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:flex-nowrap">
-          <div className="relative w-full sm:w-60">
+          <div className="map-search-field relative w-full sm:w-60">
             <Search
-              className="absolute top-2.5 left-3 text-muted-foreground"
-              size={14}
+              className="map-search-icon absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground"
+              size="1em"
+              aria-hidden="true"
             />
             <Input
               ref={searchInput}
@@ -1330,7 +1332,7 @@ export function CommunityExplorer({
           )}
         </p>
       )}
-      {saveNotice && (
+      {saveNotice && !mobile && (
         <div
           role="status"
           className="save-notice fixed right-4 bottom-5 z-50 flex items-center gap-3 rounded-xl border bg-card px-4 py-3 text-sm shadow-xl"
@@ -1727,6 +1729,14 @@ export function CommunityExplorer({
                 />
               ) : (
                 <MobilePlaceCarousel
+                  getVote={(id) => myState.votes[id] ?? 0}
+                  onVote={(id) => void votePlace(id, 1)}
+                  onOpenComments={(id) => {
+                    setCommentsEntryId(id);
+                    changeSheetStage("detail");
+                    setSelected(id);
+                    setDetailId(id);
+                  }}
                   creator={map.kind === "creator"}
                   demo={demo}
                   onClose={closeSheet}
@@ -1735,6 +1745,7 @@ export function CommunityExplorer({
                   activeId={activePreviewId}
                   onSelect={selectPreview}
                   onOpen={(id) => {
+                    setCommentsEntryId(null);
                     changeSheetStage("detail");
                     setSelected(id);
                     setDetailId(id);
@@ -1798,10 +1809,12 @@ export function CommunityExplorer({
           )}
         </section>
         <PlaceDetail
+          initialComments={commentsEntryId === detailId && Boolean(detailId)}
+          mapTitle={map.title}
           readOnly={readOnly}
           creator={map.kind === "creator"}
           userLocation={userLocation}
-          key={detailId ?? "closed"}
+          key={`${detailId ?? "closed"}:${commentsEntryId === detailId ? "comments" : "detail"}`}
           sharePath={
             selectedPlace
               ? placePath(map.slug, selectedPlace.place_id)

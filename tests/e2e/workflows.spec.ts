@@ -8,7 +8,7 @@ test("recommended collection keeps all pins and preserves list selection", async
   await page.route("**/api/places/*/photos", (route) =>
     route.fulfill({ json: { photos: [], nextCursor: null } }),
   );
-  await page.route("**/api/map-places/*/comments", (route) =>
+  await page.route("**/api/map-places/*/comments*", (route) =>
     route.fulfill({ json: { comments: [] } }),
   );
   await page.route("**/api/map-places/*/checks", (route) =>
@@ -364,7 +364,7 @@ test("visitors can add introductions to someone else's place and edit only their
     }
     return route.fulfill({ json: { introductions: entries } });
   });
-  await page.route("**/api/map-places/*/comments", (route) =>
+  await page.route("**/api/map-places/*/comments*", (route) =>
     route.fulfill({ json: { comments: [] } }),
   );
   await page.route("**/api/map-places/*/checks", (route) =>
@@ -388,7 +388,10 @@ test("visitors can add introductions to someone else's place and edit only their
   await expect(
     section.getByRole("button", { name: "수정", exact: true }),
   ).toHaveCount(0);
-  await section.getByRole("button", { name: "소개 추가하기" }).click();
+  await section.getByRole("button", { name: "장소 소개 메뉴" }).click();
+  await page
+    .getByRole("menuitem", { name: "소개 추가하기", exact: true })
+    .click();
   await section
     .getByLabel("장소 소개 추가")
     .fill("등록자가 아닌 방문자의 새 소개입니다.");
@@ -1023,7 +1026,7 @@ for (const photoCount of [0, 1, 6, -1]) {
         path: `artifacts/sheet-detail-top-${photoCount}-${width}.png`,
       });
       const initialActionBounds = (await detail
-        .locator(".place-save-bar")
+        .locator(".place-detail-heading")
         .boundingBox())!;
       const scroll = detail.locator(".place-detail-scroll");
       const reasons = detail.getByRole("region", {
@@ -1038,7 +1041,9 @@ for (const photoCount of [0, 1, 6, -1]) {
         (await photoSection.boundingBox())!.y,
       );
       await scroll.evaluate((el) => (el.scrollTop = el.scrollHeight));
-      const actions = (await detail.locator(".place-save-bar").boundingBox())!;
+      const actions = (await detail
+        .locator(".place-detail-heading")
+        .boundingBox())!;
       expect(actions.y).toBeCloseTo(initialActionBounds.y, 0);
       expect(actions.y + actions.height).toBeLessThanOrEqual(741);
       expect(actions.y).toBeGreaterThan(0);
@@ -1329,4 +1334,170 @@ test("creator studio manages profile, maps and covers on desktop and mobile", as
     path: `test-results/creator-studio-${testInfo.project.name}.png`,
     fullPage: true,
   });
+});
+
+test("place detail exposes compact participation and replaces its body with an interactive comment thread", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const comments = [
+    "한 줄 댓글",
+    "내용이 길어져도 좋아요의 위치는 바뀌지 않는 댓글입니다. ".repeat(4),
+  ].map((body, i) => ({
+    id: `comment-${i}`,
+    body,
+    handle: `visitor${i}`,
+    author_id: "other",
+    created_at: "2026-10-17T00:00:00Z",
+    likes: i,
+    liked: false,
+  }));
+  await page.route("**/api/map-places/*/comments*", (route) =>
+    route.fulfill({ json: { comments, total: comments.length } }),
+  );
+  await page.route("**/api/map-places/*/introductions", (route) =>
+    route.fulfill({
+      json: {
+        introductions: [
+          {
+            id: "intro",
+            body: "방문자가 소개한 장소의 특징입니다.",
+            handle: "curator",
+            author_id: "other",
+          },
+        ],
+      },
+    }),
+  );
+  await page.route("**/api/places/*/photos*", (route) =>
+    route.fulfill({ json: { photos: [], nextCursor: null } }),
+  );
+  await page.route("**/api/places/*/stations", (route) =>
+    route.fulfill({ json: { stations: [], status: "unsupported" } }),
+  );
+  await page.route("**/api/community", (route) => {
+    const input = route.request().postDataJSON();
+    if (input.action === "comment")
+      comments.push({
+        id: "new",
+        body: input.body,
+        handle: "visitor",
+        author_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        created_at: "2026-10-17T01:00:00Z",
+        likes: 0,
+        liked: false,
+      });
+    return route.fulfill({ json: {} });
+  });
+  await page.route("**/api/comments/*/like", (route) => {
+    const input = route.request().postDataJSON();
+    comments[0].liked = input.enabled;
+    comments[0].likes = input.enabled ? 1 : 0;
+    return route.fulfill({
+      json: { liked: comments[0].liked, likes: comments[0].likes },
+    });
+  });
+  await open(page, "place-introductions");
+  const detail = page.locator(".place-detail-panel");
+  await expect(detail.locator(".place-save-bar")).toHaveCount(0);
+  await expect(
+    detail
+      .locator(".detail-heading-actions")
+      .getByRole("button", { name: /공유$/ }),
+  ).toBeVisible();
+  const stations = detail.locator(".station-disclosure");
+  await expect(stations).not.toHaveAttribute("open");
+  await stations.locator("summary").click();
+  await expect(stations).toHaveAttribute("open", "");
+  await stations.locator("summary").click();
+  await expect(stations).not.toHaveAttribute("open");
+  for (const width of [320, 390, 768]) {
+    await page.setViewportSize({ width, height: 844 });
+    await expect
+      .poll(() =>
+        detail.locator(".single-line-text").evaluateAll((elements) =>
+          elements.every((el) => {
+            const text = el.firstElementChild!;
+            return (
+              getComputedStyle(el).whiteSpace === "nowrap" &&
+              text.getBoundingClientRect().width <= el.clientWidth
+            );
+          }),
+        ),
+      )
+      .toBe(true);
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+
+  await expect(
+    detail.getByRole("heading", { name: "장소 소개", exact: true }),
+  ).toHaveCount(0);
+  await expect(detail.locator(".place-theme-reactions")).toContainText(
+    "에 어울리는 장소인가요?",
+  );
+  await expect(
+    detail
+      .locator(".place-stations-section")
+      .getByRole("link", { name: "길찾기", exact: true }),
+  ).toHaveAttribute("href", /^\/go\//);
+  await detail.getByRole("button", { name: "장소 소개 메뉴" }).click();
+  await page
+    .getByRole("menuitem", { name: "소개 추가하기", exact: true })
+    .click();
+  await expect(page.getByLabel("장소 소개 추가")).toBeVisible();
+  await page.getByRole("button", { name: "취소", exact: true }).click();
+  await detail
+    .getByRole("button", { name: "댓글 2개 모두 보기", exact: true })
+    .click();
+  await expect(detail).toHaveAttribute("data-mode", "comments");
+  await expect(
+    detail.getByRole("heading", { name: "댓글 2", exact: true }),
+  ).toBeFocused();
+  const rows = detail.locator(".place-comment-row");
+  const positions = await rows.evaluateAll((items) =>
+    items.map((item) => {
+      const button = item
+        .querySelector(".comment-like")!
+        .getBoundingClientRect();
+      const row = item.getBoundingClientRect();
+      return { x: button.x, offsetY: button.y - row.y };
+    }),
+  );
+  expect(positions[0]).toEqual(positions[1]);
+  await detail
+    .getByRole("button", { name: "@visitor0 댓글 좋아요 0", exact: true })
+    .click();
+  await expect(
+    detail.getByRole("button", {
+      name: "@visitor0 댓글 좋아요 1",
+      exact: true,
+    }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await page
+    .getByLabel("댓글", { exact: true })
+    .fill("새로 작성한 댓글입니다.");
+  await page.getByRole("button", { name: "댓글 등록", exact: true }).click();
+  await expect(
+    detail.getByRole("heading", { name: "댓글 3", exact: true }),
+  ).toBeVisible();
+  await expect(
+    detail.getByText("새로 작성한 댓글입니다.", { exact: true }),
+  ).toBeVisible();
+  await detail
+    .getByRole("button", { name: "@visitor 댓글 메뉴", exact: true })
+    .click();
+  await expect(
+    page.getByRole("menuitem", { name: "삭제", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("menuitem", { name: "신고", exact: true }),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
+  await detail
+    .getByRole("button", { name: "장소 상세로 돌아가기", exact: true })
+    .click();
+  await expect(
+    detail.getByRole("button", { name: "댓글 3개 모두 보기", exact: true }),
+  ).toBeFocused();
+  await expect(detail).toHaveAttribute("data-mode", "detail");
 });

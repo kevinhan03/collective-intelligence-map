@@ -17,19 +17,20 @@ export default async function Login({
   searchParams: Promise<{ error?: string; next?: string }>;
 }) {
   const { error, next } = await searchParams;
-  if (await getViewer()) redirect(next ? safeReturnPath(next) : "/settings/profile");
+  if (await getViewer())
+    redirect(next ? safeReturnPath(next) : "/settings/profile");
   return (
     <main
       id="main"
-      className="page-wrap flex min-h-[calc(100dvh-96px)] items-center justify-center py-16"
+      className="page-wrap flex min-h-[calc(100dvh-96px)] items-center justify-center py-10 sm:py-16"
     >
-      <Card className="w-full max-w-md [--card-spacing:--spacing(12)]">
-        <CardHeader className="gap-6 pb-12">
+      <Card className="w-full max-w-md [--card-spacing:--spacing(8)] sm:[--card-spacing:--spacing(12)]">
+        <CardHeader className="gap-4 pb-8 sm:gap-6 sm:pb-12">
           <p className="kicker mb-2">Login</p>
-          <CardTitle className="text-5xl leading-tight">
+          <CardTitle className="text-3xl leading-tight break-keep sm:text-5xl">
             로그인 / 회원가입
           </CardTitle>
-          <CardDescription className="text-base leading-8">
+          <CardDescription className="text-base leading-7 break-keep sm:leading-8">
             좋아하는 지도를 팔로우하고 장소를 저장하세요.
             <br />
             초기 장소 제안과 검증은 초대 기여자와 함께합니다.
@@ -45,7 +46,7 @@ export default async function Login({
             enabled={configured() && process.env.GOOGLE_AUTH_ENABLED === "true"}
             next={next ? safeReturnPath(next) : "/"}
           />
-          <p className="mt-16 text-xs leading-6 text-muted-foreground">
+          <p className="mt-8 text-xs leading-6 text-muted-foreground sm:mt-16">
             계속하면{" "}
             <Link href="/terms" className="underline">
               이용약관

@@ -187,6 +187,9 @@ function SheetFixture() {
         />
       ) : (
         <MobilePlaceCarousel
+          onOpenComments={() => {}}
+          onVote={() => {}}
+          getVote={() => 0}
           places={[sheetPlace]}
           activeId={sheetPlace.id}
           onSelect={() => {}}
@@ -222,6 +225,7 @@ createRoot(document.getElementById("root")!).render(
   new URLSearchParams(location.search).get("fixture") ===
     "place-introductions" ? (
     <PlaceDetail
+      mapTitle="Seoul Taco Restaurant"
       place={{
         ...sheetPlace,
         rationale: "",

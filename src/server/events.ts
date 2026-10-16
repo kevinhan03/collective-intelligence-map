@@ -3,6 +3,7 @@ type Event =
   | "map_view"
   | "place_search_internal"
   | "place_search_external"
+  | "place_search_external_limited"
   | "vote"
   | "save"
   | "follow"

@@ -258,12 +258,9 @@ test("discover community, filter venues, open context and protect participation"
   await expect(
     page.getByRole("button", { name: "사진 추가", exact: true }),
   ).toBeDisabled();
-  if (isMobile)
-    await page
-      .locator("summary")
-      .filter({ hasText: "이 주제에 맞나요?" })
-      .click();
-  await expect(page.getByRole("button", { name: "적합해요 0" })).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: "이 지도에 어울려요 0", exact: true }),
+  ).toBeDisabled();
   await page.keyboard.press("Escape");
   if (isMobile)
     await page.getByRole("button", { name: "장소 검색 열기" }).click();

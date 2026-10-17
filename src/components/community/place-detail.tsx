@@ -35,6 +35,7 @@ import { PlaceSheetHandle } from "./place-sheet-handle";
 import { exitPlaceSheet } from "./place-sheet-motion";
 import { PlacePanel } from "./place-panel";
 import { PlacePhotos } from "./place-photos";
+import { PlaceBackdrop } from "./place-backdrop";
 import { PlaceChecks } from "./place-checks";
 import { PlaceIntroductions } from "./place-introductions";
 import { PlaceComments } from "./place-comments";
@@ -64,6 +65,10 @@ export function PlaceDetail({
   sharePath,
   onStationSelect,
   initialComments = false,
+  onVote,
+  onSave,
+  votePending = false,
+  savePending = false,
 }: {
   place: MapPlace | null;
   mapTitle?: string;
@@ -82,6 +87,10 @@ export function PlaceDetail({
   sharePath: string;
   onStationSelect: (station: RailStation) => void;
   initialComments?: boolean;
+  onVote?: (value: 1 | -1) => Promise<void>;
+  onSave?: () => Promise<void>;
+  votePending?: boolean;
+  savePending?: boolean;
 }) {
   const mobile = useMobile();
   const [mode, setMode] = useState<"detail" | "comments">(
@@ -202,8 +211,12 @@ export function PlaceDetail({
           savedValue ? `${place.name} 저장 해제` : `${place.name} 저장`
         }
         aria-pressed={savedValue}
-        disabled={!enabled || busy}
+        disabled={!enabled || savePending || busy}
         onClick={async () => {
+          if (onSave) {
+            await onSave();
+            return;
+          }
           if (await act({ action: "save", id: place.id, enabled: !savedValue }))
             setSavedOverride(!savedValue);
         }}
@@ -221,6 +234,13 @@ export function PlaceDetail({
         className="place-detail-panel"
         data-mode={mode}
       >
+        {mode === "detail" && (
+          <PlaceBackdrop
+            key={place.place_id}
+            placeId={place.place_id}
+            demo={demo}
+          />
+        )}
         {mobile && (
           <div className="place-sheet-drag-zone" {...drag}>
             <PlaceSheetHandle stage="detail" onCollapse={collapse} />
@@ -321,7 +341,6 @@ export function PlaceDetail({
               demo={demo || readOnly}
               loginHref={loginHref}
               onReport={setReport}
-              onChange={onChange}
             />
           </>
         )}
@@ -364,13 +383,15 @@ export function PlaceDetail({
                     className="detail-reaction"
                     aria-label={`이 지도에 어울려요 ${place.positive}`}
                     aria-pressed={vote === 1}
-                    disabled={!votingEnabled || busy}
+                    disabled={!votingEnabled || votePending || busy}
                     onClick={() =>
-                      act({
-                        action: "vote",
-                        id: place.id,
-                        value: vote === 1 ? 0 : 1,
-                      })
+                      onVote
+                        ? onVote(1)
+                        : act({
+                            action: "vote",
+                            id: place.id,
+                            value: vote === 1 ? 0 : 1,
+                          })
                     }
                   >
                     <ThumbsUp size={21} />
@@ -381,13 +402,15 @@ export function PlaceDetail({
                     className="detail-reaction"
                     aria-label={`이 지도에 어울리지 않아요 ${place.negative}`}
                     aria-pressed={vote === -1}
-                    disabled={!votingEnabled || busy}
+                    disabled={!votingEnabled || votePending || busy}
                     onClick={() =>
-                      act({
-                        action: "vote",
-                        id: place.id,
-                        value: vote === -1 ? 0 : -1,
-                      })
+                      onVote
+                        ? onVote(-1)
+                        : act({
+                            action: "vote",
+                            id: place.id,
+                            value: vote === -1 ? 0 : -1,
+                          })
                     }
                   >
                     <ThumbsDown size={21} />
@@ -412,9 +435,9 @@ export function PlaceDetail({
                   handle={thread.comments[0]?.handle}
                 />
                 <span>
-                  {thread.loading
+                  {thread.loading && !thread.comments.length
                     ? "댓글을 불러오는 중…"
-                    : thread.error
+                    : thread.error && !thread.comments.length
                       ? "댓글을 불러오지 못했어요. 눌러서 다시 시도해 주세요."
                       : (thread.comments[0]?.body ??
                         "첫 댓글로 이 장소의 경험을 나눠 주세요.")}

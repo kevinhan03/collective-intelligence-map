@@ -17,7 +17,14 @@ export function MobilePlaceOverview({
   ...list
 }: Pick<
   ListProps,
-  "places" | "demo" | "busy" | "isSaved" | "onOpen" | "onSave" | "station"
+  | "places"
+  | "demo"
+  | "busy"
+  | "isSavePending"
+  | "isSaved"
+  | "onOpen"
+  | "onSave"
+  | "station"
 > & {
   stage: "collapsed" | "summary";
   onStageChange: (stage: "collapsed" | "summary") => void;

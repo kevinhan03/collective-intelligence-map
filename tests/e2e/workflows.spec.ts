@@ -1142,6 +1142,7 @@ for (const width of [320, 390, 768]) {
     isMobile,
   }) => {
     test.skip(!isMobile);
+    await page.clock.setFixedTime(new Date("2026-10-13T00:00:00Z"));
     await page.setViewportSize({ width, height: 844 });
     await page.route("**/api/places/*/photos", (route) =>
       route.fulfill({
@@ -1500,4 +1501,79 @@ test("place detail exposes compact participation and replaces its body with an i
     detail.getByRole("button", { name: "댓글 3개 모두 보기", exact: true }),
   ).toBeFocused();
   await expect(detail).toHaveAttribute("data-mode", "detail");
+});
+
+test("optimistic mutations share state, isolate pending actions and roll back failures", async ({
+  page,
+}) => {
+  const calls: { action: string; enabled?: boolean }[] = [];
+  let release: (() => void) | undefined;
+  let fail = false;
+  let reads = 0;
+  await page.route("**/api/community", async (route) => {
+    calls.push(route.request().postDataJSON());
+    await new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await route.fulfill({
+      status: fail ? 500 : 200,
+      json: fail ? { error: "요청 실패" } : { ok: true },
+    });
+  });
+  await page.route("**/api/map-places/*/comments*", (route) => {
+    reads++;
+    return route.fulfill({ json: { comments: [], total: reads } });
+  });
+  await open(page, "mutations");
+  await expect(page.getByLabel("공유 댓글 수").first()).toHaveText("1");
+  await expect(page.getByLabel("공유 댓글 수").last()).toHaveText("1");
+  expect(reads).toBe(1);
+  const save = page.getByRole("button", { name: "저장 테스트", exact: true });
+  const vote = page.getByRole("button", { name: "추천 테스트", exact: true });
+  const follow = page.getByRole("button", {
+    name: "팔로우 테스트",
+    exact: true,
+  });
+  await save.click();
+  await expect(save).toHaveAttribute("aria-pressed", "true");
+  await expect(save).toBeDisabled();
+  await expect(vote).toBeEnabled();
+  await expect.poll(() => calls.length).toBe(1);
+  release!();
+  await expect(save).toBeEnabled();
+  expect(calls[0]).toMatchObject({ action: "save", enabled: true });
+  fail = true;
+  await save.click();
+  await expect(save).toHaveAttribute("aria-pressed", "false");
+  await expect.poll(() => calls.length).toBe(2);
+  release!();
+  await expect(save).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByLabel("오류", { exact: true })).toHaveText(
+    "요청 실패",
+  );
+  fail = false;
+  const initial = Number(
+    await page.getByLabel("추천 수", { exact: true }).innerText(),
+  );
+  await vote.click();
+  await expect(vote).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByLabel("추천 수", { exact: true })).toHaveText(
+    String(initial + 1),
+  );
+  await expect.poll(() => calls.length).toBe(3);
+  release!();
+  await expect(vote).toBeEnabled();
+  await follow.click();
+  await expect(follow).toHaveAttribute("aria-pressed", "true");
+  await expect.poll(() => calls.length).toBe(4);
+  release!();
+  await expect(follow).toBeEnabled();
+  await page.getByRole("button", { name: "서버 데이터 갱신" }).click();
+  await expect(page.getByLabel("추천 수", { exact: true })).toHaveText("20");
+  await expect(save).toHaveAttribute("aria-pressed", "false");
+  await page.getByRole("button", { name: "사용자 전환" }).click();
+  await expect(vote).toHaveAttribute("aria-pressed", "false");
+  await expect(follow).toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByLabel("공유 댓글 수").first()).toHaveText("2");
+  expect(reads).toBe(2);
 });

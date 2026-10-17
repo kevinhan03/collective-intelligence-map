@@ -10,22 +10,34 @@ export function PendingReview({
   votes,
   demo,
   onChange,
+  onVote,
+  isPending,
 }: {
   places: MapPlace[];
   viewer: Viewer | null;
   votes: Record<string, number>;
   demo: boolean;
-  onChange: () => void;
+  onChange?: () => void;
+  onVote?: (id: string, value: 1 | -1) => Promise<void>;
+  isPending?: (id: string) => boolean;
 }) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const enabled = Boolean(viewer) && !demo;
-  async function vote(place: MapPlace, value: number) {
+  async function vote(place: MapPlace, value: 1 | -1) {
+    if (onVote) {
+      await onVote(place.id, value);
+      return;
+    }
     setBusyId(place.id);
     setError("");
     try {
-      await post("/api/community", { action: "vote", id: place.id, value });
-      onChange();
+      await post("/api/community", {
+        action: "vote",
+        id: place.id,
+        value: votes[place.id] === value ? 0 : value,
+      });
+      onChange?.();
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -59,8 +71,8 @@ export function PendingReview({
                 <Button
                   size="sm"
                   variant={myVote === 1 ? "default" : "outline"}
-                  disabled={!enabled || busyId === p.id}
-                  onClick={() => vote(p, myVote === 1 ? 0 : 1)}
+                  disabled={!enabled || busyId === p.id || isPending?.(p.id)}
+                  onClick={() => vote(p, 1)}
                 >
                   <Check size={13} />
                   적합해요 {p.positive}
@@ -68,8 +80,8 @@ export function PendingReview({
                 <Button
                   size="sm"
                   variant={myVote === -1 ? "default" : "outline"}
-                  disabled={!enabled || busyId === p.id}
-                  onClick={() => vote(p, myVote === -1 ? 0 : -1)}
+                  disabled={!enabled || busyId === p.id || isPending?.(p.id)}
+                  onClick={() => vote(p, -1)}
                 >
                   <ThumbsDown size={13} />
                   아니에요 {p.negative}

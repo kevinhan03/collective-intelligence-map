@@ -12,6 +12,7 @@ import { usePlaceComments } from "./use-place-comments";
 import type { MapPlace } from "@/domain/types";
 import { PlaceSheetHandle } from "./place-sheet-handle";
 import { PlacePhotos } from "./place-photos";
+import { PlaceBackdrop } from "./place-backdrop";
 import { usePlaceSwipe } from "@/hooks/use-place-swipe";
 import { usePlaceSheetDrag } from "@/hooks/use-place-sheet-drag";
 import { useSheetStageMotion } from "@/hooks/use-sheet-stage-motion";
@@ -25,6 +26,8 @@ export function MobilePlaceCarousel({
   onSave,
   isSaved,
   disabled,
+  votePending = false,
+  savePending = false,
   controls,
   demo,
   creator = false,
@@ -40,6 +43,8 @@ export function MobilePlaceCarousel({
   onSave: (id: string) => void;
   isSaved: (id: string) => boolean;
   disabled: boolean;
+  votePending?: boolean;
+  savePending?: boolean;
   controls: ReactNode;
   demo: boolean;
   creator?: boolean;
@@ -171,6 +176,11 @@ export function MobilePlaceCarousel({
       data-sheet-stage="summary"
       aria-label="장소 미리보기"
     >
+      <PlaceBackdrop
+        key={currentPlace.place_id}
+        placeId={currentPlace.place_id}
+        demo={demo}
+      />
       <div className="place-sheet-drag-zone" {...drag}>
         <PlaceSheetHandle
           stage="summary"
@@ -185,7 +195,7 @@ export function MobilePlaceCarousel({
               className="mobile-save-action"
               aria-label={`${currentPlace.name} ${isSaved(currentPlace.id) ? "저장 해제" : "저장"}`}
               aria-pressed={isSaved(currentPlace.id)}
-              disabled={disabled}
+              disabled={disabled || savePending}
               onClick={() => onSave(currentPlace.id)}
             >
               <Bookmark
@@ -268,48 +278,50 @@ export function MobilePlaceCarousel({
             inert={i !== index}
             aria-hidden={i !== index}
           >
-            <div className="mobile-place-summary space-y-3">
-              {place.rationale && (
-                <p className="line-clamp-2 text-sm leading-6 text-muted-foreground">
-                  {place.rationale}
-                </p>
-              )}
-              <div className="place-summary-participation">
-                {!creator && (
+            {Math.abs(i - index) <= 1 && (
+              <div className="mobile-place-summary space-y-3">
+                {place.rationale && (
+                  <p className="line-clamp-2 text-sm leading-6 text-muted-foreground">
+                    {place.rationale}
+                  </p>
+                )}
+                <div className="place-summary-participation">
+                  {!creator && (
+                    <button
+                      type="button"
+                      className="detail-reaction"
+                      disabled={disabled || votePending}
+                      aria-pressed={getVote(place.id) === 1}
+                      aria-label={`주제에 어울려요 ${place.positive}`}
+                      onClick={() => onVote(place.id)}
+                    >
+                      <ThumbsUp size={18} />
+                      <span>주제에 어울려요 {place.positive}</span>
+                    </button>
+                  )}
                   <button
                     type="button"
                     className="detail-reaction"
-                    disabled={disabled}
-                    aria-pressed={getVote(place.id) === 1}
-                    aria-label={`주제에 어울려요 ${place.positive}`}
-                    onClick={() => onVote(place.id)}
+                    aria-label={`댓글 ${i === index ? thread.total : 0}개 모두 보기`}
+                    onClick={() => onOpenComments(place.id)}
                   >
-                    <ThumbsUp size={18} />
-                    <span>주제에 어울려요 {place.positive}</span>
+                    <MessageCircle size={18} />
+                    <span>{i === index ? thread.total : ""}</span>
                   </button>
+                </div>
+                {i === index && (
+                  <PlacePhotos
+                    key={place.place_id}
+                    placeId={place.place_id}
+                    viewer={null}
+                    loginHref=""
+                    demo={demo}
+                    preview
+                    onOpenDetail={() => onOpen(place.id)}
+                  />
                 )}
-                <button
-                  type="button"
-                  className="detail-reaction"
-                  aria-label={`댓글 ${i === index ? thread.total : 0}개 모두 보기`}
-                  onClick={() => onOpenComments(place.id)}
-                >
-                  <MessageCircle size={18} />
-                  <span>{i === index ? thread.total : ""}</span>
-                </button>
               </div>
-              {i === index && (
-                <PlacePhotos
-                  key={place.place_id}
-                  placeId={place.place_id}
-                  viewer={null}
-                  loginHref=""
-                  demo={demo}
-                  preview
-                  onOpenDetail={() => onOpen(place.id)}
-                />
-              )}
-            </div>
+            )}
           </article>
         ))}
       </div>

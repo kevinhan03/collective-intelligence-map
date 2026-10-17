@@ -250,7 +250,9 @@ test("discover community, filter venues, open context and protect participation"
       name: "Second Chapter 장소 상세",
     }),
   ).toBeVisible();
-  await expect(page.getByText("이 테마에 추천하는 이유")).toBeVisible();
+  await expect(
+    page.locator(".place-detail-panel .place-introductions"),
+  ).toBeVisible();
   if (!isMobile)
     await expect(
       page.getByRole("heading", { name: "방문자 사진", exact: true }),
@@ -271,7 +273,7 @@ test("discover community, filter venues, open context and protect participation"
     await page.getByRole("button", { name: "목록 보기", exact: true }).click();
   }
   await expect(
-    page.getByRole("heading", { name: "아직 발견된 장소가 없어요." }),
+    page.getByRole("status").filter({ hasText: "조건에 맞는 장소가 없어요." }),
   ).toBeVisible();
   await page.getByRole("combobox", { name: "이 맵의 장소 검색" }).fill("");
   if (isMobile) {
@@ -391,7 +393,7 @@ test("mobile view switching preserves scroll position and detail returns focus",
   const detail = page.getByRole("dialog", { name: "Second Chapter 장소 상세" });
   await expect(detail).toBeVisible();
   await expect(
-    detail.getByRole("button", { name: "저장 불가" }),
+    detail.getByRole("button", { name: "Second Chapter 저장", exact: true }),
   ).toBeDisabled();
   await page.keyboard.press("Escape");
   await expect(detail).toBeHidden();

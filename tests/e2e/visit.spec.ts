@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { openFirstMobilePlace } from "./mobile-sheet";
+import { expandMobileDetail, openFirstMobilePlace } from "./mobile-sheet";
 
 test("map omits the legacy area re-search control", async ({ page }) => {
   await page.goto("/maps/tokyo-fashion");
@@ -100,6 +100,7 @@ test("location success keeps distances in detail and preserves mobile search", a
     .getByRole("button")
     .first()
     .click();
+  if (isMobile) await expandMobileDetail(page);
   await expect(page.locator(".place-detail-panel")).toContainText(
     "내 위치에서 직선거리",
   );
@@ -156,6 +157,7 @@ test("place sharing copies the canonical deep link and opens without login", asy
     .getByRole("region", { name: "장소 목록" })
     .getByRole("button", { name: "Archive Room", exact: true })
     .click();
+  if (isMobile) await expandMobileDetail(page);
   await page
     .getByRole("button", { name: "Archive Room 공유", exact: true })
     .click();
@@ -218,6 +220,7 @@ test("detail scroll hint follows overflow and disappears at the bottom", async (
     .getByRole("button")
     .first()
     .click();
+  if (isMobile) await expandMobileDetail(page);
   const body = page.locator(".place-detail-scroll");
   const hint = page.locator(".place-detail-scroll-hint");
   await expect(body).toBeVisible();
@@ -302,11 +305,12 @@ test("mobile map actions fit inside the preview card and remain available in lis
       card.getByRole("button", { name: "상세 보기", exact: true }),
     ).toHaveCount(0);
     await expect(
-      card.getByRole("button", { name: "장소 카드 펼치기", exact: true }),
+      card.getByRole("button", { name: "장소 상세 펼치기", exact: true }),
     ).toBeVisible();
-    const saved = card
-      .locator(".mobile-explorer-actions")
-      .getByRole("button", { name: /保存|저장/ });
+    const saved = card.locator(".mobile-save-action");
+    await expect(
+      card.locator(".mobile-explorer-actions .mobile-save-action"),
+    ).toHaveCount(0);
     await expect(saved).toBeVisible();
     expect((await saved.boundingBox())!.height).toBe(44);
     const switchBounds = (await card
@@ -314,9 +318,13 @@ test("mobile map actions fit inside the preview card and remain available in lis
       .boundingBox())!;
     expect(switchBounds.x + switchBounds.width / 2).toBeCloseTo(width / 2, 0);
     const savedBounds = (await saved.boundingBox())!;
-    expect(switchBounds.x + switchBounds.width).toBeLessThanOrEqual(
-      savedBounds.x,
+    const closeBounds = (await card
+      .getByRole("button", { name: "장소 카드 닫기", exact: true })
+      .boundingBox())!;
+    expect(savedBounds.x + savedBounds.width).toBeLessThanOrEqual(
+      closeBounds.x,
     );
+    expect(Math.abs(savedBounds.y - closeBounds.y)).toBeLessThan(2);
     const menuBounds = (await page
       .getByRole("button", { name: "메뉴 열기", exact: true })
       .boundingBox())!;
@@ -360,7 +368,7 @@ test("mobile map actions fit inside the preview card and remain available in lis
     await card
       .getByRole("button", { name: "장소 카드 닫기", exact: true })
       .click();
-    await page.getByRole("button", { name: "장소 목록 닫기" }).click();
+    await expect(page.locator(".mobile-place-peek")).toBeVisible();
     const floatingSwitch = page.locator(
       ".mobile-closed-controls .visit-view-switch",
     );
@@ -370,7 +378,13 @@ test("mobile map actions fit inside the preview card and remain available in lis
       width / 2,
       0,
     );
-    expect(Math.abs(floatingBounds.y - switchBounds.y)).toBeLessThanOrEqual(3);
+    const peekBounds = (await page
+      .locator(".mobile-place-peek")
+      .boundingBox())!;
+    expect(floatingBounds.y).toBeGreaterThanOrEqual(0);
+    expect(floatingBounds.y + floatingBounds.height).toBeLessThanOrEqual(
+      peekBounds.y,
+    );
     if (width === 390)
       await page.screenshot({
         path: "artifacts/mobile-centered-toggle-closed.png",
@@ -378,7 +392,7 @@ test("mobile map actions fit inside the preview card and remain available in lis
   }
 });
 
-test("mobile place sheet expands in two upward gestures and collapses without losing selection", async ({
+test("mobile place summary expands to detail and collapses without losing selection", async ({
   page,
   isMobile,
 }) => {
@@ -401,11 +415,6 @@ test("mobile place sheet expands in two upward gestures and collapses without lo
     );
     await page.mouse.up();
   }
-  await expect(card).toHaveAttribute("data-sheet-stage", "collapsed");
-  await swipe(
-    card.getByRole("button", { name: "장소 카드 펼치기", exact: true }),
-    -1,
-  );
   await expect(card).toHaveAttribute("data-sheet-stage", "summary");
   await expect(card).toHaveCSS("transform", "none");
   await page.screenshot({ path: "artifacts/place-sheet-summary.png" });
@@ -454,8 +463,9 @@ test("mobile place sheet expands in two upward gestures and collapses without lo
     card.getByRole("button", { name: "장소 상세 펼치기", exact: true }),
     1,
   );
-  await expect(card).toHaveAttribute("data-sheet-stage", "collapsed");
-  await card
+  await expect(card).toHaveCount(0);
+  await page
+    .getByRole("region", { name: "접힌 장소 카드" })
     .getByRole("button", { name: "장소 카드 펼치기", exact: true })
     .press("ArrowUp");
   await expect(card).toHaveAttribute("data-sheet-stage", "summary");
@@ -487,14 +497,8 @@ test("mobile sheet header drags, short drags settle, X stays closed and pin sele
   await expect(card).not.toHaveCSS("transform", "none");
   await page.waitForTimeout(180);
   await page.mouse.up();
-  await expect(card).toHaveAttribute("data-sheet-stage", "collapsed");
-  await expect(card).toHaveCSS("transform", "none");
-  const c = (await header.boundingBox())!;
-  await page.mouse.move(c.x + 15, c.y + c.height / 2);
-  await page.mouse.down();
-  await page.mouse.move(c.x + 15, c.y + c.height / 2 - 65, { steps: 4 });
-  await page.mouse.up();
   await expect(card).toHaveAttribute("data-sheet-stage", "summary");
+  await expect(card).toHaveCSS("transform", "none");
   await expect(card.getByText("위로 올려 장소 정보 보기")).toHaveCount(0);
   const name = await header.innerText();
   await card
@@ -512,7 +516,7 @@ test("mobile sheet header drags, short drags settle, X stays closed and pin sele
   await page
     .getByRole("button", { name: `${name} 지도에서 선택`, exact: false })
     .click();
-  await expect(card).toHaveAttribute("data-sheet-stage", "collapsed");
+  await expect(card).toHaveAttribute("data-sheet-stage", "summary");
   await expect(card.getByRole("heading")).toHaveText(name);
   await expect(card.getByText("위로 올려 장소 정보 보기")).toHaveCount(0);
   await card
@@ -524,13 +528,12 @@ test("mobile sheet header drags, short drags settle, X stays closed and pin sele
     .getByRole("region", { name: "장소 목록" })
     .getByRole("button", { name, exact: true })
     .click();
+  await expandMobileDetail(page);
   await expect(detail).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(detail).toBeHidden();
   await expect(
-    page
-      .getByRole("region", { name: "장소 목록" })
-      .getByRole("button", { name, exact: true }),
+    card.getByRole("button", { name: "장소 상세 펼치기", exact: true }),
   ).toBeFocused();
 });
 
@@ -609,53 +612,54 @@ for (const reduced of [false, true]) {
     await page.emulateMedia({
       reducedMotion: reduced ? "reduce" : "no-preference",
     });
+    await page.addInitScript(() => {
+      const animate = Element.prototype.animate;
+      Element.prototype.animate = function (frames, options) {
+        if (this.classList.contains("mobile-place-dialog")) {
+          const root = document.documentElement;
+          root.dataset.sheetAnimationCount = String(
+            Number(root.dataset.sheetAnimationCount ?? 0) + 1,
+          );
+          root.dataset.sheetAnimationDuration = String(
+            typeof options === "number" ? options : options?.duration,
+          );
+        }
+        return animate.call(this, frames, options);
+      };
+    });
     await page.goto("/maps/tokyo-fashion");
     await openFirstMobilePlace(page);
     const card = page.locator(".mobile-place-carousel");
-    await card
-      .getByRole("button", { name: "장소 카드 펼치기", exact: true })
-      .click();
-    await expect(card).toHaveAttribute("data-sheet-stage", "summary");
-    const moving = await card.evaluate(async (element) => {
-      await new Promise<void>((resolve) =>
-        requestAnimationFrame(() => resolve()),
-      );
-      return element
-        .getAnimations()
-        .some((animation) => animation.playState === "running");
-    });
-    expect(moving).toBe(!reduced);
-    await expect
-      .poll(() =>
-        card.evaluate(
-          (element) =>
-            element
-              .getAnimations()
-              .filter((animation) => animation.playState === "running").length,
-        ),
-      )
-      .toBe(0);
+    const name = await card.getByRole("heading").innerText();
     await card
       .getByRole("button", { name: "장소 상세 펼치기", exact: true })
       .click();
-    const detail = page.locator(".mobile-place-dialog");
-    await expect(detail).toBeVisible();
-    const detailMoving = await detail.evaluate(async (element) => {
-      await new Promise<void>((resolve) =>
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-      );
-      return element
-        .getAnimations()
-        .some((animation) => animation.playState === "running");
+    const detail = page.getByRole("dialog", {
+      name: `${name} 장소 상세`,
+      exact: true,
     });
-    expect(detailMoving).toBe(!reduced);
+    await expect(detail).toBeVisible();
+    // Record animation creation instead of sampling after Playwright waits;
+    // a 280ms animation may have legitimately finished before that sample.
+    const count = Number(
+      (await page.locator("html").getAttribute("data-sheet-animation-count")) ??
+        0,
+    );
+    if (reduced) expect(count).toBe(0);
+    else {
+      expect(count).toBeGreaterThan(0);
+      await expect(page.locator("html")).toHaveAttribute(
+        "data-sheet-animation-duration",
+        "280",
+      );
+    }
     await page.keyboard.press("Escape");
     await expect(detail).toHaveCount(0);
     await expect(card).toHaveAttribute("data-sheet-stage", "summary");
   });
 }
 
-test("mobile place cards swipe horizontally in collapsed and summary stages", async ({
+test("mobile place cards swipe horizontally using the header and summary", async ({
   page,
   isMobile,
 }) => {
@@ -705,12 +709,9 @@ test("mobile place cards swipe horizontally in collapsed and summary stages", as
   await expect(title).toHaveText(initial);
   await swipe(title, -80);
   await expect(title).not.toHaveText(initial);
-  await expect(card).toHaveAttribute("data-sheet-stage", "collapsed");
+  await expect(card).toHaveAttribute("data-sheet-stage", "summary");
   await swipe(card.locator(".mobile-place-meta > span"), 80);
   await expect(title).toHaveText(initial);
-  await card
-    .getByRole("button", { name: "장소 카드 펼치기", exact: true })
-    .click();
   await expect(card).toHaveAttribute("data-sheet-stage", "summary");
   const body = card
     .locator(
@@ -744,7 +745,7 @@ test("mobile place cards swipe horizontally in collapsed and summary stages", as
 });
 
 for (const width of [320, 390, 768]) {
-  test(`detail map action aligns with share and preserves list context at ${width}px`, async ({
+  test(`detail map action in more preserves list context at ${width}px`, async ({
     page,
     isMobile,
   }) => {
@@ -759,6 +760,7 @@ for (const width of [320, 390, 768]) {
     await title.scrollIntoViewIfNeeded();
     const before = await page.evaluate(() => window.scrollY);
     await title.click();
+    await expandMobileDetail(page);
     const detail = page.locator(".mobile-place-dialog");
     await expect(detail).toBeVisible();
     const action = detail.getByRole("button", {
@@ -779,11 +781,13 @@ for (const width of [320, 390, 768]) {
       name: `${name} 공유`,
       exact: true,
     });
-    const actionBox = (await action.boundingBox())!;
-    const shareBox = (await share.boundingBox())!;
-    expect(Math.abs(actionBox.y - shareBox.y)).toBeLessThan(2);
-    expect(actionBox.height).toBe(shareBox.height);
-    expect(actionBox.x).toBeGreaterThan(shareBox.x + shareBox.width);
+    await expect(share).toBeVisible();
+    const more = detail
+      .locator(".participation-section")
+      .filter({ has: page.locator("summary", { hasText: "더 보기" }) });
+    await expect(more).not.toHaveAttribute("open");
+    await more.locator("summary").click();
+    await expect(action).toBeVisible();
     await action.click();
     await expect(detail).toHaveCount(0);
     await expect(page.locator(".community-explorer")).toHaveAttribute(
@@ -813,6 +817,11 @@ for (const width of [320, 390, 768]) {
     await page
       .locator(".mobile-list-title")
       .getByText("Archive Room", { exact: true })
+      .click();
+    await expandMobileDetail(page);
+    await page
+      .locator(".mobile-place-dialog summary")
+      .filter({ hasText: "더 보기" })
       .click();
     await page
       .locator(".mobile-place-dialog")
@@ -858,6 +867,7 @@ test("mobile map opens on every place in a swipeable list instead of one selecte
   await card
     .getByRole("button", { name: "장소 카드 닫기", exact: true })
     .click();
-  await expect(overview).toBeVisible();
+  await expect(page.locator(".mobile-place-peek")).toBeVisible();
+  await expect(overview).toHaveCount(0);
   await expect(card).toHaveCount(0);
 });

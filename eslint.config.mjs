@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     ".next-e2e/**",
     "out/**",
     "build/**",
+    // Generated browser traces, screenshots and benchmark outputs.
+    "test-results/**",
+    "playwright-report/**",
+    "artifacts/**",
     "next-env.d.ts",
     // Vendored, unmodified maplibre-gl worker assets (see
     // scripts/copy-maplibre-worker.mjs), not our source.

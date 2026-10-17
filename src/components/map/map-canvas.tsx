@@ -2,14 +2,23 @@
 import { MapErrorBoundary, MapFailure } from "./map-failure";
 import dynamic from "next/dynamic";
 import { MapLoading } from "./map-loading";
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import type { RendererConfig } from "@/domain/types";
 import type { MapProps } from "./types";
-const Kakao = dynamic(() => import("./renderers/kakao"), { ssr: false, loading: MapLoading });
-const MapLibre = dynamic(() => import("./renderers/maplibre"), { ssr: false, loading: MapLoading });
-const Google = dynamic(() => import("./renderers/google"), { ssr: false, loading: MapLoading });
+const Kakao = dynamic(() => import("./renderers/kakao"), {
+  ssr: false,
+  loading: MapLoading,
+});
+const MapLibre = dynamic(() => import("./renderers/maplibre"), {
+  ssr: false,
+  loading: MapLoading,
+});
+const Google = dynamic(() => import("./renderers/google"), {
+  ssr: false,
+  loading: MapLoading,
+});
 const Preview = dynamic(() => import("./renderers/preview"), { ssr: false });
-export function MapCanvas({
+export const MapCanvas = memo(function MapCanvas({
   config,
   compact,
   ...props
@@ -78,4 +87,4 @@ export function MapCanvas({
       )}
     </div>
   );
-}
+});

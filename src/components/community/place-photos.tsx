@@ -11,10 +11,9 @@ import {
   PHOTO_TYPES,
   photoImageUrl,
   type PhotoPage,
-  type PlacePhoto,
 } from "@/domain/place-photo";
 import type { Viewer } from "@/domain/types";
-import { preparePhoto } from "./photo-upload";
+import { usePlaceResource } from "./place-resources";
 import { post } from "./api";
 type PendingPhoto = {
   id: string;
@@ -41,10 +40,28 @@ export function PlacePhotos({
   preview?: boolean;
   onOpenDetail?: () => void;
 }) {
-  const [photos, setPhotos] = useState<PlacePhoto[]>([]);
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [loading, setLoading] = useState(!demo);
-  const [error, setError] = useState("");
+  const resourceKey = `photos:${placeId}`;
+  const fetchPage = useCallback(
+    async (signal: AbortSignal, next?: string): Promise<PhotoPage> => {
+      const response = await fetch(
+        `/api/places/${placeId}/photos${next ? `?cursor=${encodeURIComponent(next)}` : ""}`,
+        { signal },
+      );
+      if (!response.ok) throw new Error("사진을 불러오지 못했습니다.");
+      return response.json();
+    },
+    [placeId],
+  );
+  const resource = usePlaceResource(
+    resourceKey,
+    !demo && Boolean(placeId),
+    fetchPage,
+  );
+  const photos = resource.data?.photos ?? [];
+  const cursor = resource.data?.nextCursor ?? null;
+  const loading = resource.loading;
+  const [actionError, setError] = useState("");
+  const error = actionError || resource.error;
   const [mode, setMode] = useState<"upload" | "view" | null>(null);
   const [selected, setSelected] = useState(0);
   const [pending, setPending] = useState<PendingPhoto[]>([]);
@@ -59,23 +76,6 @@ export function PlacePhotos({
     const controller = new AbortController();
     lifetime.current = controller;
     const urls = previews.current;
-    if (!demo) {
-      fetch(`/api/places/${placeId}/photos`, { signal: controller.signal })
-        .then(async (r) => {
-          if (!r.ok) throw new Error("사진을 불러오지 못했습니다.");
-          return r.json() as Promise<PhotoPage>;
-        })
-        .then((page) => {
-          setPhotos(page.photos);
-          setCursor(page.nextCursor);
-        })
-        .catch((e) => {
-          if (!controller.signal.aborted) setError(e.message);
-        })
-        .finally(() => {
-          if (!controller.signal.aborted) setLoading(false);
-        });
-    }
     return () => {
       controller.abort();
       urls.forEach((url) => URL.revokeObjectURL(url));
@@ -84,28 +84,27 @@ export function PlacePhotos({
   }, [placeId, demo]);
   const reload = useCallback(
     async (next?: string) => {
-      setLoading(true);
-      try {
-        const response = await fetch(
-          `/api/places/${placeId}/photos${next ? `?cursor=${encodeURIComponent(next)}` : ""}`,
-          { signal: lifetime.current?.signal },
-        );
-        if (!response.ok) throw new Error("사진을 불러오지 못했습니다.");
-        const page: PhotoPage = await response.json();
-        setPhotos((old) =>
-          next
-            ? [
-                ...old,
-                ...page.photos.filter((p) => !old.some((x) => x.id === p.id)),
-              ]
-            : page.photos,
-        );
-        setCursor(page.nextCursor);
-      } finally {
-        setLoading(false);
-      }
+      await resource.cache.load<PhotoPage>(
+        resourceKey,
+        (signal) => fetchPage(signal, next),
+        {
+          force: true,
+          merge: next
+            ? (previous, incoming) => {
+                const ids = new Set(previous?.photos.map((photo) => photo.id));
+                return {
+                  ...incoming,
+                  photos: [
+                    ...(previous?.photos ?? []),
+                    ...incoming.photos.filter((photo) => !ids.has(photo.id)),
+                  ],
+                };
+              }
+            : undefined,
+        },
+      );
     },
-    [placeId],
+    [resource.cache, resourceKey, fetchPage],
   );
   function open(nextMode: "view" | "upload", element: HTMLElement, index = 0) {
     opener.current = element;
@@ -160,6 +159,7 @@ export function PlacePhotos({
           ),
         );
         try {
+          const { preparePhoto } = await import("./photo-upload");
           const blob = await preparePhoto(item.file);
           const form = new FormData();
           form.set("uploadId", item.id);
@@ -214,7 +214,7 @@ export function PlacePhotos({
     return (
       <section aria-label="방문자 사진 미리보기" className="space-y-2">
         <h3 className="text-xs font-medium">방문자 사진</h3>
-        {loading ? (
+        {loading && !photos.length ? (
           <p role="status" className="text-xs text-muted-foreground">
             사진을 불러오는 중…
           </p>
@@ -559,8 +559,14 @@ export function PlacePhotos({
                               action: "delete_photo",
                               id: photo.id,
                             });
-                            setPhotos((old) =>
-                              old.filter((p) => p.id !== photo.id),
+                            resource.cache.update<PhotoPage>(
+                              resourceKey,
+                              (old) => ({
+                                photos: (old?.photos ?? []).filter(
+                                  (p) => p.id !== photo.id,
+                                ),
+                                nextCursor: old?.nextCursor ?? null,
+                              }),
                             );
                             setMode(null);
                           } catch (e) {

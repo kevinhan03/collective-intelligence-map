@@ -16,6 +16,8 @@ export function PlacePreview({
   signedIn,
   loginHref,
   busy,
+  votePending = false,
+  savePending = false,
   onClose,
   onOpenDetail,
   onVote,
@@ -30,6 +32,8 @@ export function PlacePreview({
   signedIn: boolean;
   loginHref: string;
   busy: boolean;
+  votePending?: boolean;
+  savePending?: boolean;
   onClose: () => void;
   onOpenDetail: () => void;
   onVote: (value: 1 | -1) => void;
@@ -90,7 +94,7 @@ export function PlacePreview({
             className="vote-control"
             aria-label={`${place.name} 테마에 잘 맞아요 ${place.positive}`}
             aria-pressed={vote === 1}
-            disabled={demo || busy}
+            disabled={demo || busy || votePending}
             onClick={() => onVote(1)}
           >
             <ThumbsUp size={14} fill="none" strokeWidth={1.8} />
@@ -101,7 +105,7 @@ export function PlacePreview({
             className="vote-control"
             aria-label={`${place.name} 테마와 달라요 ${place.negative}`}
             aria-pressed={vote === -1}
-            disabled={demo || busy}
+            disabled={demo || busy || votePending}
             onClick={() => onVote(-1)}
           >
             <ThumbsDown size={14} fill="none" strokeWidth={1.8} />
@@ -127,7 +131,7 @@ export function PlacePreview({
           <Button
             className="h-11"
             variant={saved ? "secondary" : "outline"}
-            disabled={busy}
+            disabled={busy || savePending}
             aria-pressed={saved}
             aria-label={
               saved ? `${place.name} 저장 해제` : `${place.name} 저장`

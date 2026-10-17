@@ -19,7 +19,6 @@ export function PlaceComments({
   placeId,
   placeName,
   onReport,
-  onChange,
 }: {
   thread: Thread;
   viewer: Viewer | null;
@@ -29,7 +28,6 @@ export function PlaceComments({
   placeId: string;
   placeName: string;
   onReport: (id: string) => void;
-  onChange: () => void;
 }) {
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
@@ -68,7 +66,6 @@ export function PlaceComments({
       setBody("");
       showNewest.current = true;
       await thread.reload();
-      onChange();
       input.current?.focus();
     } catch (error) {
       setError((error as Error).message);
@@ -143,7 +140,6 @@ export function PlaceComments({
                                   id: comment.id,
                                 });
                                 await thread.reload();
-                                onChange();
                               } catch (error) {
                                 setError((error as Error).message);
                               } finally {

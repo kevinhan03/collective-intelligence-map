@@ -250,3 +250,54 @@ test("search failure retries and missing RPC reports the local search scope", as
   ).toBeVisible();
   await expect(page.locator("#explorer-list")).toContainText("Archive Room");
 });
+
+test("late automatic search selection cannot close a manually opened place detail", async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(!isMobile);
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let requested = false;
+  await page.route("**/api/maps/*/search?*", async (route) => {
+    requested = true;
+    await gate;
+    await route.fulfill({ json: { mode: "local" } });
+  });
+  await page.goto("/maps/tokyo-fashion");
+  await page
+    .getByRole("button", { name: "장소 검색 열기", exact: true })
+    .click();
+  await page
+    .getByRole("combobox", { name: "이 맵의 장소 검색", exact: true })
+    .fill("Second Chapter");
+  await page.getByRole("option", { name: /Second Chapter/ }).click();
+  await expect.poll(() => requested).toBe(true);
+  await page
+    .getByRole("button", { name: "Second Chapter 지도에서 선택", exact: false })
+    .click();
+  await expect(
+    page.getByRole("combobox", { name: "이 맵의 장소 검색", exact: true }),
+  ).toBeHidden();
+  await page
+    .getByRole("button", { name: "장소 상세 펼치기", exact: true })
+    .click();
+  const detail = page.getByRole("dialog", {
+    name: "Second Chapter 장소 상세",
+    exact: true,
+  });
+  await expect(detail).toBeVisible();
+  release();
+  await expect(
+    page.getByText("지도 전체 검색 중…", { exact: true }),
+  ).toHaveCount(0);
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  );
+  await expect(detail).toBeVisible();
+});

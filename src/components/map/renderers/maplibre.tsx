@@ -6,6 +6,7 @@ import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { ensureMapLibreWorkerReady } from "./maplibre-worker";
 import type { MapProps } from "../types";
+import { groupMapMarkers } from "../marker-groups";
 import { appendPinLikes } from "../pin-content";
 import {
   configureBasemapLabels,
@@ -27,6 +28,19 @@ export default function MapLibreMap(props: MapProps) {
   const container = useRef<HTMLDivElement>(null);
   const instance = useRef<maplibregl.Map | null>(null);
   const latest = useRef(props);
+  const pins = useRef(
+    new Map<
+      string,
+      {
+        marker: maplibregl.Marker;
+        button: HTMLButtonElement;
+        icon: HTMLSpanElement;
+        signature: string;
+        lat: number;
+        lng: number;
+      }
+    >(),
+  );
   const lastReportedBounds = useRef<MapProps["bounds"] | null>(null);
   const [error, setError] = useState(false);
   const [loadedStyle, setLoadedStyle] = useState<string | null>(null);
@@ -56,6 +70,7 @@ export default function MapLibreMap(props: MapProps) {
       return;
     }
     instance.current = map;
+    const currentPins = pins.current;
     let disposeLabels: (() => void) | undefined;
     map.addControl(new maplibregl.NavigationControl(), "top-right");
     map.addControl(
@@ -107,6 +122,8 @@ export default function MapLibreMap(props: MapProps) {
     return () => {
       observer.disconnect();
       disposeLabels?.();
+      currentPins.forEach((pin) => pin.marker.remove());
+      currentPins.clear();
       map.remove();
       instance.current = null;
     };
@@ -114,23 +131,39 @@ export default function MapLibreMap(props: MapProps) {
   useEffect(() => {
     const map = instance.current;
     if (!map) return;
-    const groups: { places: typeof places; x: number; y: number }[] = [];
-    places.forEach((place) => {
-      const point = map.project([place.lng, place.lat]);
-      const nearby = groups.find(
-        (group) =>
-          place.id !== selected &&
-          group.places.every((member) => member.id !== selected) &&
-          Math.hypot(group.x - point.x, group.y - point.y) < 36,
-      );
-      if (nearby) nearby.places.push(place);
-      else groups.push({ places: [place], x: point.x, y: point.y });
-    });
-    const markers = groups.map((group) => {
+    const groups = groupMapMarkers(places, selected, (place) =>
+      map.project([place.lng, place.lat]),
+    );
+    const retained = new Set<string>();
+    groups.forEach((group) => {
       const p = group.places[0];
+      const key = group.places
+        .map((place) => place.id)
+        .sort()
+        .join(":");
+      retained.add(key);
       const clustered = group.places.length > 1;
       const canZoom = map.getZoom() < 17;
-      const button = document.createElement("button");
+      let pin = pins.current.get(key);
+      if (!pin) {
+        const button = document.createElement("button");
+        const face = document.createElement("span");
+        face.className = "map-marker-face";
+        const icon = document.createElement("span");
+        icon.setAttribute("aria-hidden", "true");
+        face.append(icon);
+        button.append(face);
+        button.className = "map-marker";
+        const marker = new maplibregl.Marker({
+          element: button,
+          anchor: "bottom",
+        })
+          .setLngLat([p.lng, p.lat])
+          .addTo(map);
+        pin = { marker, button, icon, signature: "", lat: p.lat, lng: p.lng };
+        pins.current.set(key, pin);
+      }
+      const { button, icon } = pin;
       button.type = "button";
       button.title = clustered
         ? canZoom
@@ -143,19 +176,22 @@ export default function MapLibreMap(props: MapProps) {
           ? button.title
           : `${p.name} · 주제 추천 ${p.positive}${p.status === "pending" ? " · 검토 대기" : ""}`,
       );
-      button.className = "map-marker";
       button.dataset.cluster = String(clustered);
       button.dataset.selected = String(selected === p.id);
       button.dataset.status = p.status;
-      const face = document.createElement("span");
-      face.className = "map-marker-face";
-      const icon = document.createElement("span");
-      if (clustered) icon.textContent = String(group.places.length);
-      else if (p.status === "pending") icon.textContent = "···";
-      else appendPinLikes(icon, p.positive);
-      icon.setAttribute("aria-hidden", "true");
-      face.append(icon);
-      button.append(face);
+      const signature = `${clustered}:${group.places.length}:${p.status}:${p.positive}`;
+      if (pin.signature !== signature) {
+        icon.replaceChildren();
+        if (clustered) icon.textContent = String(group.places.length);
+        else if (p.status === "pending") icon.textContent = "···";
+        else appendPinLikes(icon, p.positive);
+        pin.signature = signature;
+      }
+      if (pin.lat !== p.lat || pin.lng !== p.lng) {
+        pin.marker.setLngLat([p.lng, p.lat]);
+        pin.lat = p.lat;
+        pin.lng = p.lng;
+      }
       button.onclick = () => {
         if (clustered && canZoom) {
           map.easeTo({
@@ -164,11 +200,13 @@ export default function MapLibreMap(props: MapProps) {
           });
         } else latest.current.onSelect(p.id);
       };
-      return new maplibregl.Marker({ element: button, anchor: "bottom" })
-        .setLngLat([p.lng, p.lat])
-        .addTo(map);
     });
-    return () => markers.forEach((m) => m.remove());
+    for (const [key, pin] of pins.current) {
+      if (!retained.has(key)) {
+        pin.marker.remove();
+        pins.current.delete(key);
+      }
+    }
   }, [places, selected, apiKey, viewRevision]);
   useEffect(() => {
     if (!props.focusRequest || props.stationFocus) return;

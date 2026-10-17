@@ -126,6 +126,9 @@ export function ProfilePresentation({
                     : `/maps/${map.slug}`
                 }
                 className="profile-map"
+                data-immersive={
+                  map.id === featuredId && map.cover_path ? "" : undefined
+                }
               >
                 <ProfileCardImage
                   src={map.cover_path ? `/maps/${map.slug}/cover` : null}

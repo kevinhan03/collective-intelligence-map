@@ -1,5 +1,10 @@
 "use client";
 import type { PlaceSheetStage } from "@/hooks/use-place-sheet-drag";
+import { useCommunityMutations } from "./use-community-mutations";
+import dynamic from "next/dynamic";
+import { Suspense, lazy } from "react";
+import { PlacePanel } from "./place-panel";
+import { PlaceResources } from "./place-resources";
 import { ShareButton } from "./share-button";
 import { placePath } from "@/domain/seo";
 import type { Coordinate } from "@/domain/visit";
@@ -19,6 +24,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   useCallback,
+  useDeferredValue,
   useEffect,
   useEffectEvent,
   useMemo,
@@ -57,14 +63,17 @@ import {
 import { MapCanvas } from "@/components/map/map-canvas";
 import { boundsForPlaces } from "@/domain/map-bounds";
 import { CreatorMapReport } from "@/components/creator/map-report";
-import { PlaceDetail } from "./place-detail";
+const PlaceDetail = lazy(() =>
+  import("./place-detail").then((module) => ({ default: module.PlaceDetail })),
+);
 import { MobilePlaceCarousel } from "./mobile-place-carousel";
 import { MobilePlacePeek } from "./mobile-place-peek";
 import { MobilePlaceList } from "./mobile-place-list";
 import { MobilePlaceOverview } from "./mobile-place-overview";
 import { PlacePreview } from "./place-preview";
-import { PendingReview } from "./pending-review";
-import { post } from "./api";
+const PendingReview = dynamic(() =>
+  import("./pending-review").then((module) => module.PendingReview),
+);
 import { trackCommunityEvent } from "@/lib/community-analytics";
 import {
   isControversial,
@@ -89,16 +98,7 @@ const sortOptions: { value: Sort; label: string }[] = [
   { value: "distance", label: "가까운 순" },
   { value: "newest", label: "최근 추가순" },
 ];
-export function CommunityExplorer({
-  map,
-  initialPlaces,
-  pendingPlaces,
-  viewer: initialViewer,
-  config,
-  myState: initialMyState,
-  demo,
-  readOnly = false,
-}: {
+type ExplorerProps = {
   map: ThemeMap;
   initialPlaces: MapPlace[];
   pendingPlaces: MapPlace[];
@@ -111,7 +111,26 @@ export function CommunityExplorer({
   };
   demo: boolean;
   readOnly?: boolean;
-}) {
+};
+export function CommunityExplorer(props: ExplorerProps) {
+  const personalized = useViewerState();
+  const identity = `${props.map.id}:${personalized.viewer?.id ?? props.viewer?.id ?? "anonymous"}`;
+  return (
+    <PlaceResources identity={identity}>
+      <ExplorerContent {...props} />
+    </PlaceResources>
+  );
+}
+function ExplorerContent({
+  map,
+  initialPlaces,
+  pendingPlaces,
+  viewer: initialViewer,
+  config,
+  myState: initialMyState,
+  demo,
+  readOnly = false,
+}: ExplorerProps) {
   const mobile = useMobile();
   const [pinHintOpen, setPinHintOpen] = useState(true);
   const [userLocation, setUserLocation] = useState<Coordinate | null>(null);
@@ -163,6 +182,7 @@ export function CommunityExplorer({
     setPage(1);
   }
   function selectStation(station: RailStation, place: MapPlace) {
+    setSearchSelection(null);
     setStationFocus({ station, place: { lat: place.lat, lng: place.lng } });
     setDetailId(null);
     if (mobile) {
@@ -271,6 +291,7 @@ export function CommunityExplorer({
       browsingSheetStage.current = stage;
   }
   function closeSheet() {
+    setSearchSelection(null);
     setRestoreBounds(viewport);
     setSheetStage("closed");
     browsingSheetStage.current = "summary";
@@ -293,16 +314,22 @@ export function CommunityExplorer({
     });
   }
   function collapseDetail() {
+    setSearchSelection(null);
     setDetailId(null);
     const next = mobileView === "map" ? "summary" : browsingSheetStage.current;
     setSheetStage(next);
     browsingSheetStage.current = next;
     if (mobileView === "map" && selected) setPreviewId(selected);
+    requestAnimationFrame(() => {
+      const handle = explorerRoot.current?.querySelector<HTMLElement>(
+        ".mobile-place-carousel .place-sheet-handle",
+      );
+      if (mobileView === "map" && handle) handle.focus({ preventScroll: true });
+      else if (placeTrigger.current?.isConnected)
+        placeTrigger.current.focus({ preventScroll: true });
+    });
   }
   const [previewId, setPreviewId] = useState<string | null>(null);
-  const [savedOverrides, setSavedOverrides] = useState<Record<string, boolean>>(
-    {},
-  );
   const [saveNotice, setSaveNotice] = useState<{
     id: string;
     name: string;
@@ -311,6 +338,15 @@ export function CommunityExplorer({
   const personalized = useViewerState();
   const viewer = personalized.viewer ?? initialViewer;
   const myState = personalized.viewer ? personalized.myState : initialMyState;
+  const actions = useCommunityMutations(
+    `${map.id}:${viewer?.id ?? "anonymous"}`,
+    initialPlaces,
+    myState,
+  );
+  const followerCount = Math.max(
+    0,
+    map.follower_count + Number(actions.followed) - Number(myState.followed),
+  );
   const router = useRouter();
   const searchParams = useSearchParams();
   const requestedPlaceId = searchParams.get("place");
@@ -323,7 +359,6 @@ export function CommunityExplorer({
     [focusRequest, setFocusRequest] = useState(0),
     [viewport, setViewport] = useState<Bounds | null>(null),
     [error, setError] = useState(""),
-    [busy, setBusy] = useState(false),
     [page, setPage] = useState(1),
     [showPending, setShowPending] = useState(false);
   const [searchStation, setSearchStation] = useState<SearchStation | null>(
@@ -346,9 +381,10 @@ export function CommunityExplorer({
   const searchTracked = useRef(false);
   const places = useMemo(() => initialPlaces.slice(0, 500), [initialPlaces]);
   const truncated = initialPlaces.length > 500;
+  const deferredQuery = useDeferredValue(query);
   const searchArgs = useMemo(
     () => ({
-      q: query,
+      q: deferredQuery,
       stationId: searchStation?.id,
       region,
       sort,
@@ -357,7 +393,7 @@ export function CommunityExplorer({
       lng: sort === "distance" ? userLocation?.lng : undefined,
     }),
     [
-      query,
+      deferredQuery,
       searchStation?.id,
       region,
       sort,
@@ -387,14 +423,17 @@ export function CommunityExplorer({
     () => boundsForPlaces(initialPlaces.slice(0, 500), map.bounds),
     [initialPlaces, map.bounds],
   );
-  const isSaved = (id: string) =>
-    savedOverrides[id] ?? myState.saves.includes(id);
-  const filtered = useMemo(
+  const isSaved = actions.isSaved;
+  const localSearch = useMemo(
+    () => localMapSearch(places, searchArgs),
+    [places, searchArgs],
+  );
+  const unpatchedFiltered = useMemo(
     () =>
       search.active
         ? (search.result?.items ??
           (search.error ? search.previous?.items : null) ??
-          localMapSearch(places, searchArgs).items)
+          localSearch.items)
         : sortPlaces(
             places.filter(
               (p) => !mobile || !region || placeCity(p.address) === region,
@@ -413,13 +452,25 @@ export function CommunityExplorer({
       search.error,
       search.previous,
       places,
-      searchArgs,
+      localSearch,
       mobile,
       region,
       sort,
       userLocation,
       map.kind,
     ],
+  );
+  const filtered = useMemo(
+    () => unpatchedFiltered.map(actions.withCounts),
+    [unpatchedFiltered, actions.withCounts],
+  );
+  const displayPending = useMemo(
+    () => pendingPlaces.map(actions.withCounts),
+    [pendingPlaces, actions.withCounts],
+  );
+  const mapPlaces = useMemo(
+    () => [...filtered, ...(search.active ? [] : displayPending)],
+    [filtered, search.active, displayPending],
   );
   const regions = useMemo(
     () =>
@@ -454,6 +505,11 @@ export function CommunityExplorer({
     return () => window.clearTimeout(timer);
   }, [mobile, activePreviewId, detailId, previewId, region, sheetStage]);
   const selectPreview = (id: string) => {
+    setSearchSelection(null);
+    if (mobile && searchSelection) {
+      setSearchOpen(false);
+      searchInput.current?.blur();
+    }
     changeSheetStage("summary");
     setRestoreBounds(null);
     setSearchStationHighlighted(false);
@@ -478,8 +534,7 @@ export function CommunityExplorer({
     [filtered, page, search.active],
   );
   const searchSuggestions =
-    search.result?.suggestions ??
-    localMapSearch(places, searchArgs).suggestions;
+    search.result?.suggestions ?? localSearch.suggestions;
   const resultCount = search.active
     ? (search.result?.total ?? filtered.length)
     : filtered.length;
@@ -520,56 +575,51 @@ export function CommunityExplorer({
       return b;
     });
   }, []);
-  const selectedPlace =
+  const selectedPlaceBase =
     [
       ...filtered,
       ...places,
       ...pendingPlaces,
       ...(openedSearchPlace ? [openedSearchPlace] : []),
     ].find((p) => p.id === detailId) ?? null;
-  const previewPlace =
+  const selectedPlace = selectedPlaceBase
+    ? actions.withCounts(selectedPlaceBase)
+    : null;
+  const previewPlaceBase =
     [...filtered, ...places, ...pendingPlaces].find(
       (p) => p.id === previewId,
     ) ?? null;
+  const previewPlace = previewPlaceBase
+    ? actions.withCounts(previewPlaceBase)
+    : null;
   const toggleFollow = async () => {
     if (readOnly) return;
     if (!viewer) {
       router.push(loginHref(`/maps/${map.slug}`));
       return;
     }
-    setBusy(true);
+    setError("");
     try {
-      await post("/api/community", {
-        action: "follow",
-        id: map.id,
-        enabled: !myState.followed,
-      });
-      router.refresh();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setBusy(false);
+      await actions.follow(map.id);
+    } catch (error) {
+      setError((error as Error).message);
     }
   };
   const votePlace = async (id: string, value: 1 | -1) => {
     if (demo || readOnly || map.kind === "creator") return;
-    setBusy(true);
+    const place = [...filtered, ...places, ...pendingPlaces].find(
+      (place) => place.id === id,
+    );
+    if (!place) return;
     setError("");
     try {
-      await post("/api/community", {
-        action: "vote",
-        id,
-        value: myState.votes[id] === value ? 0 : value,
-      });
-      router.refresh();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setBusy(false);
+      await actions.vote(actions.withCounts(place), value);
+    } catch (error) {
+      setError((error as Error).message);
     }
   };
   const savePlace = async (id: string, undo = false) => {
-    if (demo || readOnly || busy) return;
+    if (demo || readOnly) return;
     if (!viewer) {
       const place = places.find((item) => item.id === id);
       router.push(
@@ -580,12 +630,10 @@ export function CommunityExplorer({
       return;
     }
     const enabled = !isSaved(id);
-    setBusy(true);
     setError("");
     setFailedSaveId(null);
     try {
-      await post("/api/community", { action: "save", id, enabled });
-      setSavedOverrides((current) => ({ ...current, [id]: enabled }));
+      if (!(await actions.save(id))) return;
       setSaveNotice(
         undo || mobile
           ? null
@@ -595,18 +643,23 @@ export function CommunityExplorer({
               enabled,
             },
       );
-      router.refresh();
-    } catch (e) {
-      setError((e as Error).message);
+    } catch (error) {
+      setError((error as Error).message);
       setFailedSaveId(id);
-    } finally {
-      setBusy(false);
     }
   };
   const focusPlace = useCallback(
     (id: string) => {
+      // Manual selection supersedes an autocomplete request that is still loading.
+      setSearchSelection(null);
       placeTrigger.current = document.activeElement as HTMLElement | null;
-      if (mobile) changeSheetStage("summary");
+      if (mobile) {
+        if (searchSelection) {
+          setSearchOpen(false);
+          searchInput.current?.blur();
+        }
+        changeSheetStage("summary");
+      }
       setRestoreBounds(null);
       setSearchStationHighlighted(false);
       setOpenedSearchPlace(filtered.find((p) => p.id === id) ?? null);
@@ -640,7 +693,64 @@ export function CommunityExplorer({
       setDetailId((current) => (current ? id : null));
       setFocusRequest((request) => request + 1);
     },
-    [config.provider, mobile, mobileView, filtered, changeView],
+    [
+      config.provider,
+      mobile,
+      mobileView,
+      filtered,
+      changeView,
+      searchSelection,
+    ],
+  );
+  const selectMapPlace = useCallback(
+    (id: string) => {
+      if (pendingPlaces.some((place) => place.id === id)) {
+        setSelected(id);
+        setShowPending(true);
+      } else focusPlace(id);
+    },
+    [pendingPlaces, focusPlace],
+  );
+  const completeMapFocus = useCallback(
+    (id: string) => {
+      if (!mobile) setDetailId(id);
+    },
+    [mobile],
+  );
+  const changeMapView = useRef(changeView);
+  useEffect(() => {
+    changeMapView.current = changeView;
+  }, [changeView]);
+  const mapFallback = useCallback(() => changeMapView.current("list"), []);
+  const mapStationFocus = useMemo(
+    () =>
+      stationFocus ??
+      (searchStation && searchStationHighlighted
+        ? {
+            station: { ...searchStation, distance_m: 0 },
+            place: filtered[0] ?? searchStation,
+          }
+        : null),
+    [stationFocus, searchStation, searchStationHighlighted, filtered],
+  );
+  const mapBounds = useMemo(
+    () =>
+      search.active
+        ? boundsForPlaces(
+            [...filtered, ...(searchStation ? [searchStation] : [])],
+            map.bounds,
+          )
+        : (restoreBounds ?? (mobile ? mobileBounds : initialBounds)),
+    [
+      search.active,
+      filtered,
+      searchStation,
+      map.bounds,
+      restoreBounds,
+      mobile,
+      mobileBounds,
+      initialBounds,
+    ],
   );
   const openSearchSelection = useEffectEvent((id: string) => {
     setSearchSelection(null);
@@ -653,7 +763,13 @@ export function CommunityExplorer({
     } else focusPlace(id);
   });
   useEffect(() => {
-    if (!searchSelection || search.loading || composing) return;
+    if (
+      !searchSelection ||
+      search.loading ||
+      composing ||
+      deferredQuery !== query
+    )
+      return;
     if (compactSearch(query) !== compactSearch(searchSelection)) return;
     const exact = filtered.filter(
       (place) => compactSearch(place.name) === compactSearch(searchSelection),
@@ -662,7 +778,14 @@ export function CommunityExplorer({
     if (!target) return;
     const frame = requestAnimationFrame(() => openSearchSelection(target.id));
     return () => cancelAnimationFrame(frame);
-  }, [searchSelection, search.loading, composing, query, filtered]);
+  }, [
+    searchSelection,
+    search.loading,
+    composing,
+    query,
+    deferredQuery,
+    filtered,
+  ]);
   useEffect(() => {
     const requestKey = requestedProposalId ?? requestedPlaceId;
     if (!requestKey || openedPlaceId.current === requestKey) return;
@@ -906,12 +1029,12 @@ export function CommunityExplorer({
               <Info size={14} /> 지도 정보
             </Button>
             <Button
-              variant={myState.followed ? "secondary" : "outline"}
-              disabled={busy || readOnly}
+              variant={actions.followed ? "secondary" : "outline"}
+              disabled={actions.isPending("follow", map.id) || readOnly}
               onClick={toggleFollow}
             >
-              {myState.followed ? <Check size={14} /> : <Plus size={14} />}{" "}
-              {myState.followed ? "팔로우 중" : "팔로우"}
+              {actions.followed ? <Check size={14} /> : <Plus size={14} />}{" "}
+              {actions.followed ? "팔로우 중" : "팔로우"}
             </Button>
             <Button asChild>
               <Link
@@ -935,7 +1058,7 @@ export function CommunityExplorer({
           </span>
           <span className="flex gap-1.5">
             <Users size={13} />
-            {map.follower_count} 팔로워
+            {followerCount} 팔로워
           </span>
           <span>{map.contributor_count} 기여자</span>
           <a
@@ -1019,7 +1142,7 @@ export function CommunityExplorer({
             </span>
             <span className="flex items-center gap-1.5">
               <Users size={14} />
-              {map.follower_count} 팔로워
+              {followerCount} 팔로워
             </span>
             <span>{map.contributor_count} 기여자</span>
           </div>
@@ -1031,12 +1154,12 @@ export function CommunityExplorer({
           </details>
           <div className="grid grid-cols-2 gap-2 border-t p-5 pb-[calc(20px+env(safe-area-inset-bottom))]">
             <Button
-              variant={myState.followed ? "secondary" : "outline"}
-              disabled={busy || readOnly}
+              variant={actions.followed ? "secondary" : "outline"}
+              disabled={actions.isPending("follow", map.id) || readOnly}
               onClick={toggleFollow}
             >
-              {myState.followed ? <Check size={15} /> : <Plus size={15} />}
-              {myState.followed ? "팔로우 중" : "팔로우"}
+              {actions.followed ? <Check size={15} /> : <Plus size={15} />}
+              {actions.followed ? "팔로우 중" : "팔로우"}
             </Button>
             <Button asChild>
               <Link
@@ -1324,7 +1447,7 @@ export function CommunityExplorer({
           {failedSaveId && (
             <button
               className="ml-3 underline"
-              disabled={busy}
+              disabled={actions.isPending("save", failedSaveId)}
               onClick={() => void savePlace(failedSaveId)}
             >
               저장 다시 시도
@@ -1344,7 +1467,7 @@ export function CommunityExplorer({
           <button
             type="button"
             className="font-semibold text-primary underline"
-            disabled={busy}
+            disabled={actions.isPending("save", saveNotice.id)}
             onClick={() => void savePlace(saveNotice.id, true)}
           >
             실행 취소
@@ -1360,11 +1483,12 @@ export function CommunityExplorer({
       )}
       {showPending && pendingPlaces.length > 0 && (
         <PendingReview
-          places={pendingPlaces}
+          places={displayPending}
           viewer={viewer}
-          votes={myState.votes}
+          votes={actions.votes}
           demo={demo}
-          onChange={() => router.refresh()}
+          onVote={votePlace}
+          isPending={(id) => actions.isPending("vote", id)}
         />
       )}
       {search.active && (
@@ -1435,7 +1559,8 @@ export function CommunityExplorer({
               selected={selected}
               active={!detailId}
               demo={demo}
-              busy={busy || readOnly}
+              busy={readOnly}
+              isSavePending={(id) => actions.isPending("save", id)}
               isSaved={isSaved}
               onOpen={focusPlace}
               onSave={(id) => void savePlace(id)}
@@ -1525,8 +1650,10 @@ export function CommunityExplorer({
                         type="button"
                         className="vote-control"
                         aria-label={`${p.name} 테마에 잘 맞아요 ${p.positive}`}
-                        aria-pressed={myState.votes[p.id] === 1}
-                        disabled={demo || readOnly || busy}
+                        aria-pressed={actions.votes[p.id] === 1}
+                        disabled={
+                          demo || readOnly || actions.isPending("vote", p.id)
+                        }
                         onClick={(event) => {
                           event.stopPropagation();
                           void votePlace(p.id, 1);
@@ -1539,8 +1666,10 @@ export function CommunityExplorer({
                         type="button"
                         className="vote-control"
                         aria-label={`${p.name} 테마와 달라요 ${p.negative}`}
-                        aria-pressed={myState.votes[p.id] === -1}
-                        disabled={demo || readOnly || busy}
+                        aria-pressed={actions.votes[p.id] === -1}
+                        disabled={
+                          demo || readOnly || actions.isPending("vote", p.id)
+                        }
                         onClick={(event) => {
                           event.stopPropagation();
                           void votePlace(p.id, -1);
@@ -1554,7 +1683,9 @@ export function CommunityExplorer({
                       type="button"
                       aria-label={`${p.name} ${isSaved(p.id) ? "저장 해제" : "저장"}`}
                       aria-pressed={isSaved(p.id)}
-                      disabled={demo || readOnly || busy}
+                      disabled={
+                        demo || readOnly || actions.isPending("save", p.id)
+                      }
                       onClick={(event) => {
                         event.stopPropagation();
                         void savePlace(p.id);
@@ -1610,37 +1741,15 @@ export function CommunityExplorer({
         >
           <MapCanvas
             key={mobile ? `mobile-${region}` : "desktop"}
-            onFallback={mobile ? () => changeView("list") : undefined}
+            onFallback={mobile ? mapFallback : undefined}
             userLocation={userLocation}
-            stationFocus={
-              stationFocus ??
-              (searchStation && searchStationHighlighted
-                ? {
-                    station: { ...searchStation, distance_m: 0 },
-                    place: filtered[0] ?? searchStation,
-                  }
-                : null)
-            }
-            places={[...filtered, ...(search.active ? [] : pendingPlaces)]}
+            stationFocus={mapStationFocus}
+            places={mapPlaces}
             selected={mobile ? activePreviewId : selected}
-            onSelect={(id) => {
-              if (pendingPlaces.some((p) => p.id === id)) {
-                setSelected(id);
-                setShowPending(true);
-              } else focusPlace(id);
-            }}
-            onFocusComplete={(id) => {
-              if (!mobile) setDetailId(id);
-            }}
+            onSelect={selectMapPlace}
+            onFocusComplete={completeMapFocus}
             focusRequest={focusRequest}
-            bounds={
-              search.active
-                ? boundsForPlaces(
-                    [...filtered, ...(searchStation ? [searchStation] : [])],
-                    map.bounds,
-                  )
-                : (restoreBounds ?? (mobile ? mobileBounds : initialBounds))
-            }
+            bounds={mapBounds}
             onBoundsChange={onBoundsChange}
             config={config}
           />
@@ -1714,7 +1823,8 @@ export function CommunityExplorer({
               ) : !activePreviewId ? (
                 <MobilePlaceOverview
                   demo={demo}
-                  busy={busy || readOnly}
+                  busy={readOnly}
+                  isSavePending={(id) => actions.isPending("save", id)}
                   stage={sheetStage === "collapsed" ? "collapsed" : "summary"}
                   onStageChange={changeSheetStage}
                   onClose={closeSheet}
@@ -1729,9 +1839,10 @@ export function CommunityExplorer({
                 />
               ) : (
                 <MobilePlaceCarousel
-                  getVote={(id) => myState.votes[id] ?? 0}
+                  getVote={(id) => actions.votes[id] ?? 0}
                   onVote={(id) => void votePlace(id, 1)}
                   onOpenComments={(id) => {
+                    setSearchSelection(null);
                     setCommentsEntryId(id);
                     changeSheetStage("detail");
                     setSelected(id);
@@ -1745,6 +1856,7 @@ export function CommunityExplorer({
                   activeId={activePreviewId}
                   onSelect={selectPreview}
                   onOpen={(id) => {
+                    setSearchSelection(null);
                     setCommentsEntryId(null);
                     changeSheetStage("detail");
                     setSelected(id);
@@ -1752,7 +1864,9 @@ export function CommunityExplorer({
                   }}
                   onSave={(id) => void savePlace(id)}
                   isSaved={isSaved}
-                  disabled={demo || readOnly || busy}
+                  disabled={demo || readOnly}
+                  votePending={actions.isPending("vote", activePreviewId ?? "")}
+                  savePending={actions.isPending("save", activePreviewId ?? "")}
                 />
               )
             ) : (
@@ -1772,10 +1886,12 @@ export function CommunityExplorer({
                 `/maps/${map.slug}?place=${encodeURIComponent(previewPlace.place_id)}`,
               )}
               saved={isSaved(previewPlace.id)}
-              vote={myState.votes[previewPlace.id] ?? 0}
+              vote={actions.votes[previewPlace.id] ?? 0}
               demo={demo}
+              votePending={actions.isPending("vote", previewPlace.id)}
+              savePending={actions.isPending("save", previewPlace.id)}
               signedIn={Boolean(viewer)}
-              busy={busy || readOnly}
+              busy={readOnly}
               onClose={() => {
                 setPreviewId(null);
                 setSelected(null);
@@ -1808,55 +1924,92 @@ export function CommunityExplorer({
             </>
           )}
         </section>
-        <PlaceDetail
-          initialComments={commentsEntryId === detailId && Boolean(detailId)}
-          mapTitle={map.title}
-          readOnly={readOnly}
-          creator={map.kind === "creator"}
-          userLocation={userLocation}
-          key={`${detailId ?? "closed"}:${commentsEntryId === detailId ? "comments" : "detail"}`}
-          sharePath={
-            selectedPlace
-              ? placePath(map.slug, selectedPlace.place_id)
-              : `/maps/${map.slug}`
-          }
-          onStationSelect={(station) => {
-            if (selectedPlace) selectStation(station, selectedPlace);
-          }}
-          place={selectedPlace}
-          loginHref={loginHref(
-            `/maps/${map.slug}${selectedPlace ? `?place=${encodeURIComponent(selectedPlace.place_id)}` : ""}`,
-          )}
-          onClose={mobile ? closeSheet : () => setDetailId(null)}
-          onCollapse={mobile ? collapseDetail : () => setDetailId(null)}
-          onViewMap={
-            mobile
-              ? () => {
-                  if (!selectedPlace) return;
-                  changeView("map");
-                  setDetailId(null);
-                  changeSheetStage("summary");
-                  selectPreview(selectedPlace.id);
-                  setSearchOpen(false);
-                  requestAnimationFrame(() =>
-                    explorerRoot.current
-                      ?.querySelector<HTMLButtonElement>(
-                        ".mobile-place-carousel .place-sheet-handle",
-                      )
-                      ?.focus({ preventScroll: true }),
-                  );
-                }
-              : undefined
-          }
-          viewer={viewer}
-          vote={myState.votes[detailId ?? ""] ?? 0}
-          saved={isSaved(detailId ?? "")}
-          demo={demo}
-          onChange={() => {
-            setSavedOverrides({});
-            router.refresh();
-          }}
-        />
+        {selectedPlace && (
+          <Suspense
+            fallback={
+              <PlacePanel
+                title="장소 정보 불러오는 중"
+                onClose={mobile ? collapseDetail : () => setDetailId(null)}
+              >
+                <aside
+                  className="place-detail-panel"
+                  aria-label="장소 정보 불러오는 중"
+                >
+                  <div className="place-detail-heading flex items-center justify-between">
+                    <h2>{selectedPlace.name}</h2>
+                    <button
+                      type="button"
+                      className="detail-icon-action"
+                      aria-label="장소 상세 닫기"
+                      onClick={mobile ? closeSheet : () => setDetailId(null)}
+                    >
+                      <X size={21} />
+                    </button>
+                  </div>
+                  <p
+                    role="status"
+                    className="p-5 text-sm text-muted-foreground"
+                  >
+                    장소를 불러오는 중…
+                  </p>
+                </aside>
+              </PlacePanel>
+            }
+          >
+            <PlaceDetail
+              initialComments={
+                commentsEntryId === detailId && Boolean(detailId)
+              }
+              mapTitle={map.title}
+              readOnly={readOnly}
+              creator={map.kind === "creator"}
+              userLocation={userLocation}
+              key={`${detailId ?? "closed"}:${commentsEntryId === detailId ? "comments" : "detail"}`}
+              sharePath={
+                selectedPlace
+                  ? placePath(map.slug, selectedPlace.place_id)
+                  : `/maps/${map.slug}`
+              }
+              onStationSelect={(station) => {
+                if (selectedPlace) selectStation(station, selectedPlace);
+              }}
+              place={selectedPlace}
+              loginHref={loginHref(
+                `/maps/${map.slug}${selectedPlace ? `?place=${encodeURIComponent(selectedPlace.place_id)}` : ""}`,
+              )}
+              onClose={mobile ? closeSheet : () => setDetailId(null)}
+              onCollapse={mobile ? collapseDetail : () => setDetailId(null)}
+              onViewMap={
+                mobile
+                  ? () => {
+                      if (!selectedPlace) return;
+                      changeView("map");
+                      setDetailId(null);
+                      changeSheetStage("summary");
+                      selectPreview(selectedPlace.id);
+                      setSearchOpen(false);
+                      requestAnimationFrame(() =>
+                        explorerRoot.current
+                          ?.querySelector<HTMLButtonElement>(
+                            ".mobile-place-carousel .place-sheet-handle",
+                          )
+                          ?.focus({ preventScroll: true }),
+                      );
+                    }
+                  : undefined
+              }
+              viewer={viewer}
+              vote={actions.votes[detailId ?? ""] ?? 0}
+              saved={isSaved(detailId ?? "")}
+              demo={demo}
+              onVote={(value) => votePlace(selectedPlace.id, value)}
+              onSave={() => savePlace(selectedPlace.id)}
+              votePending={actions.isPending("vote", selectedPlace.id)}
+              savePending={actions.isPending("save", selectedPlace.id)}
+              onChange={() => router.refresh()}
+            />
+          </Suspense>
+        )}
       </div>
     </main>
   );

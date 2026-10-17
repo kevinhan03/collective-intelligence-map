@@ -203,7 +203,6 @@ body {
   [data-slot="dialog-content"] {
     background: var(--glass-fill);
     backdrop-filter: blur(32px) saturate(125%);
-    -webkit-backdrop-filter: blur(32px) saturate(125%);
   }
 }
 .glass-header {
@@ -3260,7 +3259,6 @@ body:has(.profile-page) {
   padding: 14px;
   background: rgba(16, 22, 32, 0.12);
   backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
 }
 .profile-map-copy p {
   display: flex;
@@ -4642,4 +4640,62 @@ body:has(.profile-page) {
   .map-search-field {
     font-size: 16px;
   }
+}
+
+/* Place backdrop: the first photo, blurred behind the card's top and faded
+   into the card's own surface, so photo-less places keep the plain surface. */
+.mobile-place-carousel:has(> .place-backdrop),
+.place-detail-panel:has(> .place-backdrop) {
+  isolation: isolate;
+}
+.place-detail-panel:has(> .place-backdrop) .place-detail-heading {
+  background: transparent;
+}
+.place-backdrop {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: -1;
+  height: 240px;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.5s linear;
+  -webkit-mask-image: linear-gradient(180deg, #000 35%, transparent);
+  mask-image: linear-gradient(180deg, #000 35%, transparent);
+}
+.place-backdrop[data-loaded="true"] {
+  opacity: 1;
+}
+.place-backdrop img {
+  object-fit: cover;
+  opacity: 0.7;
+  filter: blur(60px);
+}
+.place-backdrop::before,
+.place-backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+.place-backdrop::before {
+  z-index: 1;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.55));
+}
+.place-backdrop::after {
+  z-index: 2;
+  background: rgba(255, 255, 255, 0.1);
+}
+@media (prefers-reduced-transparency: reduce) {
+  .place-backdrop {
+    display: none;
+  }
+}
+
+/* Featured map with a cover: its caption strip turns the cover behind it
+   into a heavily blurred, darkened glow. */
+.profile-map[data-immersive] .profile-map-copy {
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.1)),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.55));
+  backdrop-filter: blur(60px);
 }

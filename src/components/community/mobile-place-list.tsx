@@ -14,6 +14,7 @@ type Props = {
   active: boolean;
   demo: boolean;
   busy: boolean;
+  isSavePending?: (id: string) => boolean;
   isSaved: (id: string) => boolean;
   onOpen: (id: string) => void;
   onSave: (id: string) => void;
@@ -119,7 +120,9 @@ function MobilePlaceRow({
               className="mobile-list-save"
               aria-label={`${place.name} ${saved ? "저장 해제" : "저장"}`}
               aria-pressed={saved}
-              disabled={props.demo || props.busy}
+              disabled={
+                props.demo || props.busy || props.isSavePending?.(place.id)
+              }
               onClick={(event) => {
                 event.stopPropagation();
                 props.onSave(place.id);

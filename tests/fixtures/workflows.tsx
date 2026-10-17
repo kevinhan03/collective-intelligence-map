@@ -1,3 +1,6 @@
+import { useCommunityMutations } from "@/components/community/use-community-mutations";
+import { PlaceResources } from "@/components/community/place-resources";
+import { usePlaceComments } from "@/components/community/use-place-comments";
 import { CreatorStudio } from "@/components/creator/studio";
 import { RecommendationsExplorer } from "@/components/creator/recommendations-explorer";
 import { ProfileForm } from "@/components/community/profile-form";
@@ -134,6 +137,58 @@ const sheetPlace: MapPlace = {
   created_at: "2026-10-12",
   last_verified_at: null,
 };
+const mutationPlaces = [sheetPlace];
+const mutationPersonal = { votes: {}, saves: [], followed: false };
+function MutationFixture() {
+  const [identity, setIdentity] = useState("viewer-a");
+  const [source, setSource] = useState(mutationPlaces);
+  const [error, setError] = useState("");
+  const actions = useCommunityMutations(identity, source, mutationPersonal);
+  const place = actions.withCounts(source[0]);
+  const run = (work: Promise<unknown>) => {
+    setError("");
+    void work.catch((error) => setError(error.message));
+  };
+  return (
+    <>
+      <button
+        aria-pressed={actions.isSaved(place.id)}
+        disabled={actions.isPending("save", place.id)}
+        onClick={() => run(actions.save(place.id))}
+      >
+        저장 테스트
+      </button>
+      <button
+        aria-pressed={actions.votes[place.id] === 1}
+        disabled={actions.isPending("vote", place.id)}
+        onClick={() => run(actions.vote(place, 1))}
+      >
+        추천 테스트
+      </button>
+      <button
+        aria-pressed={actions.followed}
+        disabled={actions.isPending("follow", "map")}
+        onClick={() => run(actions.follow("map"))}
+      >
+        팔로우 테스트
+      </button>
+      <output aria-label="추천 수">{place.positive}</output>
+      <output aria-label="오류">{error}</output>
+      <button onClick={() => setIdentity("viewer-b")}>사용자 전환</button>
+      <button onClick={() => setSource([{ ...sheetPlace, positive: 20 }])}>
+        서버 데이터 갱신
+      </button>
+      <PlaceResources identity={identity}>
+        <ThreadReader />
+        <ThreadReader />
+      </PlaceResources>
+    </>
+  );
+}
+function ThreadReader() {
+  const thread = usePlaceComments(sheetPlace.id, false);
+  return <output aria-label="공유 댓글 수">{thread.total}</output>;
+}
 function ListFixture() {
   const [active, setActive] = useState(true);
   const [selected, setSelected] = useState<string | null>(null);
@@ -222,7 +277,9 @@ function SheetFixture() {
   );
 }
 createRoot(document.getElementById("root")!).render(
-  new URLSearchParams(location.search).get("fixture") ===
+  new URLSearchParams(location.search).get("fixture") === "mutations" ? (
+    <MutationFixture />
+  ) : new URLSearchParams(location.search).get("fixture") ===
     "place-introductions" ? (
     <PlaceDetail
       mapTitle="Seoul Taco Restaurant"

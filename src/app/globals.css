@@ -1034,9 +1034,9 @@ button:not(:disabled),
   }
   .mobile-place-track {
     display: flex;
-    overflow-x: auto;
-    /* Selection settles the track in JS; native re-snapping can restore an old
-       slide after its content height or viewport changes. */
+    overflow-x: hidden;
+    /* Horizontal gestures are owned by usePlaceSwipe. Native scrolling here
+       would move the body independently from the title and selected place. */
     scroll-snap-type: none;
     scrollbar-width: none;
     overscroll-behavior-x: contain;
@@ -2575,7 +2575,8 @@ button:not(:disabled),
 
 @media (max-width: 1023px) {
   .mobile-place-carousel .mobile-place-meta,
-  .mobile-place-carousel .mobile-place-summary > p {
+  .mobile-place-carousel .mobile-place-summary > p,
+  .mobile-place-carousel .place-summary-participation {
     touch-action: pan-y;
   }
   .mobile-place-carousel .place-sheet-title-row,

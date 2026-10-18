@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
+import { useLayoutEffect, useRef, type ReactNode } from "react";
 import {
   Bookmark,
   ChevronLeft,
@@ -56,8 +56,6 @@ export function MobilePlaceCarousel({
   const card = useRef<HTMLElement>(null);
   useSheetStageMotion(card, "summary");
   const track = useRef<HTMLDivElement>(null);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const aligning = useRef(false);
   const index = Math.max(
     0,
     places.findIndex((p) => p.id === activeId),
@@ -79,6 +77,7 @@ export function MobilePlaceCarousel({
   const swipe = usePlaceSwipe(index, places.length, selectAdjacent);
   const previousIndex = useRef(index);
   useLayoutEffect(() => {
+    const animations: Animation[] = [];
     if (
       previousIndex.current !== index &&
       !window.matchMedia("(prefers-reduced-motion: reduce)").matches
@@ -86,19 +85,22 @@ export function MobilePlaceCarousel({
       const direction = index > previousIndex.current ? 1 : -1;
       card.current
         ?.querySelectorAll<HTMLElement>(
-          ".place-sheet-title-row, .mobile-place-meta, .mobile-place-summary",
+          ".place-sheet-title-row, .mobile-place-meta, .mobile-place-slide[aria-hidden='false'] .mobile-place-summary",
         )
         .forEach((element) => {
-          element.animate(
-            [
-              { transform: `translateX(${direction * 24}px)`, opacity: 0.5 },
-              { transform: "translateX(0)", opacity: 1 },
-            ],
-            { duration: 180, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },
+          animations.push(
+            element.animate(
+              [
+                { transform: `translateX(${direction * 24}px)`, opacity: 0 },
+                { transform: "translateX(0)", opacity: 1 },
+              ],
+              { duration: 180, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },
+            ),
           );
         });
     }
     previousIndex.current = index;
+    return () => animations.forEach((animation) => animation.cancel());
   }, [index]);
   useLayoutEffect(() => {
     const element = track.current;
@@ -126,9 +128,7 @@ export function MobilePlaceCarousel({
       const first = element.children[0] as HTMLElement;
       const slide = element.children[index] as HTMLElement;
       if (!first || !slide) return;
-      if (timer.current) clearTimeout(timer.current);
       cancelAnimationFrame(alignmentFrame);
-      aligning.current = true;
       const left = slide.offsetLeft - first.offsetLeft;
       element.scrollTo({
         left,
@@ -136,7 +136,6 @@ export function MobilePlaceCarousel({
       });
       alignmentFrame = requestAnimationFrame(() => {
         element.scrollTo({ left, behavior: "instant" });
-        aligning.current = false;
       });
     };
     fitHeight();
@@ -156,16 +155,8 @@ export function MobilePlaceCarousel({
     return () => {
       observer.disconnect();
       cancelAnimationFrame(alignmentFrame);
-      if (timer.current) clearTimeout(timer.current);
-      aligning.current = false;
     };
   }, [index, places]);
-  useEffect(
-    () => () => {
-      if (timer.current) clearTimeout(timer.current);
-    },
-    [],
-  );
   if (!places.length) return null;
   return (
     <section
@@ -238,38 +229,7 @@ export function MobilePlaceCarousel({
           </button>
         </div>
       </div>
-      <div
-        ref={track}
-        className="mobile-place-track"
-        onScroll={() => {
-          if (aligning.current) return;
-          if (timer.current) clearTimeout(timer.current);
-          timer.current = setTimeout(() => {
-            const element = track.current;
-            if (!element) return;
-            const first = element.children[0] as HTMLElement;
-            if (!first) return;
-            const next = Array.from(element.children).reduce(
-              (best, child, i, slides) => {
-                const distance = Math.abs(
-                  (child as HTMLElement).offsetLeft -
-                    first.offsetLeft -
-                    element.scrollLeft,
-                );
-                const bestDistance = Math.abs(
-                  (slides[best] as HTMLElement).offsetLeft -
-                    first.offsetLeft -
-                    element.scrollLeft,
-                );
-                return distance < bestDistance ? i : best;
-              },
-              0,
-            );
-            if (places[next] && places[next].id !== activeId)
-              onSelect(places[next].id);
-          }, 120);
-        }}
-      >
+      <div ref={track} className="mobile-place-track">
         {places.map((place, i) => (
           <article
             key={place.id}

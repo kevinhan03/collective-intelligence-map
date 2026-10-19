@@ -1577,3 +1577,131 @@ test("optimistic mutations share state, isolate pending actions and roll back fa
   await expect(page.getByLabel("공유 댓글 수").first()).toHaveText("2");
   expect(reads).toBe(2);
 });
+
+async function openPersonalizedDetail(page: Page, mobile: boolean) {
+  if (mobile) {
+    await page
+      .getByRole("button", { name: "장소 목록 펼치기", exact: true })
+      .click();
+    await page
+      .locator(".mobile-place-overview .mobile-list-place")
+      .first()
+      .click();
+    await page
+      .getByRole("button", { name: "장소 상세 펼치기", exact: true })
+      .click();
+  } else {
+    await page
+      .locator(".place-list .place-glass-card")
+      .first()
+      .getByRole("button")
+      .first()
+      .click();
+  }
+  await expect(page.locator(".place-detail-panel")).toBeVisible();
+}
+async function mockPersonalizationReads(page: Page) {
+  await page.route("**/api/map-places/*/comments*", (r) =>
+    r.fulfill({ json: { comments: [], total: 0 } }),
+  );
+  await page.route("**/api/map-places/*/checks*", (r) =>
+    r.fulfill({ json: { checks: [], summary: {} } }),
+  );
+  await page.route("**/api/places/*/photos*", (r) =>
+    r.fulfill({ json: { photos: [], nextCursor: null } }),
+  );
+  await page.route("**/api/places/*/stations*", (r) =>
+    r.fulfill({ json: { stations: [], status: "unsupported" } }),
+  );
+  await page.route("**/api/maps/*/search*", (r) =>
+    r.fulfill({
+      json: {
+        mode: "local",
+        items: [],
+        total: 0,
+        hasMore: false,
+        suggestions: [],
+        station: null,
+        stationsStatus: "preparing",
+      },
+    }),
+  );
+}
+for (const vote of [1, -1]) {
+  test(`anonymous vote ${vote} survives re-entry and toggles off`, async ({
+    page,
+    isMobile,
+  }) => {
+    await mockPersonalizationReads(page);
+    const calls: unknown[] = [];
+    await page.route("**/api/community", async (r) => {
+      calls.push(r.request().postDataJSON());
+      await r.fulfill({ json: { ok: true } });
+    });
+    for (let visit = 0; visit < 2; visit++) {
+      await open(page, `personalization&vote=${vote}`);
+      await openPersonalizedDetail(page, isMobile);
+      const reaction = page.locator(".place-detail-panel").getByRole("button", {
+        name:
+          vote === 1 ? /^이 지도에 어울려요 / : /^이 지도에 어울리지 않아요 /,
+      });
+      await expect(reaction).toHaveAttribute("aria-pressed", "true");
+      if (visit === 1) {
+        await reaction.click();
+        await expect(reaction).toHaveAttribute("aria-pressed", "false");
+        await expect.poll(() => calls.length).toBe(1);
+        expect(calls[0]).toMatchObject({ action: "vote", value: 0 });
+      }
+    }
+  });
+}
+test("late personalization preserves local votes and user/map changes clear them", async ({
+  page,
+  isMobile,
+}) => {
+  await mockPersonalizationReads(page);
+  await page.route("**/api/community", (r) =>
+    r.fulfill({ json: { ok: true } }),
+  );
+  await open(page, "personalization&delayed=1&vote=1");
+  await openPersonalizedDetail(page, isMobile);
+  const dialog = page.locator(".place-detail-panel");
+  const down = dialog.getByRole("button", {
+    name: /^이 지도에 어울리지 않아요 /,
+  });
+  const up = dialog.getByRole("button", { name: /^이 지도에 어울려요 / });
+  await down.click();
+  await expect(down).toHaveAttribute("aria-pressed", "true");
+  await page
+    .getByRole("button", {
+      name: "서버 상태 수신",
+      exact: true,
+      includeHidden: true,
+    })
+    .evaluate((button: HTMLButtonElement) => button.click());
+  await expect(down).toHaveAttribute("aria-pressed", "true");
+  await expect(up).toHaveAttribute("aria-pressed", "false");
+  await page
+    .getByRole("button", {
+      name: "로그인 상태 전환",
+      exact: true,
+      includeHidden: true,
+    })
+    .evaluate((button: HTMLButtonElement) => button.click());
+  await expect(down).toHaveAttribute("aria-pressed", "false");
+  await down.click();
+  await expect(down).toHaveAttribute("aria-pressed", "true");
+  await page
+    .getByRole("button", {
+      name: "다른 지도 전환",
+      exact: true,
+      includeHidden: true,
+    })
+    .evaluate((button: HTMLButtonElement) => button.click());
+  await openPersonalizedDetail(page, isMobile);
+  await expect(
+    page
+      .locator(".place-detail-panel")
+      .getByRole("button", { name: /^이 지도에 어울리지 않아요 / }),
+  ).toHaveAttribute("aria-pressed", "false");
+});

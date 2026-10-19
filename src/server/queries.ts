@@ -310,47 +310,92 @@ export async function getComments(
   }));
 }
 export async function getMyState(mapId: string) {
-  const viewer = await getViewer();
-  const anonymousVoteHash = viewer ? null : await storedAnonymousVoteHash();
-  if (!viewer && !anonymousVoteHash)
-    return { votes: {}, saves: [], followed: false };
-  const client = await db();
-  const votes = viewer
-    ? await client
-        .from("map_place_votes")
-        .select("map_place_id,value")
-        .eq("user_id", viewer.id)
-    : await serviceDb()
+  const empty = { votes: {}, saves: [], followed: false };
+  const unavailable = (source: string, error: unknown) => {
+    const code =
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      typeof error.code === "string" &&
+      /^[A-Z0-9_]{1,32}$/i.test(error.code)
+        ? error.code
+        : "exception";
+    console.error("my_state_unavailable", { source, code });
+  };
+  async function read<T>(
+    source: string,
+    query: () => PromiseLike<{
+      data: T | null;
+      error: { code?: string } | null;
+    }>,
+  ): Promise<T | null> {
+    try {
+      const { data, error } = await query();
+      if (!error) return data;
+      unavailable(source, error);
+    } catch (error) {
+      unavailable(source, error);
+    }
+    return null;
+  }
+  let viewer: Viewer | null;
+  let anonymousVoteHash: string | null;
+  try {
+    viewer = await getViewer();
+    anonymousVoteHash = viewer ? null : await storedAnonymousVoteHash();
+  } catch (error) {
+    unavailable("identity", error);
+    return empty;
+  }
+  if (!viewer) {
+    if (!anonymousVoteHash) return empty;
+    const votes = await read("anonymous_votes", () =>
+      serviceDb()
         .from("anonymous_map_place_votes")
         .select("map_place_id,value")
-        .eq("token_hash", anonymousVoteHash!);
-  if (votes.error) throw new Error("내 활동을 불러올 수 없습니다.");
-  if (!viewer)
+        .eq("token_hash", anonymousVoteHash!),
+    );
     return {
+      ...empty,
       votes: Object.fromEntries(
-        (votes.data ?? []).map((vote) => [vote.map_place_id, vote.value]),
+        (votes ?? []).map((vote) => [vote.map_place_id, vote.value]),
       ) as Record<string, number>,
-      saves: [],
-      followed: false,
     };
-  const [saves, follow] = await Promise.all([
-    client.from("saves").select("map_place_id").eq("user_id", viewer.id),
-    client
-      .from("map_follows")
-      .select("map_id")
-      .eq("user_id", viewer.id)
-      .eq("map_id", mapId),
+  }
+  // Each read owns its failure, including client setup and rejected requests.
+  // A failed activity query must not discard successful independent reads.
+  let client: ReturnType<typeof db> | undefined;
+  const activityDb = () => (client ??= db());
+  const [votes, saves, follows] = await Promise.all([
+    read("votes", async () =>
+      (await activityDb())
+        .from("map_place_votes")
+        .select("map_place_id,value")
+        .eq("user_id", viewer.id),
+    ),
+    read("saves", async () =>
+      (await activityDb())
+        .from("saves")
+        .select("map_place_id")
+        .eq("user_id", viewer.id),
+    ),
+    read("follows", async () =>
+      (await activityDb())
+        .from("map_follows")
+        .select("map_id")
+        .eq("user_id", viewer.id)
+        .eq("map_id", mapId),
+    ),
   ]);
-  if (saves.error || follow.error)
-    throw new Error("내 활동을 불러올 수 없습니다.");
   return {
     votes: Object.fromEntries(
-      (votes.data ?? []).map((v) => [v.map_place_id, v.value]),
+      (votes ?? []).map((vote) => [vote.map_place_id, vote.value]),
     ) as Record<string, number>,
-    saves: (saves.data ?? []).map((s) => s.map_place_id),
-    followed: Boolean(follow.data?.length),
+    saves: (saves ?? []).map((save) => save.map_place_id),
+    followed: Boolean(follows?.length),
   };
 }
+
 export function rendererFor(): RendererConfig {
   if (!configured()) return { provider: "preview", key: "" };
   // Basemap rendering is independent from place search. Korea still uses the

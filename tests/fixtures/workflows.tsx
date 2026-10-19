@@ -1,3 +1,9 @@
+import { CommunityExplorer } from "@/components/community/community-explorer";
+import {
+  ViewerStateProvider,
+  HydrateViewer,
+  type ViewerState,
+} from "@/components/community/viewer-state";
 import { useCommunityMutations } from "@/components/community/use-community-mutations";
 import { PlaceResources } from "@/components/community/place-resources";
 import { usePlaceComments } from "@/components/community/use-place-comments";
@@ -276,8 +282,94 @@ function SheetFixture() {
     </section>
   );
 }
+const personalizationPlaces = [sheetPlace];
+function PersonalizationFixture() {
+  const params = new URLSearchParams(location.search);
+  const vote = Number(params.get("vote") ?? "1");
+  const [scope, setScope] = useState("map-a");
+  const [response, setResponse] = useState<{
+    scope: string;
+    state: ViewerState;
+  } | null>(
+    params.has("delayed")
+      ? null
+      : {
+          scope: "map-a",
+          state: {
+            viewer: null,
+            myState: {
+              votes: { [sheetPlace.id]: vote },
+              saves: [],
+              followed: false,
+            },
+          },
+        },
+  );
+  return (
+    <>
+      <button
+        onClick={() =>
+          setResponse({
+            scope,
+            state: {
+              viewer: null,
+              myState: {
+                votes: { [sheetPlace.id]: vote },
+                saves: [],
+                followed: false,
+              },
+            },
+          })
+        }
+      >
+        서버 상태 수신
+      </button>
+      <button
+        onClick={() =>
+          setResponse({
+            scope,
+            state: {
+              viewer: {
+                id: "member",
+                handle: "tester",
+                bio: "",
+                avatar_path: null,
+                role: "member",
+              },
+              myState: { votes: {}, saves: [], followed: false },
+            },
+          })
+        }
+      >
+        로그인 상태 전환
+      </button>
+      <button
+        onClick={() => {
+          setScope("map-b");
+          setResponse(null);
+        }}
+      >
+        다른 지도 전환
+      </button>
+      <ViewerStateProvider key={scope}>
+        {response?.scope === scope && <HydrateViewer state={response.state} />}
+        <CommunityExplorer
+          map={{ ...map, id: scope }}
+          initialPlaces={personalizationPlaces}
+          pendingPlaces={[]}
+          viewer={null}
+          myState={{ votes: {}, saves: [], followed: false }}
+          config={{ provider: "preview", key: "" }}
+          demo={false}
+        />
+      </ViewerStateProvider>
+    </>
+  );
+}
 createRoot(document.getElementById("root")!).render(
-  new URLSearchParams(location.search).get("fixture") === "mutations" ? (
+  new URLSearchParams(location.search).get("fixture") === "personalization" ? (
+    <PersonalizationFixture />
+  ) : new URLSearchParams(location.search).get("fixture") === "mutations" ? (
     <MutationFixture />
   ) : new URLSearchParams(location.search).get("fixture") ===
     "place-introductions" ? (

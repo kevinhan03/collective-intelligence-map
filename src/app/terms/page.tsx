@@ -1,4 +1,7 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+export const metadata: Metadata = { title: "이용약관" };
+
 export default function Terms() {
   return (
     <main id="main" className="page-wrap max-w-2xl space-y-6">

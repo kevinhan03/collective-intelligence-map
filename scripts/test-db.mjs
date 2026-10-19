@@ -52,6 +52,24 @@ create function storage.foldername(text) returns text[] language sql immutable a
   console.log(
     "PASS: map search SQL Editor script is repeatable and all three checks are true",
   );
+  const repair = await fs.readFile(
+    "docs/sql/repair-anonymous-votes-and-search-helpers.sql",
+    "utf8",
+  );
+  await c.query(repair);
+  await c.query(repair);
+  const repairChecks = await c.query(
+    await fs.readFile(
+      "docs/sql/check-anonymous-votes-and-search-helpers.sql",
+      "utf8",
+    ),
+  );
+  assert.ok(
+    Object.values(repairChecks[0].rows[0]).every((value) => value === true),
+  );
+  console.log(
+    "PASS: anonymous-vote repair SQL repeats safely and checks inner/outer function permissions",
+  );
   console.log("PASS: migrations and seed apply to PostgreSQL/PostGIS");
   const a = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
     b = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
@@ -223,15 +241,89 @@ create function storage.foldername(text) returns text[] language sql immutable a
       "anon",
     ),
   );
+  for (const schema of ["public", "private"]) {
+    await assert.rejects(
+      () =>
+        as(
+          null,
+          () =>
+            c.query(`select ${schema}.merge_anonymous_votes($1)`, [
+              anonymousTokenHash,
+            ]),
+          "anon",
+        ),
+      { code: "42501" },
+    );
+  }
+  await assert.rejects(
+    () =>
+      as(
+        null,
+        () => c.query("select * from public.anonymous_map_place_votes"),
+        "authenticated",
+      ),
+    { code: "42501" },
+  );
+  // A newer account vote wins; merging removes its anonymous duplicate.
+  await command(b, { action: "vote", id: pid, value: 1 });
+  for (let repeat = 0; repeat < 2; repeat++) {
+    await as(b, () =>
+      c.query("select public.merge_anonymous_votes($1)", [anonymousTokenHash]),
+    );
+    assert.equal(
+      (
+        await c.query(
+          "select count(*)::int n from public.anonymous_map_place_votes where token_hash=$1",
+          [anonymousTokenHash],
+        )
+      ).rows[0].n,
+      0,
+    );
+    assert.equal(
+      (
+        await c.query(
+          "select value from public.map_place_votes where map_place_id=$1 and user_id=$2",
+          [pid, b],
+        )
+      ).rows[0].value,
+      1,
+    );
+  }
+  await command(b, { action: "vote", id: pid, value: 0 });
   await as(
     null,
     () =>
       c.query("select public.record_anonymous_vote($1,$2,$3::smallint)", [
         pid,
         anonymousTokenHash,
-        0,
+        -1,
       ]),
     "service_role",
+  );
+  await as(b, () =>
+    c.query("select public.merge_anonymous_votes($1)", [anonymousTokenHash]),
+  );
+  assert.equal(
+    (
+      await c.query(
+        "select value from public.map_place_votes where map_place_id=$1 and user_id=$2",
+        [pid, b],
+      )
+    ).rows[0].value,
+    -1,
+  );
+  assert.equal(
+    (
+      await c.query(
+        "select count(*)::int n from public.anonymous_map_place_votes where token_hash=$1",
+        [anonymousTokenHash],
+      )
+    ).rows[0].n,
+    0,
+  );
+  await command(b, { action: "vote", id: pid, value: 0 });
+  console.log(
+    "PASS: authenticated anonymous-vote merge is repeatable and anon access stays blocked",
   );
   console.log(
     "PASS: pending proposals are readable and votable on the theme map, but hidden from the public bbox query",

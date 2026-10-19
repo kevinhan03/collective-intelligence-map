@@ -114,7 +114,8 @@ type ExplorerProps = {
 };
 export function CommunityExplorer(props: ExplorerProps) {
   const personalized = useViewerState();
-  const identity = `${props.map.id}:${personalized.viewer?.id ?? props.viewer?.id ?? "anonymous"}`;
+  const viewer = personalized.ready ? personalized.viewer : props.viewer;
+  const identity = `${props.map.id}:${viewer?.id ?? "anonymous"}`;
   return (
     <PlaceResources identity={identity}>
       <ExplorerContent {...props} />
@@ -336,8 +337,8 @@ function ExplorerContent({
     enabled: boolean;
   } | null>(null);
   const personalized = useViewerState();
-  const viewer = personalized.viewer ?? initialViewer;
-  const myState = personalized.viewer ? personalized.myState : initialMyState;
+  const viewer = personalized.ready ? personalized.viewer : initialViewer;
+  const myState = personalized.ready ? personalized.myState : initialMyState;
   const actions = useCommunityMutations(
     `${map.id}:${viewer?.id ?? "anonymous"}`,
     initialPlaces,

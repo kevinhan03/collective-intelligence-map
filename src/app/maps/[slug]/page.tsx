@@ -19,7 +19,7 @@ import {
 import { configured } from "@/lib/supabase/server";
 import { CommunityExplorer } from "@/components/community/community-explorer";
 import { mapSearchTitle } from "@/domain/seo";
-import { ogImage } from "@/lib/seo";
+import { noIndex, ogImage } from "@/lib/seo";
 import { getPublicPlace } from "@/server/seo-queries";
 export async function generateStaticParams() {
   return (await getMaps()).map((map) => ({ slug: map.slug }));
@@ -116,7 +116,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }) {
   const map = await getMap((await params).slug);
-  if (!map) return { title: "Theme Map" };
+  if (!map) return { title: "지도를 찾을 수 없어요", robots: noIndex };
   const images =
     map.kind === "creator" && map.cover_path
       ? [`/maps/${map.slug}/cover`]

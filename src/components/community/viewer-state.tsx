@@ -20,14 +20,17 @@ const empty: ViewerState = {
   viewer: null,
   myState: { votes: {}, saves: [], followed: false },
 };
-const Context = createContext({
-  state: empty,
+const Context = createContext<{
+  state: ViewerState | null;
+  setState: (state: ViewerState) => void;
+}>({
+  state: null,
   setState: (_: ViewerState) => {
     void _;
   },
 });
 export function ViewerStateProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState(empty);
+  const [state, setState] = useState<ViewerState | null>(null);
   return (
     <Context.Provider value={{ state, setState }}>{children}</Context.Provider>
   );
@@ -49,5 +52,6 @@ export function useViewerState() {
   const { state } = useContext(Context);
   // Personalization may hydrate before a streamed consumer. Keep that consumer's
   // first render consistent with the anonymous server shell.
-  return hydrated ? state : empty;
+  const ready = hydrated && state !== null;
+  return { ...(ready ? state : empty), ready };
 }

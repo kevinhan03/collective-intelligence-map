@@ -2,12 +2,13 @@
 import { MapFailure } from "../map-failure";
 import { MapLoading } from "../map-loading";
 import { useEffect, useRef, useState } from "react";
+import { useMobile } from "@/hooks/use-mobile";
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { ensureMapLibreWorkerReady } from "./maplibre-worker";
 import type { MapProps } from "../types";
-import { groupMapMarkers } from "../marker-groups";
-import { appendPinLikes } from "../pin-content";
+import { PLACE_LABEL_MIN_ZOOM, visibleMarkerLabels } from "../marker-labels";
+import { appendRecommendation } from "../pin-content";
 import {
   configureBasemapLabels,
   NEIGHBORHOOD_SOURCE_ID,
@@ -24,6 +25,7 @@ function boundsMatch(a: MapProps["bounds"], b: MapProps["bounds"]) {
 }
 
 export default function MapLibreMap(props: MapProps) {
+  const mobile = useMobile();
   const { places, selected, apiKey } = props;
   const container = useRef<HTMLDivElement>(null);
   const instance = useRef<maplibregl.Map | null>(null);
@@ -35,6 +37,8 @@ export default function MapLibreMap(props: MapProps) {
         marker: maplibregl.Marker;
         button: HTMLButtonElement;
         icon: HTMLSpanElement;
+        face: HTMLSpanElement;
+        label: HTMLSpanElement;
         signature: string;
         lat: number;
         lng: number;
@@ -117,7 +121,10 @@ export default function MapLibreMap(props: MapProps) {
         lng: event.lngLat.lng,
       });
     });
-    const observer = new ResizeObserver(() => map.resize());
+    const observer = new ResizeObserver(() => {
+      map.resize();
+      setViewRevision((revision) => revision + 1);
+    });
     observer.observe(container.current);
     return () => {
       observer.disconnect();
@@ -131,28 +138,23 @@ export default function MapLibreMap(props: MapProps) {
   useEffect(() => {
     const map = instance.current;
     if (!map) return;
-    const groups = groupMapMarkers(places, selected, (place) =>
-      map.project([place.lng, place.lat]),
-    );
     const retained = new Set<string>();
-    groups.forEach((group) => {
-      const p = group.places[0];
-      const key = group.places
-        .map((place) => place.id)
-        .sort()
-        .join(":");
+    places.forEach((p) => {
+      const key = p.id;
       retained.add(key);
-      const clustered = group.places.length > 1;
-      const canZoom = map.getZoom() < 17;
+      const isSelected = selected === p.id;
       let pin = pins.current.get(key);
       if (!pin) {
         const button = document.createElement("button");
         const face = document.createElement("span");
         face.className = "map-marker-face";
         const icon = document.createElement("span");
+        icon.className = "map-marker-recommendation";
         icon.setAttribute("aria-hidden", "true");
-        face.append(icon);
-        button.append(face);
+        const label = document.createElement("span");
+        label.className = "map-marker-label";
+        label.setAttribute("aria-hidden", "true");
+        button.append(face, icon, label);
         button.className = "map-marker";
         const marker = new maplibregl.Marker({
           element: button,
@@ -160,31 +162,33 @@ export default function MapLibreMap(props: MapProps) {
         })
           .setLngLat([p.lng, p.lat])
           .addTo(map);
-        pin = { marker, button, icon, signature: "", lat: p.lat, lng: p.lng };
+        pin = {
+          marker,
+          button,
+          icon,
+          face,
+          label,
+          signature: "",
+          lat: p.lat,
+          lng: p.lng,
+        };
         pins.current.set(key, pin);
       }
-      const { button, icon } = pin;
+      const { button, icon, label } = pin;
+      if (label.textContent !== p.name) label.textContent = p.name;
+      button.dataset.labelVisible = "false";
       button.type = "button";
-      button.title = clustered
-        ? canZoom
-          ? `${group.places.length}개 장소 확대`
-          : `${group.places.length}개 장소 중 ${p.name} 보기`
-        : p.name;
+      button.title = p.name;
       button.setAttribute(
         "aria-label",
-        clustered
-          ? button.title
-          : `${p.name} · 주제 추천 ${p.positive}${p.status === "pending" ? " · 검토 대기" : ""}`,
+        `${p.name} · 주제 추천 ${p.positive}${p.status === "pending" ? " · 검토 대기" : ""}`,
       );
-      button.dataset.cluster = String(clustered);
-      button.dataset.selected = String(selected === p.id);
+      button.dataset.selected = String(isSelected);
       button.dataset.status = p.status;
-      const signature = `${clustered}:${group.places.length}:${p.status}:${p.positive}`;
+      const signature = `${isSelected}:${p.positive}`;
       if (pin.signature !== signature) {
         icon.replaceChildren();
-        if (clustered) icon.textContent = String(group.places.length);
-        else if (p.status === "pending") icon.textContent = "···";
-        else appendPinLikes(icon, p.positive);
+        if (isSelected) appendRecommendation(icon, p.positive);
         pin.signature = signature;
       }
       if (pin.lat !== p.lat || pin.lng !== p.lng) {
@@ -192,14 +196,7 @@ export default function MapLibreMap(props: MapProps) {
         pin.lat = p.lat;
         pin.lng = p.lng;
       }
-      button.onclick = () => {
-        if (clustered && canZoom) {
-          map.easeTo({
-            center: [p.lng, p.lat],
-            zoom: Math.min(map.getZoom() + 2, 18),
-          });
-        } else latest.current.onSelect(p.id);
-      };
+      button.onclick = () => latest.current.onSelect(p.id);
     });
     for (const [key, pin] of pins.current) {
       if (!retained.has(key)) {
@@ -207,7 +204,60 @@ export default function MapLibreMap(props: MapProps) {
         pins.current.delete(key);
       }
     }
-  }, [places, selected, apiKey, viewRevision]);
+    // Measure after MapLibre has updated marker transforms. Labels are absolute
+    // children, so they never change the marker size or its bottom anchor.
+    let frame = 0;
+    let disposed = false;
+    const layoutLabels = () => {
+      const viewport = map.getContainer().getBoundingClientRect();
+      const entries = [...pins.current.entries()];
+      const pinRects = entries.map(([, pin]) =>
+        pin.face.getBoundingClientRect(),
+      );
+      const candidates = entries.flatMap(([id, pin], index) => {
+        const rect = pinRects[index];
+        const isSelected = pin.button.dataset.selected === "true";
+        if (
+          (!isSelected && map.getZoom() < PLACE_LABEL_MIN_ZOOM) ||
+          rect.right < viewport.left ||
+          rect.left > viewport.right ||
+          rect.bottom < viewport.top ||
+          rect.top > viewport.bottom
+        )
+          return [];
+        return [
+          {
+            id,
+            selected: isSelected,
+            rect: pin.label.getBoundingClientRect(),
+            pinRect: rect,
+          },
+        ];
+      });
+      const recommendationRects = entries
+        .filter(([, pin]) => pin.button.dataset.selected === "true")
+        .map(([, pin]) => pin.icon.getBoundingClientRect());
+      const visible = visibleMarkerLabels(candidates, [
+        ...pinRects,
+        ...recommendationRects,
+      ]);
+      entries.forEach(([id, pin]) => {
+        pin.button.dataset.labelVisible = String(visible.has(id));
+      });
+    };
+    const schedule = () => {
+      if (disposed) return;
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(layoutLabels);
+    };
+    schedule();
+    // Re-measure if a web font changes label widths after the first paint.
+    void document.fonts.ready.then(schedule);
+    return () => {
+      disposed = true;
+      cancelAnimationFrame(frame);
+    };
+  }, [places, selected, apiKey, loadedStyle, viewRevision]);
   useEffect(() => {
     if (!props.focusRequest || props.stationFocus) return;
     const { places, selected, onFocusComplete } = latest.current;
@@ -223,9 +273,20 @@ export default function MapLibreMap(props: MapProps) {
       modalTimer = setTimeout(() => onFocusComplete?.(p.id), 300);
     };
     map.once("moveend", onArrival);
+    const viewport = map.getContainer().getBoundingClientRect();
+    const pinHeight = pins.current.get(p.id)?.button.offsetHeight ?? 0;
+    // MapLibre anchors markers at their bottom. Include half the marker height
+    // so the circle's visible center sits at 40% of the mobile screen.
+    const offsetY = mobile
+      ? window.innerHeight * 0.4 -
+        viewport.top -
+        viewport.height / 2 +
+        pinHeight / 2
+      : 0;
     map.flyTo({
       center: [p.lng, p.lat],
       padding: { top: 0, right: 0, bottom: 0, left: 0 },
+      offset: [0, offsetY],
       zoom: Math.max(map.getZoom(), 14),
       duration: 650,
       essential: true,
@@ -234,7 +295,7 @@ export default function MapLibreMap(props: MapProps) {
       map.off("moveend", onArrival);
       if (modalTimer) clearTimeout(modalTimer);
     };
-  }, [props.focusRequest, props.stationFocus]);
+  }, [props.focusRequest, props.stationFocus, mobile]);
   useEffect(() => {
     const map = instance.current;
     const point = props.userLocation;

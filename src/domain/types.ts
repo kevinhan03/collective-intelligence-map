@@ -45,6 +45,18 @@ export type MapPlace = {
   last_verified_at: string | null;
   source_note?: string;
 };
+export type PlaceMap = Pick<
+  ThemeMap,
+  | "id"
+  | "slug"
+  | "title"
+  | "description"
+  | "country"
+  | "city"
+  | "search_scope"
+  | "tags"
+  | "kind"
+>;
 export type Comment = {
   id: string;
   map_place_id: string;

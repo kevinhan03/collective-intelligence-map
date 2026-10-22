@@ -1789,10 +1789,10 @@ function ExplorerContent({
             places.length > 1 &&
             pinHintOpen && (
               <div className="absolute bottom-20 left-4 z-10 rounded-full bg-card/90 px-4 py-3 text-xs text-foreground shadow-lg lg:bottom-4">
-                숫자 핀을 누르면 장소를 확대할 수 있어요.
+                핀을 누르면 장소 정보와 추천 수를 볼 수 있어요.
                 <button
                   type="button"
-                  aria-label="숫자 핀 안내 닫기"
+                  aria-label="핀 안내 닫기"
                   onClick={() => setPinHintOpen(false)}
                   className="absolute -right-2 -top-2 grid size-7 place-items-center rounded-full border bg-card text-foreground shadow-sm hover:bg-secondary focus-visible:outline-2 focus-visible:outline-primary"
                 >

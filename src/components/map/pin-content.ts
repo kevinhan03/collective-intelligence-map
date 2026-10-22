@@ -5,7 +5,20 @@ export function pinCount(positive: number) {
   return positive > 999 ? "999+" : String(positive);
 }
 
-export function appendPinLikes(element: HTMLElement, positive: number) {
+export function appendRecommendation(element: HTMLElement, positive: number) {
+  element.setAttribute("aria-hidden", "true");
+  const thumb = document.createElement("span");
+  thumb.className = "map-recommendation-thumb";
+  const count = document.createElement("span");
+  count.textContent = pinCount(positive);
+  element.append(thumb, count);
+}
+
+export function appendPinLikes(
+  element: HTMLElement,
+  positive: number,
+  showZero = false,
+) {
   element.classList.add("map-pin-likes");
   element.setAttribute("aria-hidden", "true");
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -19,7 +32,7 @@ export function appendPinLikes(element: HTMLElement, positive: number) {
   path.setAttribute("d", thumbPath);
   svg.append(path);
   element.append(svg);
-  if (positive > 0) {
+  if (positive > 0 || showZero) {
     const count = document.createElement("span");
     count.textContent = pinCount(positive);
     element.append(count);

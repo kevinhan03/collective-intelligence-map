@@ -29,6 +29,7 @@ export function MapCardBackdrop({ slug }: { slug: string }) {
           src={image}
           alt=""
           fill
+          loading={slug === "tokyo-fashion" ? "eager" : "lazy"}
           sizes="(min-width: 1280px) 32vw, (min-width: 768px) 50vw, 100vw"
           className="scale-110 object-cover blur-[1px]"
         />

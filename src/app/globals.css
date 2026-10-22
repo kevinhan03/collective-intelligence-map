@@ -589,31 +589,98 @@ button:not(:disabled),
 .map-marker {
   --map-pin-vote-offset: 34px;
   position: relative;
-  width: 32px;
-  height: 32px;
+  width: 16px;
+  height: 16px;
+}
+.map-marker::before {
+  position: absolute;
+  inset: -12px;
+  content: "";
+}
+.map-marker:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 8px;
 }
 .map-marker-votes {
   bottom: var(--map-pin-vote-offset);
   transform: translateX(-50%);
+}
+.map-marker-label {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: 144px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: #000;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  text-shadow:
+    -1px -1px 0 #fff,
+    1px -1px 0 #fff,
+    -1px 1px 0 #fff,
+    1px 1px 0 #fff,
+    0 0 3px #fff;
+  pointer-events: none;
+  visibility: hidden;
+}
+.map-marker[data-label-visible="true"] > .map-marker-label {
+  visibility: visible;
+}
+@media (min-width: 1024px), (hover: hover) and (pointer: fine) {
+  .map-marker-label {
+    top: calc(100% + 6px);
+    font-size: 10px;
+    line-height: 14px;
+  }
 }
 .map-marker-face {
   position: absolute;
   inset: 0;
   display: grid;
   place-items: center;
-  border: 1.5px solid white;
-  border-radius: 50% 50% 50% 6px;
-  background: #23614a;
-  color: white;
-  box-shadow: 0 3px 12px #35482d55;
-  rotate: -45deg;
+  border: 0;
+  border-radius: 50%;
+  background: var(--primary);
+  box-shadow: 0 2px 6px #0003;
   transition: background 180ms ease;
 }
-.map-marker-face > span {
-  rotate: 45deg;
+.map-marker > .map-marker-recommendation {
+  position: absolute;
+  bottom: calc(100% + 5px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: none;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: #151a20;
+  color: #fff;
+  box-shadow: 0 2px 8px #0003;
   font-size: 14px;
-  font-weight: 800;
-  line-height: 1;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 20px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.map-recommendation-thumb {
+  display: block;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  background: var(--primary);
+  mask: url("/icons/hand-thumb-up-solid.svg") center / contain no-repeat;
+}
+.map-marker[data-selected="true"] > .map-marker-recommendation {
+  display: flex;
 }
 .map-pin > .map-pin-likes,
 .map-marker-face > .map-pin-likes {
@@ -630,10 +697,6 @@ button:not(:disabled),
   width: 10px;
   height: 10px;
 }
-.map-marker[data-cluster="true"] .map-marker-face {
-  border-radius: 50%;
-  background: #283d22;
-}
 .map-marker[data-status="pending"] {
   color: #475569;
 }
@@ -642,15 +705,29 @@ button:not(:disabled),
 }
 .map-marker[data-selected="true"] {
   --map-pin-vote-offset: 42px;
-  width: 40px;
-  height: 40px;
+  width: 20px;
+  height: 20px;
   color: white;
   z-index: 3;
 }
-.map-marker[data-selected="true"] .map-marker-face {
-  background: #f97316;
+@media (max-width: 1023px) and (hover: none) and (pointer: coarse) {
+  .map-marker {
+    width: 14px;
+    height: 14px;
+    min-width: 0;
+    min-height: 0;
+  }
+  .map-marker[data-selected="true"] {
+    width: 18px;
+    height: 18px;
+  }
 }
-.map-marker[data-selected="true"] .map-marker-face::after,
+.map-marker[data-selected="true"] .map-marker-face {
+  background: var(--primary);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--primary) 30%, transparent),
+    0 2px 6px #0003;
+}
 .map-pin[data-selected="true"]::after {
   position: absolute;
   inset: -8px;
@@ -3971,8 +4048,7 @@ body:has(.profile-page) {
     font-size: 16px;
   }
 
-  .map-pin,
-  .map-marker {
+  .map-pin {
     --map-pin-vote-offset: 30px;
     width: 28px;
     height: 28px;
@@ -3980,8 +4056,7 @@ body:has(.profile-page) {
     min-height: 0;
   }
 
-  .map-pin[data-selected="true"],
-  .map-marker[data-selected="true"] {
+  .map-pin[data-selected="true"] {
     --map-pin-vote-offset: 37px;
     width: 35px;
     height: 35px;

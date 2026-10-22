@@ -1,0 +1,99 @@
+.section {
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+.heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.heading > span {
+  color: var(--muted-foreground);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border: 1px solid transparent;
+  border-radius: 22px;
+  padding: 14px 18px;
+  color: #000;
+  background: color-mix(in srgb, var(--primary) 24%, #fff);
+  transition: background 160ms ease;
+}
+.card:hover {
+  background: color-mix(in srgb, var(--primary) 38%, #fff);
+}
+.card[data-current="true"] {
+  background: var(--primary);
+}
+.card[data-current="true"]:hover {
+  background: color-mix(in srgb, var(--primary) 90%, #000);
+}
+.card:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+}
+.body {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.body h4 {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.35;
+}
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  color: #000a;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+.currentBadge {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #000;
+  color: var(--primary);
+  font-size: 10px;
+  font-weight: 600;
+}
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 8px;
+  color: #000b;
+  font-size: 10px;
+  line-height: 1.5;
+}
+.tags > span {
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: #0000000d;
+}
+.arrow {
+  flex-shrink: 0;
+  color: #0009;
+}
+.status {
+  color: var(--muted-foreground);
+  font-size: 13px;
+}

@@ -35,6 +35,7 @@ import { PlaceSheetHandle } from "./place-sheet-handle";
 import { exitPlaceSheet } from "./place-sheet-motion";
 import { PlacePanel } from "./place-panel";
 import { PlacePhotos } from "./place-photos";
+import { PlaceMaps } from "./place-maps";
 import { PlaceBackdrop } from "./place-backdrop";
 import { PlaceChecks } from "./place-checks";
 import { PlaceIntroductions } from "./place-introductions";
@@ -551,6 +552,11 @@ export function PlaceDetail({
                 </Link>
               )}
             </ParticipationSection>
+            <PlaceMaps
+              key={`maps:${place.place_id}:${place.map_id}`}
+              placeId={place.place_id}
+              currentMapId={place.map_id}
+            />
           </div>
         </div>
         {hasMoreBelow && mode === "detail" && (

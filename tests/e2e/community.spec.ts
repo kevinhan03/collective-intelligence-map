@@ -691,7 +691,7 @@ test("mobile enlarged content and carousel navigation remain usable", async ({
     .getByRole("button", { name: "다음 장소", exact: true })
     .click();
   await expect(carousel.getByRole("heading", { level: 2 })).toHaveText(
-    "Sunday Vintage",
+    "Studio 03",
   );
   await carousel
     .getByRole("button", { name: "다음 장소", exact: true })

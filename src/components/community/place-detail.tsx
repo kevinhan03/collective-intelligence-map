@@ -36,6 +36,7 @@ import { exitPlaceSheet } from "./place-sheet-motion";
 import { PlacePanel } from "./place-panel";
 import { PlacePhotos } from "./place-photos";
 import { PlaceMaps } from "./place-maps";
+import { PlaceTags } from "./place-tags";
 import { PlaceBackdrop } from "./place-backdrop";
 import { PlaceChecks } from "./place-checks";
 import { PlaceIntroductions } from "./place-introductions";
@@ -371,6 +372,11 @@ export function PlaceDetail({
               readOnly={readOnly}
               loginHref={loginHref}
               onReport={setReport}
+            />
+            <PlaceTags
+              key={`tags:${place.id}:${viewer?.id ?? "guest"}`}
+              id={place.id}
+              onChange={onChange}
             />
             {!creator && (
               <section

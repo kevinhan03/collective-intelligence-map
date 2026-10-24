@@ -3,6 +3,7 @@ import { z } from "zod";
 import { cache } from "react";
 import { cacheLife, cacheTag } from "next/cache";
 import { publicDb } from "@/lib/supabase/public";
+import { getMapTagCatalog, withPlaceTags } from "./map-tags";
 import { serviceDb } from "@/lib/supabase/admin";
 import { configured, db } from "@/lib/supabase/server";
 import { storedAnonymousVoteHash } from "@/server/anonymous-votes";
@@ -165,6 +166,7 @@ export const getMap = cache(async (slug: string): Promise<ThemeMap | null> => {
   return {
     ...row,
     creator_handle: creator?.handle,
+    place_tags: (await getMapTagCatalog(row.id))?.tags ?? [],
     ...counts,
     bounds: row.bounds as unknown as Bounds,
   } as ThemeMap;
@@ -253,7 +255,7 @@ async function readPlaces(map: ThemeMap, b: Bounds): Promise<MapPlace[]> {
     console.error("map_places_in_bounds_unavailable", error.code);
     throw new Error("장소를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
   }
-  return data as MapPlace[];
+  return withPlaceTags(map.id, data as MapPlace[]);
 }
 export async function getPendingPlaces(map: ThemeMap): Promise<MapPlace[]> {
   "use cache";

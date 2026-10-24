@@ -4,6 +4,8 @@ import { publicDb } from "@/lib/supabase/public";
 import { configured } from "@/lib/supabase/server";
 import { HttpError } from "./http";
 import { demoPlaces } from "./demo";
+import { getMapTagCatalog } from "./map-tags";
+import { matchesTags } from "@/domain/map-tags";
 import {
   localMapSearch,
   searchStationSchema,
@@ -15,6 +17,7 @@ import {
 const item = z.object({
   position: z.number().optional(),
   id: z.string(),
+  tag_ids: z.array(z.uuid()).optional().default([]),
   place_id: z.string(),
   map_id: z.string(),
   name: z.string(),
@@ -47,6 +50,14 @@ export async function searchMapPlaces(
   input: MapSearchInput,
 ): Promise<MapSearchResult> {
   if (!configured()) return localMapSearch(demoPlaces, input);
+  if (input.tagIds?.length) {
+    const catalog = await getMapTagCatalog(mapId);
+    if (
+      !catalog ||
+      input.tagIds.some((id) => !catalog.tags.some((tag) => tag.id === id))
+    )
+      throw new HttpError("이 지도에서 만든 활성 태그를 선택해 주세요.");
+  }
   const { data, error } = await publicDb().rpc("search_map_places", {
     payload: { ...input, mapId },
   });
@@ -69,5 +80,11 @@ export async function searchMapPlaces(
     );
   }
   if (!data) throw new HttpError("공개 지도를 찾을 수 없습니다.", 404);
-  return response.parse(data);
+  const parsed = response.parse(data);
+  if (parsed.items.some((place) => !matchesTags(place, input.tagIds)))
+    throw new HttpError(
+      "태그 검색을 준비 중입니다. 잠시 후 다시 시도해 주세요.",
+      503,
+    );
+  return parsed;
 }

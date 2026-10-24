@@ -5,6 +5,7 @@ export type Bounds = {
   north: number;
 };
 export type ThemeMap = {
+  place_tags?: import("./map-tags").MapTag[];
   kind?: "community" | "creator";
   owner_id?: string | null;
   creator_handle?: string;
@@ -25,6 +26,7 @@ export type ThemeMap = {
   contributor_count: number;
 };
 export type MapPlace = {
+  tag_ids?: string[];
   position?: number;
   id: string;
   place_id: string;

@@ -22,9 +22,11 @@ export async function GET(
         ).data
       : (await getMaps()).find((map) => map.id === id);
     if (!exists) throw new HttpError("공개 지도를 찾을 수 없습니다.", 404);
-    const input = mapSearchInput.parse(
-      Object.fromEntries(new URL(request.url).searchParams),
-    );
+    const queryParams = new URL(request.url).searchParams;
+    const input = mapSearchInput.parse({
+      ...Object.fromEntries(queryParams),
+      tagIds: queryParams.getAll("tag"),
+    });
     return json(await searchMapPlaces(id, input));
   } catch (error) {
     return failure(error);

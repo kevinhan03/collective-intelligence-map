@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Dialog } from "radix-ui";
-import { Camera, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { Camera, ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -263,17 +263,28 @@ export function PlacePhotos({
           방문자 사진
         </h3>
         {!viewer && !demo && !readOnly ? (
-          <Button asChild size="sm" variant="outline">
-            <Link href={loginHref}>사진 추가</Link>
+          <Button
+            asChild
+            size="sm"
+            variant="outline"
+            className="place-photo-add"
+          >
+            <Link href={loginHref} aria-label="사진 추가">
+              <Plus size={16} aria-hidden="true" />
+              <span className="place-photo-add-label">사진 추가</span>
+            </Link>
           </Button>
         ) : (
           <Button
             size="sm"
             variant="outline"
+            className="place-photo-add"
+            aria-label="사진 추가"
             disabled={readOnly || demo}
             onClick={(e) => open("upload", e.currentTarget)}
           >
-            사진 추가
+            <Plus size={16} aria-hidden="true" />
+            <span className="place-photo-add-label">사진 추가</span>
           </Button>
         )}
       </div>

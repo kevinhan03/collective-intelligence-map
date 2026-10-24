@@ -1,0 +1,123 @@
+.bar {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  padding: 4px 20px 8px;
+  min-width: 0;
+  -webkit-overflow-scrolling: touch;
+}
+.bar::-webkit-scrollbar {
+  display: none;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  gap: 6px;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 10px 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 9999px;
+  background: #fff;
+  color: #1d1d1f;
+  font-family:
+    -apple-system, BlinkMacSystemFont, system-ui, var(--font-suit), sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+  letter-spacing: -0.224px;
+  white-space: nowrap;
+  box-shadow: none;
+}
+.chip[aria-pressed="true"] {
+  border: 2px solid var(--primary);
+  padding: 9px 15px;
+  font-weight: 600;
+}
+.bar[data-map-tag-bar] button.chip[aria-pressed] {
+  min-height: 36px;
+  padding-block: 7px;
+}
+.bar[data-map-tag-bar] button.chip[aria-pressed="true"] {
+  padding-block: 6px;
+}
+.chip:focus-visible {
+  outline: 2px solid #1d1d1f;
+  outline-offset: 2px;
+}
+.chip:disabled {
+  opacity: 0.5;
+}
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.heading {
+  font-size: 14px;
+  font-weight: 600;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.form input {
+  min-width: 0;
+  flex: 1;
+}
+.hint {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted-foreground);
+}
+.editorRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px 2px 12px;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+}
+.editorRow > span {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.iconButton {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 9999px;
+}
+.iconButton:focus-visible {
+  outline: 2px solid var(--ring);
+}
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+@media (max-width: 1023px) {
+  .bar {
+    padding-inline: 12px;
+  }
+  .floating {
+    position: absolute;
+    top: var(--tag-bar-top, calc(64px + env(safe-area-inset-top)));
+    left: 0;
+    right: 64px;
+    z-index: 29;
+  }
+}

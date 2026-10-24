@@ -11,6 +11,12 @@ export const demoMap: ThemeMap = {
   country: "JP",
   city: "Tokyo",
   tags: ["전체", "빈티지", "독립 편집숍", "디자이너", "아카이브"],
+  place_tags: [
+    { id: "aaaa1111-1111-4111-8111-111111111111", name: "빈티지" },
+    { id: "aaaa2222-2222-4222-8222-222222222222", name: "편집숍" },
+    { id: "aaaa3333-3333-4333-8333-333333333333", name: "디자이너" },
+    { id: "aaaa4444-4444-4444-8444-444444444444", name: "아카이브" },
+  ],
   bounds: { west: 139.5, south: 35.5, east: 139.95, north: 35.85 },
   place_count: 6,
   follower_count: 0,
@@ -65,6 +71,14 @@ export const demoPlaces: MapPlace[] = entries.map(
     id: `22222222-2222-4222-8222-${String(i + 1).padStart(12, "0")}`,
     place_id: `33333333-3333-4333-8333-${String(i + 1).padStart(12, "0")}`,
     map_id: demoMap.id,
+    tag_ids: (i === 0
+      ? [0, 3]
+      : i === 2 || i === 5
+        ? [0]
+        : i === 3
+          ? [1, 2]
+          : [1]
+    ).map((index) => demoMap.place_tags![index].id),
     name,
     address: "도쿄 · 화면 확인용 가상 장소",
     category,

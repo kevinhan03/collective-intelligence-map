@@ -977,6 +977,9 @@ for (const photoCount of [0, 1, 6, -1]) {
         json: { comments: [], checks: [], introductions: [], summary: {} },
       }),
     );
+    await page.route("**/api/map-places/*/tags", (route) =>
+      route.fulfill({ json: { tags: [], tagIds: [], canManage: false } }),
+    );
     await page.route("**/api/places/*/stations", (route) =>
       route.fulfill({ json: { stations: [], available: false } }),
     );

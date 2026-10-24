@@ -19,6 +19,9 @@ import {
   type SearchPlace,
 } from "@/domain/map-search";
 import { useMobile } from "@/hooks/use-mobile";
+import { matchesTags, tagIdsSchema } from "@/domain/map-tags";
+import { MapTagBar } from "./map-tag-bar";
+import { MapTagSettings } from "./map-tag-settings";
 import { useViewerState } from "./viewer-state";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -133,6 +136,16 @@ function ExplorerContent({
   readOnly = false,
 }: ExplorerProps) {
   const mobile = useMobile();
+  const [query, setQuery] = useState(""),
+    [sort, setSort] = useState<Sort>("relevance"),
+    [selected, setSelected] = useState<string | null>(null),
+    [detailId, setDetailId] = useState<string | null>(null),
+    [commentsEntryId, setCommentsEntryId] = useState<string | null>(null),
+    [focusRequest, setFocusRequest] = useState(0),
+    [viewport, setViewport] = useState<Bounds | null>(null),
+    [error, setError] = useState(""),
+    [page, setPage] = useState(1),
+    [showPending, setShowPending] = useState(false);
   const [pinHintOpen, setPinHintOpen] = useState(true);
   const [userLocation, setUserLocation] = useState<Coordinate | null>(null);
   const [stationFocus, setStationFocus] = useState<{
@@ -350,18 +363,53 @@ function ExplorerContent({
   );
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [toolbarElement, setToolbarElement] = useState<HTMLDivElement | null>(
+    null,
+  );
+  const selectedTags = useMemo(() => {
+    const parsed = tagIdsSchema.safeParse(searchParams.getAll("tag"));
+    return parsed.success
+      ? parsed.data.filter((id) => map.place_tags?.some((tag) => tag.id === id))
+      : [];
+  }, [searchParams, map.place_tags]);
+  const tagSelectionKey = selectedTags.join(",");
+  const previousTags = useRef(tagSelectionKey);
+  useEffect(() => {
+    if (previousTags.current === tagSelectionKey) return;
+    previousTags.current = tagSelectionKey;
+    const timer = setTimeout(() => {
+      setPage(1);
+      setDetailId(null);
+      setSelected(null);
+      setPreviewId(null);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [tagSelectionKey]);
+  useEffect(() => {
+    if (searchParams.getAll("tag").join(",") === tagSelectionKey) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete("tag");
+    selectedTags.forEach((id) => url.searchParams.append("tag", id));
+    window.history.replaceState(
+      null,
+      "",
+      `${url.pathname}${url.search}${url.hash}`,
+    );
+  }, [searchParams, selectedTags, tagSelectionKey]);
+  function changeTags(ids: string[]) {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("tag");
+    url.searchParams.delete("place");
+    url.searchParams.delete("proposal");
+    ids.forEach((id) => url.searchParams.append("tag", id));
+    window.history.pushState(
+      null,
+      "",
+      `${url.pathname}${url.search}${url.hash}`,
+    );
+  }
   const requestedPlaceId = searchParams.get("place");
   const requestedProposalId = searchParams.get("proposal");
-  const [query, setQuery] = useState(""),
-    [sort, setSort] = useState<Sort>("relevance"),
-    [selected, setSelected] = useState<string | null>(null),
-    [detailId, setDetailId] = useState<string | null>(null),
-    [commentsEntryId, setCommentsEntryId] = useState<string | null>(null),
-    [focusRequest, setFocusRequest] = useState(0),
-    [viewport, setViewport] = useState<Bounds | null>(null),
-    [error, setError] = useState(""),
-    [page, setPage] = useState(1),
-    [showPending, setShowPending] = useState(false);
   const [searchStation, setSearchStation] = useState<SearchStation | null>(
     null,
   );
@@ -386,6 +434,7 @@ function ExplorerContent({
   const searchArgs = useMemo(
     () => ({
       q: deferredQuery,
+      tagIds: selectedTags,
       stationId: searchStation?.id,
       region,
       sort,
@@ -395,6 +444,7 @@ function ExplorerContent({
     }),
     [
       deferredQuery,
+      selectedTags,
       searchStation?.id,
       region,
       sort,
@@ -437,7 +487,9 @@ function ExplorerContent({
           localSearch.items)
         : sortPlaces(
             places.filter(
-              (p) => !mobile || !region || placeCity(p.address) === region,
+              (p) =>
+                (!mobile || !region || placeCity(p.address) === region) &&
+                matchesTags(p, selectedTags),
             ),
             sort,
             userLocation ?? undefined,
@@ -459,6 +511,7 @@ function ExplorerContent({
       sort,
       userLocation,
       map.kind,
+      selectedTags,
     ],
   );
   const filtered = useMemo(
@@ -466,8 +519,11 @@ function ExplorerContent({
     [unpatchedFiltered, actions.withCounts],
   );
   const displayPending = useMemo(
-    () => pendingPlaces.map(actions.withCounts),
-    [pendingPlaces, actions.withCounts],
+    () =>
+      pendingPlaces
+        .filter((place) => matchesTags(place, selectedTags))
+        .map(actions.withCounts),
+    [pendingPlaces, actions.withCounts, selectedTags],
   );
   const mapPlaces = useMemo(
     () => [...filtered, ...(search.active ? [] : displayPending)],
@@ -795,7 +851,7 @@ function ExplorerContent({
         ? place.id === requestedProposalId
         : place.place_id === requestedPlaceId,
     );
-    if (!mapPlace) return;
+    if (!mapPlace || !matchesTags(mapPlace, selectedTags)) return;
     const timer = window.setTimeout(() => {
       openedPlaceId.current = requestKey;
       setSelected(mapPlace.id);
@@ -815,9 +871,12 @@ function ExplorerContent({
     places,
     requestedPlaceId,
     requestedProposalId,
+    selectedTags,
   ]);
   const emptyMap = map.place_count === 0 && places.length === 0;
-  const hasSearchFilters = Boolean(query.trim() || searchStation || region);
+  const hasSearchFilters = Boolean(
+    query.trim() || searchStation || region || selectedTags.length,
+  );
   const canSuggestPlace = map.kind !== "creator" && !readOnly && !demo;
   const emptyState = (
     <>
@@ -831,7 +890,7 @@ function ExplorerContent({
             : canSuggestPlace
               ? "이 주제에 어울리는 첫 장소를 제안해 주세요."
               : "장소가 추가되면 이 지도에서 볼 수 있어요."
-          : "검색어나 지역 필터를 바꿔서 다시 찾아보세요."}
+          : "검색어나 지역, 태그를 바꿔서 다시 찾아보세요."}
       </p>
       {!emptyMap && hasSearchFilters && (
         <Button
@@ -839,6 +898,7 @@ function ExplorerContent({
           onClick={() => {
             clearSearch();
             setRegion("");
+            changeTags([]);
           }}
         >
           검색 조건 초기화
@@ -1153,6 +1213,14 @@ function ExplorerContent({
             </summary>
             <p className="pt-3 leading-6 text-muted-foreground">{map.rules}</p>
           </details>
+          <div className="border-t px-5 py-5">
+            <MapTagSettings
+              key={map.id}
+              map={map}
+              viewer={viewer}
+              demo={demo}
+            />
+          </div>
           <div className="grid grid-cols-2 gap-2 border-t p-5 pb-[calc(20px+env(safe-area-inset-bottom))]">
             <Button
               variant={actions.followed ? "secondary" : "outline"}
@@ -1196,6 +1264,7 @@ function ExplorerContent({
         </div>
       )}
       <div
+        ref={setToolbarElement}
         data-search-open={searchOpen}
         className="glass-toolbar explorer-toolbar flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3 md:px-9"
       >
@@ -1439,6 +1508,13 @@ function ExplorerContent({
           </Button>
         )}
       </div>
+      <MapTagBar
+        tags={map.place_tags ?? []}
+        selected={selectedTags}
+        onChange={changeTags}
+        floating={mobile && mobileView === "map"}
+        anchor={toolbarElement}
+      />
       {error && (
         <p
           role="alert"
@@ -2007,7 +2083,10 @@ function ExplorerContent({
               onSave={() => savePlace(selectedPlace.id)}
               votePending={actions.isPending("vote", selectedPlace.id)}
               savePending={actions.isPending("save", selectedPlace.id)}
-              onChange={() => router.refresh()}
+              onChange={() => {
+                router.refresh();
+                search.retry();
+              }}
             />
           </Suspense>
         )}

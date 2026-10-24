@@ -1,4 +1,5 @@
 import "server-only";
+import { getMapTagCatalog, withPlaceTags } from "./map-tags";
 import { cacheLife, cacheTag } from "next/cache";
 import { db, configured } from "@/lib/supabase/server";
 import { publicDb } from "@/lib/supabase/public";
@@ -69,7 +70,7 @@ export async function ownerMap(id: string) {
     );
   const map = snapshot.maps.find((m) => m.id === id);
   if (!map) throw new HttpError("본인의 지도를 찾을 수 없습니다.", 404);
-  return map;
+  return { ...map, place_tags: (await getMapTagCatalog(id, true))?.tags ?? [] };
 }
 export async function creatorPlaces(
   id: string,
@@ -78,7 +79,7 @@ export async function creatorPlaces(
   const client = owner ? await db() : publicDb();
   const { data, error } = await client.rpc("creator_places", { m: id });
   dbError(error);
-  return data as unknown as CreatorPlace[];
+  return withPlaceTags(id, data as unknown as CreatorPlace[], owner);
 }
 export async function creatorWrite(payload: Json) {
   const { data, error } = await (

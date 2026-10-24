@@ -2,11 +2,13 @@ import { z } from "zod";
 import { placeArea, placeCity } from "./place-location";
 import { placeCategoryLabel } from "./place-category";
 import { sortPlaces } from "./relevance";
+import { matchesTags, tagIdsSchema } from "./map-tags";
 import type { MapPlace } from "./types";
 
 export const mapSearchInput = z
   .object({
     q: z.string().max(100).default(""),
+    tagIds: tagIdsSchema.optional(),
     stationId: z.string().min(1).max(300).optional(),
     region: z.string().max(80).default(""),
     sort: z
@@ -112,6 +114,7 @@ export function localMapSearch(
     : places.filter(
         (p) =>
           matchesSearch(p, input.q) &&
+          matchesTags(p, input.tagIds) &&
           (!input.region || placeCity(p.address) === input.region),
       );
   const ordered = sortPlaces(

@@ -16,7 +16,10 @@ export function useMapSearch(
   enabled = true,
 ) {
   const active =
-    enabled && Boolean(normalizeSearch(input.q) || input.stationId);
+    enabled &&
+    Boolean(
+      normalizeSearch(input.q) || input.stationId || input.tagIds?.length,
+    );
   const key = JSON.stringify([
     mapId,
     input.q,
@@ -25,6 +28,7 @@ export function useMapSearch(
     input.sort,
     input.lat,
     input.lng,
+    input.tagIds,
   ]);
   const [state, setState] = useState<{
     key: string;
@@ -43,8 +47,11 @@ export function useMapSearch(
   );
   async function fetchResults(args: MapSearchInput, signal: AbortSignal) {
     const params = new URLSearchParams();
-    for (const [name, value] of Object.entries(args))
-      if (value !== undefined) params.set(name, String(value));
+    for (const [name, value] of Object.entries(args)) {
+      if (name === "tagIds" && Array.isArray(value))
+        value.forEach((id) => params.append("tag", id));
+      else if (value !== undefined) params.set(name, String(value));
+    }
     const response = await fetch(`/api/maps/${mapId}/search?${params}`, {
       signal,
     });
@@ -132,7 +139,7 @@ export function useMapSearch(
   return {
     active,
     result: current,
-    previous: state?.data ?? null,
+    previous: state?.key === key ? state.data : null,
     loading:
       active &&
       !composing &&

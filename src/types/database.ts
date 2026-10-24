@@ -816,6 +816,10 @@ export type Database = {
         Returns: boolean;
       };
       search_map_places: { Args: { payload: Json }; Returns: Json };
+      map_tag_catalog: { Args: { m: string }; Returns: Json };
+      map_place_tag_assignments: { Args: { m: string; ids: string[] }; Returns: Json };
+      map_place_tag_ids: { Args: { target: string }; Returns: string[] };
+      map_tag_command: { Args: { payload: Json }; Returns: Json };
       search_normalize: { Args: { t: string }; Returns: string };
       search_compact: { Args: { t: string }; Returns: string };
       search_city: { Args: { t: string }; Returns: string };

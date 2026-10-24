@@ -4775,3 +4775,70 @@ body:has(.profile-page) {
     linear-gradient(180deg, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.55));
   backdrop-filter: blur(60px);
 }
+
+/* Add-photo action, after Apple's chip grammar: a flat translucent capsule with
+   no ring, shadow or blur, a light glyph, and a 0.95 press. On mobile it is a
+   small "+" beside the section title; its touch target stays 44px. */
+.place-photos-heading .place-photo-add {
+  position: relative;
+  height: 28px;
+  min-height: 0;
+  min-width: 0;
+  gap: 4px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 14%);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  color: rgb(255 255 255 / 92%);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1;
+  transition:
+    transform 0.15s ease,
+    background-color 0.15s ease;
+}
+.place-photos-heading .place-photo-add svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.25;
+}
+.place-photos-heading .place-photo-add:hover {
+  background: rgb(255 255 255 / 20%);
+}
+.place-photos-heading .place-photo-add:active {
+  transform: scale(0.95);
+  background: rgb(255 255 255 / 24%);
+}
+.place-photos-heading .place-photo-add:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .place-photos-heading .place-photo-add {
+    transition: none;
+  }
+  .place-photos-heading .place-photo-add:active {
+    transform: none;
+  }
+}
+@media (max-width: 1023px) {
+  .place-photos-heading {
+    justify-content: flex-start;
+  }
+  .place-photos-heading .place-photo-add {
+    width: 26px;
+    height: 26px;
+    padding: 0;
+  }
+  .place-photos-heading .place-photo-add::after {
+    content: "";
+    position: absolute;
+    inset: -9px;
+  }
+  .place-photos-heading .place-photo-add-label {
+    display: none;
+  }
+}

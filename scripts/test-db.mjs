@@ -7,6 +7,7 @@ import fs from "node:fs/promises";
 import assert from "node:assert/strict";
 import { testCreatorMaps } from "./test-creator-db.mjs";
 import { testProposalSearch } from "./test-proposal-search-db.mjs";
+import { testMapTags } from "./test-map-tags-db.mjs";
 import { testMapSearch } from "./test-map-search-db.mjs";
 import { testCommentThread } from "./test-comment-thread-db.mjs";
 import { testIntroductions } from "./test-introductions-db.mjs";
@@ -1281,6 +1282,7 @@ create function storage.foldername(text) returns text[] language sql immutable a
   await testCreatorMaps(c);
   await testIntroductions(c);
   await testCommentThread(c);
+  await testMapTags(c);
   const functions = (
     await c.query(
       "select n.nspname,p.proname from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.prosecdef",

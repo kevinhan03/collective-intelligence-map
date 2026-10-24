@@ -1421,7 +1421,9 @@ test("place detail exposes compact participation and replaces its body with an i
             const text = el.firstElementChild!;
             return (
               getComputedStyle(el).whiteSpace === "nowrap" &&
-              text.getBoundingClientRect().width <= el.clientWidth
+              // Compare untransformed integer CSS widths on both sides;
+              // boundingClientRect includes fractional pixels and transforms.
+              text.scrollWidth <= el.clientWidth
             );
           }),
         ),

@@ -686,6 +686,9 @@ test("mobile enlarged content and carousel swiping remain usable", async ({
   await expect(carousel).toBeVisible();
   await expect(carousel).toHaveAttribute("data-sheet-stage", "summary");
   await swipeMobilePlace(page, "next");
+  await expect(carousel.getByRole("heading", { level: 2 })).toHaveText(
+    "Studio 03",
+  );
   await swipeMobilePlace(page, "next");
   await expect(carousel.getByRole("heading", { level: 2 })).toHaveText(
     "Second Chapter",

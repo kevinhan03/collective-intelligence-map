@@ -402,11 +402,8 @@ function ExplorerContent({
     url.searchParams.delete("place");
     url.searchParams.delete("proposal");
     ids.forEach((id) => url.searchParams.append("tag", id));
-    window.history.pushState(
-      null,
-      "",
-      `${url.pathname}${url.search}${url.hash}`,
-    );
+    // Keep the router state in sync after back/forward restores a cached page.
+    router.push(`${url.pathname}${url.search}${url.hash}`, { scroll: false });
   }
   const requestedPlaceId = searchParams.get("place");
   const requestedProposalId = searchParams.get("proposal");

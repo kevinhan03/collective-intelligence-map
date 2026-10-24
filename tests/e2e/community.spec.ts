@@ -580,11 +580,9 @@ for (const width of [360, 390, 430, 768, 1024, 1440, 1920]) {
       const before = await carousel
         .getByRole("heading", { level: 2 })
         .innerText();
-      await page
-        .locator(".mobile-place-track")
-        .evaluate((element) =>
-          element.scrollTo({ left: element.clientWidth, behavior: "instant" }),
-        );
+      await carousel
+        .getByRole("button", { name: "다음 장소", exact: true })
+        .click();
       await expect(carousel.getByRole("heading", { level: 2 })).not.toHaveText(
         before,
       );
@@ -679,7 +677,7 @@ test("mobile discovery filter sheet restores focus and preserves conditions", as
   await expect(trigger).toBeFocused();
 });
 
-test("mobile enlarged content and carousel scrolling remain usable", async ({
+test("mobile enlarged content and carousel navigation remain usable", async ({
   page,
   isMobile,
 }, testInfo) => {
@@ -689,11 +687,15 @@ test("mobile enlarged content and carousel scrolling remain usable", async ({
   const carousel = page.getByRole("region", { name: "장소 미리보기" });
   await expect(carousel).toBeVisible();
   await expect(carousel).toHaveAttribute("data-sheet-stage", "summary");
-  await page
-    .locator(".mobile-place-track")
-    .evaluate((element) =>
-      element.scrollTo({ left: element.clientWidth * 2, behavior: "instant" }),
-    );
+  await carousel
+    .getByRole("button", { name: "다음 장소", exact: true })
+    .click();
+  await expect(carousel.getByRole("heading", { level: 2 })).toHaveText(
+    "Sunday Vintage",
+  );
+  await carousel
+    .getByRole("button", { name: "다음 장소", exact: true })
+    .click();
   await expect(carousel.getByRole("heading", { level: 2 })).toHaveText(
     "Second Chapter",
   );

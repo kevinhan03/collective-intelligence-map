@@ -18,12 +18,21 @@ export function SingleLineText({
     const content = text.current;
     if (!element || !content) return;
     const fit = () => {
-      const available = element.clientWidth;
-      if (!available) return;
+      // CSS widths stay stable while a sheet is scaled by its animation.
+      // Leave one pixel for integer rounding and font rasterization differences.
+      const available = element.clientWidth - 1;
+      if (available <= 0) return;
       element.style.fontSize = `${maxFontSize}px`;
-      const natural = content.getBoundingClientRect().width;
-      if (natural > available)
-        element.style.fontSize = `${Math.floor(((maxFontSize * available) / natural) * 100) / 100}px`;
+      if (content.scrollWidth <= available) return;
+      let lower = 0;
+      let upper = maxFontSize;
+      for (let step = 0; step < 10; step++) {
+        const size = (lower + upper) / 2;
+        element.style.fontSize = `${size}px`;
+        if (content.scrollWidth <= available) lower = size;
+        else upper = size;
+      }
+      element.style.fontSize = `${Math.floor(lower * 100) / 100}px`;
     };
     fit();
     const observer = new ResizeObserver(fit);

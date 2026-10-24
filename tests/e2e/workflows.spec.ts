@@ -1413,7 +1413,19 @@ test("place detail exposes compact participation and replaces its body with an i
   await stations.locator("summary").click();
   await expect(stations).not.toHaveAttribute("open");
   for (const width of [320, 390, 768]) {
+    // Resizing during a sheet animation must not distort the text-fit measure.
+    await detail.evaluate((element) => {
+      element.style.scale = "0.5";
+    });
     await page.setViewportSize({ width, height: 844 });
+    await page.evaluate(
+      () => new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      }),
+    );
+    await detail.evaluate((element) => {
+      element.style.scale = "";
+    });
     await expect
       .poll(() =>
         detail.locator(".single-line-text").evaluateAll((elements) =>
@@ -1421,9 +1433,7 @@ test("place detail exposes compact participation and replaces its body with an i
             const text = el.firstElementChild!;
             return (
               getComputedStyle(el).whiteSpace === "nowrap" &&
-              // Compare untransformed integer CSS widths on both sides;
-              // boundingClientRect includes fractional pixels and transforms.
-              text.scrollWidth <= el.clientWidth
+              text.getBoundingClientRect().width <= el.clientWidth
             );
           }),
         ),

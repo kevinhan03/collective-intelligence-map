@@ -10,7 +10,10 @@ async function expandMobileDetail(page: Page) {
     .getByRole("button", { name: "장소 상세 펼치기", exact: true })
     .click();
 }
-test("desktop discovery keeps search, sorting and compact reactions beside the map", async ({ page, isMobile }) => {
+test("desktop discovery keeps search, sorting and compact reactions beside the map", async ({
+  page,
+  isMobile,
+}) => {
   test.skip(isMobile);
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/maps/tokyo-fashion");
@@ -20,9 +23,14 @@ test("desktop discovery keeps search, sorting and compact reactions beside the m
   await expect(search).toBeVisible();
   await expect(header.getByRole("group", { name: "장소 정렬" })).toBeVisible();
   const bounds = await page.locator(".explorer-layout").evaluate((layout) => {
-    const list = layout.querySelector("#explorer-list")!.getBoundingClientRect();
+    const list = layout
+      .querySelector("#explorer-list")!
+      .getBoundingClientRect();
     const map = layout.querySelector("#explorer-map")!.getBoundingClientRect();
-    return { topDifference: Math.abs(list.top - map.top), gap: map.left - list.right };
+    return {
+      topDifference: Math.abs(list.top - map.top),
+      gap: map.left - list.right,
+    };
   });
   expect(bounds.topDifference).toBeLessThanOrEqual(1);
   expect(bounds.gap).toBeGreaterThan(0);
@@ -33,15 +41,25 @@ test("desktop discovery keeps search, sorting and compact reactions beside the m
   expect(capsuleBox.width).toBeLessThanOrEqual(100);
   expect(capsuleBox.height).toBeLessThanOrEqual(30);
   await header.getByLabel("발견 목록 필터", { exact: true }).click();
-  await expect(header.getByRole("combobox", { name: "장소 지역", exact: true })).toBeVisible();
-  await header.getByRole("combobox", { name: "장소 지역", exact: true }).press("Escape");
-  await expect(header.getByRole("combobox", { name: "장소 지역", exact: true })).toBeHidden();
+  await expect(
+    header.getByRole("combobox", { name: "장소 지역", exact: true }),
+  ).toBeVisible();
+  await header
+    .getByRole("combobox", { name: "장소 지역", exact: true })
+    .press("Escape");
+  await expect(
+    header.getByRole("combobox", { name: "장소 지역", exact: true }),
+  ).toBeHidden();
   await search.fill("no-matching-place");
-  await expect(list.getByText("조건에 맞는 장소가 없어요.", { exact: true })).toBeVisible();
+  await expect(
+    list.getByText("조건에 맞는 장소가 없어요.", { exact: true }),
+  ).toBeVisible();
   await expect(page.locator(".map-pin")).toHaveCount(0);
   await header.getByRole("button", { name: "검색·역 필터 초기화" }).click();
   await expect(page.locator(".map-pin")).toHaveCount(6);
-  await list.evaluate((element) => { element.scrollTop = element.scrollHeight; });
+  await list.evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+  });
   await expect(search).toBeInViewport();
 });
 test("mobile logo stays visible after returning home from a map", async ({
@@ -211,7 +229,7 @@ test("discover community, filter venues, open context and protect participation"
   });
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
-    isMobile ? "취향으로 찾는 테마지도" : "좋은 장소는",
+    isMobile ? "취향으로 찾는 테마지도" : "같은 취향이 모이는 지도",
   );
   if (isMobile) {
     await page
@@ -496,7 +514,7 @@ for (const width of [360, 390, 430, 768, 1024, 1440, 1920]) {
     const mobile = width < 1024;
     await page.goto("/");
     await expect(page.getByRole("heading", { level: 1 })).toContainText(
-      mobile ? "취향으로 찾는 테마지도" : "좋은 장소는",
+      mobile ? "취향으로 찾는 테마지도" : "같은 취향이 모이는 지도",
     );
     expect(
       await page.evaluate(
@@ -504,20 +522,15 @@ for (const width of [360, 390, 430, 768, 1024, 1440, 1920]) {
       ),
     ).toBe(true);
     if (!mobile) {
-      // Text can overlap the neighboring panel without overflowing the page.
-      const overlapsPanel = await page
-        .getByRole("heading", { level: 1 })
-        .evaluate((heading) => {
-          const panel = document
-            .getElementById("communities")!
-            .getBoundingClientRect();
-          const range = document.createRange();
-          range.selectNodeContents(heading);
-          return [...range.getClientRects()].some(
-            (rect) => rect.right > panel.left,
-          );
-        });
-      expect(overlapsPanel).toBe(false);
+      // Intro and results stack vertically; cards use the page's natural scroll.
+      const intro = await page.getByRole("heading", { level: 1 }).boundingBox();
+      const section = await page.locator("#communities").boundingBox();
+      expect(intro!.y + intro!.height).toBeLessThan(section!.y);
+      expect(
+        await page
+          .locator("[data-desktop-home] ol")
+          .evaluate((element) => getComputedStyle(element).overflowY),
+      ).toBe("visible");
 
       const panel = page.locator("#communities");
       const footer = page.locator("footer");
@@ -1043,4 +1056,74 @@ test("mobile place opens its summary and dismisses to a bottom sheet edge", asyn
   await expect(card.getByRole("heading", { level: 2 })).toHaveText(
     "Second Chapter",
   );
+});
+
+test("desktop home combines theme and text filters and keeps metadata inside clear photo cards", async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(isMobile);
+  await page.setViewportSize({ width: 1440, height: 1024 });
+  await page.goto("/");
+  const home = page.locator("[data-desktop-home]");
+  const search = home.getByRole("searchbox", {
+    name: "지도 검색",
+    exact: true,
+  });
+  const card = home.locator("summary").first();
+  await expect(card).toBeVisible();
+  const theme = home.getByRole("group", { name: "지도 테마" });
+  await theme.getByRole("button", { name: "패션", exact: true }).click();
+  await expect(
+    theme.getByRole("button", { name: "패션", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(home.locator("summary")).toHaveCount(1);
+  await search.fill("no-such-map");
+  await search.press("Enter");
+  await expect(
+    home.getByRole("heading", { name: "함께 만드는 지도" }),
+  ).toBeFocused();
+  await expect(
+    home.getByText("조건에 맞는 지도가 없어요.", { exact: false }),
+  ).toBeVisible();
+  await home
+    .getByRole("button", { name: "검색·필터 초기화", exact: true })
+    .click();
+  await expect(search).toHaveValue("");
+  await expect(
+    theme.getByRole("button", { name: "전체", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await theme.getByRole("button", { name: "맛집", exact: true }).click();
+  await expect(home.locator("summary")).toHaveCount(0);
+  await home
+    .getByRole("button", { name: "검색·필터 초기화", exact: true })
+    .click();
+  const layout = await card.evaluate((element) => {
+    const bounds = element.getBoundingClientRect();
+    const title = element.querySelector("h3")!.getBoundingClientRect();
+    const image = element.querySelector("img")!;
+    const count = element.lastElementChild!.getBoundingClientRect();
+    return {
+      columns: getComputedStyle(
+        element.closest("ol")!,
+      ).gridTemplateColumns.split(" ").length,
+      titleInside:
+        title.left >= bounds.left &&
+        title.right <= bounds.right &&
+        title.bottom <= bounds.bottom,
+      countInside: count.left >= title.right && count.bottom <= bounds.bottom,
+      imageFilter: getComputedStyle(image).filter,
+    };
+  });
+  expect(layout).toEqual({
+    columns: 3,
+    titleInside: true,
+    countInside: true,
+    imageFilter: "none",
+  });
+  await card.click();
+  await expect(card.locator("..")).toHaveAttribute("open", "");
+  await expect(
+    card.locator("..").getByRole("link", { name: /전체 지도 열기/ }),
+  ).toBeVisible();
 });

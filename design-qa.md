@@ -1,3 +1,65 @@
+# Desktop home redesign — design QA
+
+final result: passed
+
+## Visual truth and scope
+
+- Selected visual: `artifacts/desktop-home/selected-reference.png` (1487 × 1058), the latest approved image with names and counts inside the covers. The user's later instruction to strengthen the bottom gradient takes precedence over the image.
+- Implementation: `http://localhost:3000/`, current local main, logged-in account, nine actual public maps, no search/filter, previews closed, scroll at top.
+- Final screenshot: `artifacts/desktop-home/desktop-final-1440.png` (1425 × 1013). CSS viewport 1440 × 1024; devicePixelRatio 1. CUA's full viewport capture is scaled by approximately 0.989 relative to CSS pixels. Source art represents the same logical 1440 × 1024 target at approximately 1.033 scale.
+- Full-view comparison: source and implementation were opened together in one image review input. Compared normalized page proportions rather than raw pixels; source-to-capture scale is 1425/1487 horizontally and 1013/1058 vertically (under 0.1% aspect discrepancy). No generated pixels were modified to manufacture a match.
+- Focused evidence: `artifacts/desktop-home/card-detail.png` (850 × 230 browser clip) shows the first two cards, readable overlay titles/counts and the actual covers. Also checked DOM geometry for title/count containment and image filter.
+- Additional states: `preview-open.png`, `desktop-1024.png` (1009 × 757, CSS 1024 × 768), `mobile-390.png` (375 × 812, CSS 390 × 844). Native capture scale differs by browser viewport; responsive findings use CSS sizes and DOM measurements.
+- Existing codebase was edited in place. Existing SUIT fonts, Lucide icons, logo and all four real cover photographs were reused. No generated replacement photographs, new backend operations or schema changes were introduced.
+
+## Findings and comparison history
+
+- Latest glass-card refinement: approved component reference `artifacts/desktop-home/glass-reference.png` (two enlarged states). The user explicitly requested a stronger glassmorphism treatment. Added a fading upper-edge rim, inset neutral reflection, translucent card surface/backdrop blur, slightly rounder corners and restrained hover brightening. Existing image assets, text positions and the strong lower title gradient remain intact. Component shape follows the existing homepage cards rather than the taller explanatory mock.
+- Glass evidence: `artifacts/desktop-home/glass-cards.png` (page context) and `artifacts/desktop-home/glass-card-detail.png` (focused hover state). Source and focused implementation were opened together; compared the border treatment after accounting for the enlarged reference scale. Live inspection confirmed hover reflection/rim opacity 1, `mask-composite: exclude`, and card backdrop blur. Preview opened/closed normally. CSS transitions are disabled for reduced motion; the lime keyboard focus outline remains. No new actionable P0/P1/P2 findings.
+- After the glass-only CSS adjustment, the production test build and six targeted desktop home/footer/search/filter/preview checks passed. Earlier complete-suite results below remain historical; no claim that the entire suite was rerun for this styling adjustment. Mobile uses separate unchanged styles.
+
+- Latest minor refinement: removed the headline period and strengthened the title-area gradient again. Verified in the live browser at scrollY 0; `artifacts/desktop-home/headline-gradient-refinement.png` captures the header, headline and first card row (native window capture is vertically clipped despite the 1440 × 1024 CSS viewport). Earlier full-page-state evidence is retained separately. Targeted ESLint and diff checks passed; the earlier complete suite was not rerun for this copy/CSS-only adjustment.
+
+1. [P2, fixed] Initial full-view comparison showed the map grid starting too low and most third-row labels falling below the selected viewport. Evidence: `desktop-1440.png`. Reduced intro padding from 34/24px to 28/12px, search top margin from 20px to 14px, theme margin from 14px to 10px and grid row gap from 20px to 16px. Post-fix evidence: `desktop-final-1440.png`, which exposes the third-row names and counts while keeping natural page scroll.
+2. [Intentional requirement] Bottom cover gradient is stronger than the selected image: transparent upper section, 88% dark at 62% of tile height, 96% at 82%, and fully dark at the bottom (strengthened again at the user’s request). The image itself has no uniform brightness or blur filter in the desktop home. Hover does not remove the reading contrast.
+3. [Preserved behavior] Cards retain their existing expandable description and map link. The selected visual shows only the collapsed state. Search results can be combined with theme filters, submitted with Enter or the arrow button, and recovered from an empty state. Clearing/resetting returns focus to the search input.
+4. [Accepted product constraint] Generated abstract gradients were illustrative. Existing deterministic color covers remain for maps without photos; real location/theme labels, logged-in navigation and counts come from current data. Mobile keeps its original cover treatment via the default MapCardBackdrop behavior.
+
+## Required fidelity surfaces
+
+- Fonts/typography: existing SUIT family; compact 34–42px intro heading, 19–23px card titles, 13px secondary metadata and 24px secondary counts. Titles allow two lines; title and count reserve separate flex regions. Full-view and focused captures show readable text without collisions.
+- Spacing/layout: centered compact intro, one 680px search field, small theme controls, three equal map columns from 1280px, two columns at 1024–1279px, 64px desktop gutters. No independently scrolling list. Existing footer follows the content and remains reachable at short desktop heights.
+- Colors/tokens: existing dark surface, lime primary and warm-white text. Stronger local lower gradient is user-directed. Header loses its enclosing pill only on the desktop homepage; other pages and mobile retain existing header styling.
+- Image quality/asset fidelity: actual palace, Shinjuku, tacos and Choiza poster covers; desktop sharp mode removes blur/blanket dimming and preserves object-fit cover. Existing fallback gradients are reused rather than replaced with invented stock images. No new image assets were required.
+- Copy/content: headline ends in 지도 with no period, as requested; subline, search prompt, map section and theme labels match the approved direction. Locations and theme names retain real data instead of hard-coded illustrative mock labels.
+
+## Interaction and regression verification
+
+- Manual browser verification against nine real maps: 맛집 filter returns four, combining 타코 returns one, unknown search returns zero, reset restores nine; Tokyo preview reveals its existing description and map URL. No production data was modified.
+- Browser error logs checked after primary interactions: no errors returned.
+- 1024px manual check: two columns, no horizontal overflow. 390px screenshot confirms the existing mobile home. Automated responsive checks cover 360, 390, 430, 768, 1024, 1440 and 1920px.
+- Typecheck and ESLint passed without warnings; unit tests 180 passed; isolated production build and full browser suite 193 passed, 65 environment-specific skips.
+- First browser run found one outdated test expecting the previous homepage headline. Updated that assertion and the obsolete side-by-side panel geometry assertion to reflect the selected stacked design; the final complete suite passed.
+
+## Accepted differences / follow-up polish
+
+- P3: the existing ambient background and actual fallback palettes differ from generated illustrative pixels. They intentionally preserve the current site's assets and identity.
+- P3: generated mock navigation includes a fixed account and an active underline; implementation retains real account permissions/navigation instead of hard-coded user UI.
+- Full WCAG conformance is not claimed. Keyboard search/filters, focus restoration, visible focus, semantic labels and title/count containment were checked; this is not a screen-reader certification.
+
+## Implementation checklist
+
+- [x] Selected compact search-first structure implemented on desktop.
+- [x] Actual cover images with names/location/count inside, stronger lower gradient.
+- [x] Search, themes, no-results reset and existing preview/map links work.
+- [x] Shared cover default and mobile styling preserved.
+- [x] Final full-view and focused visual review completed after spacing fix.
+- [x] Responsive checks, production test build and full regression suite passed.
+
+---
+
+# Previous map discovery QA (retained history)
+
 # Desktop discovery redesign — design QA
 
 final result: passed

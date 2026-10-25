@@ -5071,3 +5071,24 @@ body:has(.profile-page) {
     line-height: 20px;
   }
 }
+
+/* Desktop home shares its content grid with a quieter, full-width header. */
+@media (width >= 1024px) {
+  .glass-header[data-home-route="true"] {
+    top: 0;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    border-radius: 0;
+    border-inline: 0;
+    border-top: 0;
+    box-shadow: none;
+  }
+  .glass-header[data-home-route="true"] > div {
+    height: 72px;
+    padding-inline: 56px;
+  }
+}
+@media (width >= 1280px) {
+  .glass-header[data-home-route="true"] > div { padding-inline: 64px; }
+}

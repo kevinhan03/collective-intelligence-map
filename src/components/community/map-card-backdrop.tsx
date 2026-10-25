@@ -17,13 +17,23 @@ const cardImages: Record<string, string> = {
   "tokyo-fashion": "/tokyo-fashion-shinjuku.jpg",
 };
 
-export function MapCardBackdrop({ slug }: { slug: string }) {
+export function MapCardBackdrop({
+  slug,
+  sharp = false,
+}: {
+  slug: string;
+  sharp?: boolean;
+}) {
   const image = cardImages[slug];
   if (image) {
     return (
       <div
         aria-hidden="true"
-        className="absolute -inset-5 transition-transform duration-500 group-hover:scale-110"
+        className={
+          sharp
+            ? "absolute inset-0 transition-transform duration-500 motion-safe:group-hover:scale-105"
+            : "absolute -inset-5 transition-transform duration-500 group-hover:scale-110"
+        }
       >
         <Image
           src={image}
@@ -31,7 +41,9 @@ export function MapCardBackdrop({ slug }: { slug: string }) {
           fill
           loading={slug === "tokyo-fashion" ? "eager" : "lazy"}
           sizes="(min-width: 1280px) 32vw, (min-width: 768px) 50vw, 100vw"
-          className="scale-110 object-cover blur-[1px]"
+          className={
+            sharp ? "object-cover" : "scale-110 object-cover blur-[1px]"
+          }
         />
       </div>
     );

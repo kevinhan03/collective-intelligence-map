@@ -15,6 +15,7 @@ export function ScrollHeader({ children }: { children: ReactNode }) {
   return (
     <header
       data-map-route={mapRoute}
+      data-home-route={pathname === "/"}
       data-scrolled={scrolled}
       className="glass-panel glass-header sticky top-3 z-30"
     >

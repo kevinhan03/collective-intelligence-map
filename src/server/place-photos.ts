@@ -31,7 +31,20 @@ export async function getPhotoPage(
       `created_at.lt.${parsed.at},and(created_at.eq.${parsed.at},id.lt.${parsed.id})`,
     );
   }
-  const { data, error } = await query;
+  const [page, backdrop] = await Promise.all([
+    query,
+    client
+      .from("place_photos")
+      .select("id")
+      .eq("place_id", placeId)
+      .eq("status", "visible")
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+  const { data, error } = page;
+  dbError(backdrop.error);
   dbError(error);
   const rows = data ?? [];
   const photos = rows.slice(0, 20).map(({ profiles, ...row }) => ({
@@ -43,6 +56,7 @@ export async function getPhotoPage(
   const last = photos.at(-1);
   return {
     photos,
+    backdropPhotoId: backdrop.data?.id ?? null,
     nextCursor:
       rows.length > 20 && last
         ? Buffer.from(

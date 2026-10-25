@@ -24,6 +24,39 @@ function boundsMatch(a: MapProps["bounds"], b: MapProps["bounds"]) {
   );
 }
 
+/** Account for the actual visible viewport, including an overlaid desktop panel. */
+function placeFocusOffset(
+  map: maplibregl.Map,
+  pinHeight: number,
+  mobile: boolean,
+): [number, number] {
+  const viewport = map.getContainer().getBoundingClientRect();
+  if (mobile)
+    return [
+      0,
+      window.innerHeight * 0.4 -
+        viewport.top -
+        viewport.height / 2 +
+        pinHeight / 2,
+    ];
+  const panel = map
+    .getContainer()
+    .closest(".explorer-layout")
+    ?.querySelector<HTMLElement>(".place-detail-panel")
+    ?.getBoundingClientRect();
+  const coveredLeft =
+    panel &&
+    panel.width > 0 &&
+    panel.left <= viewport.left + 1 &&
+    panel.right > viewport.left &&
+    panel.bottom > viewport.top &&
+    panel.top < viewport.bottom
+      ? Math.min(viewport.width, panel.right - viewport.left)
+      : 0;
+  // Markers use a bottom anchor; offset half their height to center the circle.
+  return [coveredLeft / 2, pinHeight / 2];
+}
+
 export default function MapLibreMap(props: MapProps) {
   const mobile = useMobile();
   const { places, selected, apiKey } = props;
@@ -260,7 +293,7 @@ export default function MapLibreMap(props: MapProps) {
   }, [places, selected, apiKey, loadedStyle, viewRevision]);
   useEffect(() => {
     if (!props.focusRequest || props.stationFocus) return;
-    const { places, selected, onFocusComplete } = latest.current;
+    const { places, selected, onFocusComplete, detailOpen } = latest.current;
     const p = places.find((place) => place.id === selected);
     const map = instance.current;
     if (!p || !map) return;
@@ -268,34 +301,105 @@ export default function MapLibreMap(props: MapProps) {
     // A new selection can interrupt a previous flight. Stop it before
     // registering the arrival handler so an old moveend cannot open a modal.
     map.stop();
-    let modalTimer: ReturnType<typeof setTimeout> | undefined;
-    const onArrival = () => {
-      modalTimer = setTimeout(() => onFocusComplete?.(p.id), 300);
-    };
+    const onArrival = () => onFocusComplete?.(p.id);
     map.once("moveend", onArrival);
-    const viewport = map.getContainer().getBoundingClientRect();
     const pinHeight = pins.current.get(p.id)?.button.offsetHeight ?? 0;
-    // MapLibre anchors markers at their bottom. Include half the marker height
-    // so the circle's visible center sits at 40% of the mobile screen.
-    const offsetY = mobile
-      ? window.innerHeight * 0.4 -
-        viewport.top -
-        viewport.height / 2 +
-        pinHeight / 2
-      : 0;
-    map.flyTo({
+    const move =
+      !mobile && detailOpen ? map.easeTo.bind(map) : map.flyTo.bind(map);
+    move({
       center: [p.lng, p.lat],
       padding: { top: 0, right: 0, bottom: 0, left: 0 },
-      offset: [0, offsetY],
+      offset: placeFocusOffset(map, pinHeight, mobile),
       zoom: Math.max(map.getZoom(), 14),
-      duration: 650,
+      duration: !mobile && detailOpen ? 380 : 650,
       essential: true,
     });
     return () => {
       map.off("moveend", onArrival);
-      if (modalTimer) clearTimeout(modalTimer);
     };
   }, [props.focusRequest, props.stationFocus, mobile]);
+  useEffect(() => {
+    if (mobile || !props.detailOpen) return;
+    const map = instance.current;
+    const element = map?.getContainer();
+    const layout = element?.closest(".explorer-layout");
+    if (!map || !element || !layout) return;
+    let frame = 0;
+    let disposed = false;
+    let previousLayout = "";
+    let deferred = false;
+    const alignSelection = () => {
+      frame = 0;
+      if (disposed || latest.current.stationFocus) return;
+      const place = latest.current.places.find(
+        (place) => place.id === latest.current.selected,
+      );
+      if (!place) return;
+      const viewport = element.getBoundingClientRect();
+      const panelBox = layout
+        .querySelector(".place-detail-panel")
+        ?.getBoundingClientRect();
+      const signature = [
+        viewport.x,
+        viewport.y,
+        viewport.width,
+        viewport.height,
+        panelBox?.x,
+        panelBox?.y,
+        panelBox?.width,
+        panelBox?.height,
+      ].join(":");
+      // A new place remounts its panel. Identical geometry must not stop a flight.
+      if (signature === previousLayout && !deferred) return;
+      previousLayout = signature;
+      if (map.isMoving()) {
+        deferred = true;
+        return;
+      }
+      deferred = false;
+      map.resize();
+      const height = pins.current.get(place.id)?.button.offsetHeight ?? 0;
+      map.easeTo({
+        duration: 0,
+        center: [place.lng, place.lat],
+        padding: { top: 0, right: 0, bottom: 0, left: 0 },
+        offset: placeFocusOffset(map, height, false),
+      });
+    };
+    const schedule = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(alignSelection);
+    };
+    const onMoveEnd = () => {
+      if (deferred) schedule();
+    };
+    map.on("moveend", onMoveEnd);
+    const resize = new ResizeObserver(schedule);
+    resize.observe(element);
+    let panel: Element | null = null;
+    const observePanel = () => {
+      const next = layout.querySelector(".place-detail-panel");
+      if (next !== panel) {
+        if (panel) resize.unobserve(panel);
+        if (next) resize.observe(next);
+        panel = next;
+      }
+      schedule();
+    };
+    // Lazy detail content can replace the loading panel after the initial paint.
+    const mutations = new MutationObserver(observePanel);
+    mutations.observe(layout, { childList: true });
+    observePanel();
+    window.addEventListener("resize", schedule);
+    return () => {
+      disposed = true;
+      cancelAnimationFrame(frame);
+      resize.disconnect();
+      map.off("moveend", onMoveEnd);
+      mutations.disconnect();
+      window.removeEventListener("resize", schedule);
+    };
+  }, [props.detailOpen, mobile, apiKey]);
   useEffect(() => {
     const map = instance.current;
     const point = props.userLocation;

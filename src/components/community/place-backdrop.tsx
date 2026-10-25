@@ -28,7 +28,10 @@ export function PlaceBackdrop({
     !demo && Boolean(placeId),
     fetchPage,
   );
-  const photo = data?.photos[0]?.id;
+  const photo =
+    data?.backdropPhotoId === undefined
+      ? data?.photos.at(-1)?.id
+      : data.backdropPhotoId;
   const [loaded, setLoaded] = useState<string | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   if (!photo || failed === photo) return null;
@@ -41,6 +44,8 @@ export function PlaceBackdrop({
       <Image
         key={photo}
         unoptimized
+        loading="eager"
+        fetchPriority="high"
         src={photoImageUrl(photo, true)}
         alt=""
         fill

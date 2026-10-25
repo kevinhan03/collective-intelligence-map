@@ -31,6 +31,9 @@ const bounds: Bounds = {
 function Fixture() {
   const labelsMode = new URLSearchParams(window.location.search).has("labels");
   const focusMode = new URLSearchParams(window.location.search).has("focus");
+  const detailMode = new URLSearchParams(window.location.search).get("detail");
+  const [detailShown, setDetailShown] = useState(false);
+  const [detailWidth, setDetailWidth] = useState(300);
   const [focusRequest, setFocusRequest] = useState(0);
   const [arrived, setArrived] = useState("");
   const labelPlaces = base.map((place, index) => ({
@@ -105,29 +108,73 @@ function Fixture() {
           </button>
         </>
       )}
-      <div style={{ position: "relative", width: "100%", height: 420 }}>
-        <MapLibreMap
-          places={places}
-          selected={selected}
-          onSelect={(id) => {
-            setSelected(id);
-            if (focusMode) {
-              setArrived("");
-              setFocusRequest((value) => value + 1);
-            }
+      {detailMode && (
+        <button onClick={() => setDetailWidth(360)}>상세 패널 넓히기</button>
+      )}
+      <div
+        className={detailMode ? "explorer-layout" : undefined}
+        style={{
+          position: "relative",
+          display: "block",
+          width: "100%",
+          height: 420,
+        }}
+      >
+        {detailMode && detailShown && (
+          <aside
+            key={selected}
+            className="place-detail-panel"
+            aria-label="선택 장소 상세"
+            style={{
+              position: "absolute",
+              inset: "0 auto 0 0",
+              width: detailWidth,
+              height: "100%",
+              minHeight: 0,
+              zIndex: 40,
+            }}
+          >
+            장소 상세
+          </aside>
+        )}
+        <div
+          style={{
+            height: "100%",
+            width:
+              detailMode === "grid" && detailShown
+                ? `calc(100% - ${detailWidth}px)`
+                : "100%",
+            marginLeft: detailMode === "grid" && detailShown ? detailWidth : 0,
+            transition: "width 280ms ease, margin-left 280ms ease",
           }}
-          focusRequest={focusRequest}
-          onFocusComplete={setArrived}
-          onBoundsChange={onBoundsChange}
-          bounds={
-            labelsMode
-              ? { west: 126.93, east: 127.05, south: 37.512, north: 37.568 }
-              : bounds
-          }
-          apiKey="/marker-test-style.json"
-        />
+        >
+          <MapLibreMap
+            places={places}
+            selected={selected}
+            onSelect={(id) => {
+              setSelected(id);
+              if (focusMode) {
+                setArrived("");
+                setFocusRequest((value) => value + 1);
+              }
+            }}
+            focusRequest={focusRequest}
+            detailOpen={Boolean(detailMode && detailShown)}
+            onFocusComplete={(id) => {
+              setArrived(id);
+              if (detailMode) setDetailShown(true);
+            }}
+            onBoundsChange={onBoundsChange}
+            bounds={
+              labelsMode
+                ? { west: 126.93, east: 127.05, south: 37.512, north: 37.568 }
+                : bounds
+            }
+            apiKey="/marker-test-style.json"
+          />
+        </div>
       </div>
-      {focusMode && selected && (
+      {focusMode && selected && !detailMode && (
         <div
           className="fixture-place-sheet"
           style={{

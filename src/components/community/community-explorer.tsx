@@ -4,7 +4,7 @@ import { useCommunityMutations } from "./use-community-mutations";
 import dynamic from "next/dynamic";
 import { Suspense, lazy } from "react";
 import { PlacePanel } from "./place-panel";
-import { PlaceResources } from "./place-resources";
+import { PlaceResources, usePrefetchPlacePhotos } from "./place-resources";
 import { ShareButton } from "./share-button";
 import { placePath } from "@/domain/seo";
 import type { Coordinate } from "@/domain/visit";
@@ -48,6 +48,7 @@ import {
   Map as MapIcon,
   Plus,
   Search,
+  SlidersHorizontal,
   ThumbsDown,
   ThumbsUp,
   Users,
@@ -136,6 +137,7 @@ function ExplorerContent({
   readOnly = false,
 }: ExplorerProps) {
   const mobile = useMobile();
+  const prefetchPhotos = usePrefetchPlacePhotos();
   const [query, setQuery] = useState(""),
     [sort, setSort] = useState<Sort>("relevance"),
     [selected, setSelected] = useState<string | null>(null),
@@ -485,7 +487,7 @@ function ExplorerContent({
         : sortPlaces(
             places.filter(
               (p) =>
-                (!mobile || !region || placeCity(p.address) === region) &&
+                (!region || placeCity(p.address) === region) &&
                 matchesTags(p, selectedTags),
             ),
             sort,
@@ -503,7 +505,6 @@ function ExplorerContent({
       search.previous,
       places,
       localSearch,
-      mobile,
       region,
       sort,
       userLocation,
@@ -704,6 +705,8 @@ function ExplorerContent({
   };
   const focusPlace = useCallback(
     (id: string) => {
+      const target = filtered.find((place) => place.id === id);
+      if (!demo && target) prefetchPhotos(target.place_id);
       // Manual selection supersedes an autocomplete request that is still loading.
       setSearchSelection(null);
       placeTrigger.current = document.activeElement as HTMLElement | null;
@@ -744,11 +747,13 @@ function ExplorerContent({
         setDetailId(id);
         return;
       }
-      setDetailId((current) => (current ? id : null));
+      setDetailId(id);
       setFocusRequest((request) => request + 1);
     },
     [
       config.provider,
+      demo,
+      prefetchPhotos,
       mobile,
       mobileView,
       filtered,
@@ -1016,6 +1021,309 @@ function ExplorerContent({
       </div>
     </div>
   );
+  const searchToolbar = (
+    <div
+      ref={setToolbarElement}
+      data-search-open={searchOpen}
+      className="glass-toolbar explorer-toolbar flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3 md:px-9"
+    >
+      <div className="search-sort-group flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:flex-nowrap">
+        <div className="map-search-field relative w-full sm:w-60">
+          <Search
+            className="map-search-icon absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground"
+            size="1em"
+            aria-hidden="true"
+          />
+          <Input
+            ref={searchInput}
+            className="h-9 bg-background pl-9 pr-10 text-xs"
+            value={query}
+            maxLength={100}
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded={suggestOpen && searchSuggestions.length > 0}
+            aria-controls={
+              suggestOpen && searchSuggestions.length > 0
+                ? "map-search-suggestions"
+                : undefined
+            }
+            aria-activedescendant={
+              suggestOpen &&
+              suggestIndex >= 0 &&
+              suggestIndex < searchSuggestions.length
+                ? `map-search-option-${suggestIndex}`
+                : undefined
+            }
+            onFocus={() => setSuggestOpen(true)}
+            onBlur={() => setSuggestOpen(false)}
+            onCompositionStart={() => setComposing(true)}
+            onCompositionEnd={() => setComposing(false)}
+            onKeyDown={(event) => {
+              if (event.nativeEvent.isComposing || composing) return;
+              if (event.key === "Escape") {
+                event.preventDefault();
+                event.stopPropagation();
+                setSuggestOpen(false);
+                setSuggestIndex(-1);
+              } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+                event.preventDefault();
+                setSuggestOpen(true);
+                setSuggestIndex((i) =>
+                  searchSuggestions.length
+                    ? i < 0
+                      ? event.key === "ArrowDown"
+                        ? 0
+                        : searchSuggestions.length - 1
+                      : (i +
+                          (event.key === "ArrowDown" ? 1 : -1) +
+                          searchSuggestions.length) %
+                        searchSuggestions.length
+                    : -1,
+                );
+              } else if (
+                event.key === "Enter" &&
+                !composing &&
+                !event.nativeEvent.isComposing &&
+                suggestOpen &&
+                searchSuggestions[suggestIndex]
+              ) {
+                event.preventDefault();
+                chooseSuggestion(searchSuggestions[suggestIndex]);
+              } else if (
+                event.key === "Enter" &&
+                !composing &&
+                !event.nativeEvent.isComposing
+              ) {
+                event.preventDefault();
+                setSuggestOpen(false);
+                setSearchSelection(query);
+              }
+            }}
+            onChange={(e) => {
+              const value = e.target.value;
+              setQuery(value);
+              setSearchSelection(null);
+              setSuggestOpen(true);
+              setSuggestIndex(-1);
+              setPage(1);
+              if (value.trim() && !searchTracked.current) {
+                searchTracked.current = true;
+                trackCommunityEvent("place_search_started", {
+                  provider: config.provider,
+                });
+              }
+            }}
+            placeholder={
+              mobile ? "장소·지역·분류·역 검색" : "이 지도에서 장소 검색"
+            }
+            aria-label="이 맵의 장소 검색"
+          />
+          {search.active && (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="absolute right-1 top-1/2 -translate-y-1/2"
+              onClick={clearSearch}
+              aria-label="검색·역 필터 초기화"
+            >
+              <X size={14} />
+            </Button>
+          )}
+          {suggestOpen && searchSuggestions.length > 0 && (
+            <div
+              className="absolute top-[calc(100%+6px)] right-0 left-0 z-30 overflow-hidden rounded-xl border bg-card p-1 shadow-lg"
+              role="listbox"
+              id="map-search-suggestions"
+              aria-label="관련 검색어"
+            >
+              {searchSuggestions.map((suggestion, index) => (
+                <button
+                  key={`${suggestion.kind}:${suggestion.station?.id ?? suggestion.term}`}
+                  id={`map-search-option-${index}`}
+                  type="button"
+                  role="option"
+                  aria-selected={suggestIndex === index}
+                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs hover:bg-secondary"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => {
+                    chooseSuggestion(suggestion);
+                    trackCommunityEvent("place_search_suggestion_selected", {
+                      provider: config.provider,
+                    });
+                  }}
+                >
+                  <span>{suggestion.term}</span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {suggestion.station
+                      ? `${suggestion.station.kind === "subway" ? "지하철" : "기차역"} · ${suggestion.station.region === "seoul" ? "서울" : suggestion.station.region === "tokyo" ? "도쿄" : suggestion.station.region}`
+                      : suggestionLabels[suggestion.kind]}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div
+          className="sort-chip-group hidden lg:flex shrink-0 items-center gap-1 overflow-x-auto"
+          role="group"
+          aria-label="장소 정렬"
+        >
+          {sortOptions.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              className="sort-chip"
+              aria-pressed={sort === option.value}
+              onClick={() => {
+                changeSort(option.value);
+                trackCommunityEvent("place_sort_changed", {
+                  provider: config.provider,
+                  sort: option.value,
+                });
+              }}
+            >
+              {map.kind === "creator" && option.value === "relevance"
+                ? "크리에이터 순"
+                : search.active && option.value === "relevance"
+                  ? "검색 일치순"
+                  : option.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <details
+        className="mobile-map-filter-menu lg:hidden"
+        open={mobileView === "list" ? true : undefined}
+      >
+        <summary>
+          필터{region || sort !== "relevance" ? " · 적용 중" : ""}
+        </summary>
+        <div className="mobile-explorer-filters">
+          <select
+            aria-label="장소 지역"
+            value={region}
+            onChange={(event) => {
+              setRegion(event.target.value);
+              setRestoreBounds(null);
+              setPage(1);
+              setPreviewId(null);
+              setSelected(null);
+            }}
+          >
+            <option value="">전체 지역</option>
+            {regions.map((city) => (
+              <option key={city} value={city}>
+                {city}
+              </option>
+            ))}
+          </select>
+          <select
+            aria-label="장소 정렬"
+            value={sort}
+            onChange={(event) => {
+              changeSort(event.target.value as Sort);
+              setPage(1);
+              setPreviewId(null);
+              trackCommunityEvent("place_sort_changed", {
+                provider: config.provider,
+                sort: event.target.value as Sort,
+              });
+            }}
+          >
+            {sortOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {map.kind === "creator" && option.value === "relevance"
+                  ? "크리에이터 순"
+                  : option.value === "relevance"
+                    ? search.active
+                      ? "검색 일치순"
+                      : option.label
+                    : option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </details>
+      <button
+        className="mobile-search-close lg:hidden"
+        aria-label="장소 검색 닫기"
+        onClick={() => {
+          setSearchOpen(false);
+          searchToggle.current?.focus();
+        }}
+      >
+        <X size={18} />
+      </button>
+      {pendingPlaces.length > 0 && (
+        <Button
+          size="sm"
+          variant={showPending ? "default" : "outline"}
+          className="h-8 shrink-0 rounded-full px-3 text-xs"
+          onClick={() => setShowPending((v) => !v)}
+        >
+          <Clock size={12} />
+          승인대기 {pendingPlaces.length}
+        </Button>
+      )}
+    </div>
+  );
+  const tagFilters = (
+    <MapTagBar
+      tags={map.place_tags ?? []}
+      selected={selectedTags}
+      onChange={changeTags}
+      floating={mobile && mobileView === "map"}
+      anchor={toolbarElement}
+    />
+  );
+  const searchStatus = (
+    <>
+      {search.active && (
+        <div
+          className="flex flex-wrap items-center gap-2 border-b px-5 py-2 text-xs"
+          aria-live="polite"
+        >
+          {searchStation && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setSearchStation(null)}
+              aria-label="역 필터 해제"
+            >
+              {searchStation.name} 주변 2km <X size={12} />
+            </Button>
+          )}
+          <span>
+            {search.error
+              ? "검색 실패 · 이전 결과 표시"
+              : search.loading
+                ? "지도 전체 검색 중…"
+                : search.result?.mode === "local"
+                  ? "현재 불러온 장소 내 검색"
+                  : "지도 전체 공개 장소 검색"}
+          </span>
+          {searchStation && <span>역 반경은 직선거리 기준입니다.</span>}
+          {search.result?.stationsStatus !== "ready" && !search.loading && (
+            <span>
+              {search.result?.stationsStatus === "unsupported"
+                ? "이 지역은 역 검색을 지원하지 않습니다."
+                : "역 검색 데이터 준비 중"}
+            </span>
+          )}
+          {search.error && (
+            <>
+              <span role="alert" className="text-destructive">
+                {search.error}
+              </span>
+              <Button variant="outline" size="sm" onClick={search.retry}>
+                검색 재시도
+              </Button>
+            </>
+          )}
+        </div>
+      )}
+    </>
+  );
   return (
     <main
       ref={explorerRoot}
@@ -1260,258 +1568,8 @@ function ExplorerContent({
           {mobileControls}
         </div>
       )}
-      <div
-        ref={setToolbarElement}
-        data-search-open={searchOpen}
-        className="glass-toolbar explorer-toolbar flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3 md:px-9"
-      >
-        <div className="search-sort-group flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:flex-nowrap">
-          <div className="map-search-field relative w-full sm:w-60">
-            <Search
-              className="map-search-icon absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground"
-              size="1em"
-              aria-hidden="true"
-            />
-            <Input
-              ref={searchInput}
-              className="h-9 bg-background pl-9 pr-10 text-xs"
-              value={query}
-              maxLength={100}
-              role="combobox"
-              aria-autocomplete="list"
-              aria-expanded={suggestOpen && searchSuggestions.length > 0}
-              aria-controls={
-                suggestOpen && searchSuggestions.length > 0
-                  ? "map-search-suggestions"
-                  : undefined
-              }
-              aria-activedescendant={
-                suggestOpen &&
-                suggestIndex >= 0 &&
-                suggestIndex < searchSuggestions.length
-                  ? `map-search-option-${suggestIndex}`
-                  : undefined
-              }
-              onFocus={() => setSuggestOpen(true)}
-              onBlur={() => setSuggestOpen(false)}
-              onCompositionStart={() => setComposing(true)}
-              onCompositionEnd={() => setComposing(false)}
-              onKeyDown={(event) => {
-                if (event.nativeEvent.isComposing || composing) return;
-                if (event.key === "Escape") {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  setSuggestOpen(false);
-                  setSuggestIndex(-1);
-                } else if (
-                  event.key === "ArrowDown" ||
-                  event.key === "ArrowUp"
-                ) {
-                  event.preventDefault();
-                  setSuggestOpen(true);
-                  setSuggestIndex((i) =>
-                    searchSuggestions.length
-                      ? i < 0
-                        ? event.key === "ArrowDown"
-                          ? 0
-                          : searchSuggestions.length - 1
-                        : (i +
-                            (event.key === "ArrowDown" ? 1 : -1) +
-                            searchSuggestions.length) %
-                          searchSuggestions.length
-                      : -1,
-                  );
-                } else if (
-                  event.key === "Enter" &&
-                  !composing &&
-                  !event.nativeEvent.isComposing &&
-                  suggestOpen &&
-                  searchSuggestions[suggestIndex]
-                ) {
-                  event.preventDefault();
-                  chooseSuggestion(searchSuggestions[suggestIndex]);
-                } else if (
-                  event.key === "Enter" &&
-                  !composing &&
-                  !event.nativeEvent.isComposing
-                ) {
-                  event.preventDefault();
-                  setSuggestOpen(false);
-                  setSearchSelection(query);
-                }
-              }}
-              onChange={(e) => {
-                const value = e.target.value;
-                setQuery(value);
-                setSearchSelection(null);
-                setSuggestOpen(true);
-                setSuggestIndex(-1);
-                setPage(1);
-                if (value.trim() && !searchTracked.current) {
-                  searchTracked.current = true;
-                  trackCommunityEvent("place_search_started", {
-                    provider: config.provider,
-                  });
-                }
-              }}
-              placeholder="장소·지역·분류·역 검색"
-              aria-label="이 맵의 장소 검색"
-            />
-            {search.active && (
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="absolute right-1 top-1/2 -translate-y-1/2"
-                onClick={clearSearch}
-                aria-label="검색·역 필터 초기화"
-              >
-                <X size={14} />
-              </Button>
-            )}
-            {suggestOpen && searchSuggestions.length > 0 && (
-              <div
-                className="absolute top-[calc(100%+6px)] right-0 left-0 z-30 overflow-hidden rounded-xl border bg-card p-1 shadow-lg"
-                role="listbox"
-                id="map-search-suggestions"
-                aria-label="관련 검색어"
-              >
-                {searchSuggestions.map((suggestion, index) => (
-                  <button
-                    key={`${suggestion.kind}:${suggestion.station?.id ?? suggestion.term}`}
-                    id={`map-search-option-${index}`}
-                    type="button"
-                    role="option"
-                    aria-selected={suggestIndex === index}
-                    className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs hover:bg-secondary"
-                    onMouseDown={(event) => event.preventDefault()}
-                    onClick={() => {
-                      chooseSuggestion(suggestion);
-                      trackCommunityEvent("place_search_suggestion_selected", {
-                        provider: config.provider,
-                      });
-                    }}
-                  >
-                    <span>{suggestion.term}</span>
-                    <span className="text-[10px] text-muted-foreground">
-                      {suggestion.station
-                        ? `${suggestion.station.kind === "subway" ? "지하철" : "기차역"} · ${suggestion.station.region === "seoul" ? "서울" : suggestion.station.region === "tokyo" ? "도쿄" : suggestion.station.region}`
-                        : suggestionLabels[suggestion.kind]}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          <div
-            className="sort-chip-group hidden lg:flex shrink-0 items-center gap-1 overflow-x-auto"
-            role="group"
-            aria-label="장소 정렬"
-          >
-            {sortOptions.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                className="sort-chip"
-                aria-pressed={sort === option.value}
-                onClick={() => {
-                  changeSort(option.value);
-                  trackCommunityEvent("place_sort_changed", {
-                    provider: config.provider,
-                    sort: option.value,
-                  });
-                }}
-              >
-                {map.kind === "creator" && option.value === "relevance"
-                  ? "크리에이터 순"
-                  : search.active && option.value === "relevance"
-                    ? "검색 일치순"
-                    : option.label}
-              </button>
-            ))}
-          </div>
-        </div>
-        <details
-          className="mobile-map-filter-menu lg:hidden"
-          open={mobileView === "list" ? true : undefined}
-        >
-          <summary>
-            필터{region || sort !== "relevance" ? " · 적용 중" : ""}
-          </summary>
-          <div className="mobile-explorer-filters">
-            <select
-              aria-label="장소 지역"
-              value={region}
-              onChange={(event) => {
-                setRegion(event.target.value);
-                setRestoreBounds(null);
-                setPage(1);
-                setPreviewId(null);
-                setSelected(null);
-              }}
-            >
-              <option value="">전체 지역</option>
-              {regions.map((city) => (
-                <option key={city} value={city}>
-                  {city}
-                </option>
-              ))}
-            </select>
-            <select
-              aria-label="장소 정렬"
-              value={sort}
-              onChange={(event) => {
-                changeSort(event.target.value as Sort);
-                setPage(1);
-                setPreviewId(null);
-                trackCommunityEvent("place_sort_changed", {
-                  provider: config.provider,
-                  sort: event.target.value as Sort,
-                });
-              }}
-            >
-              {sortOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {map.kind === "creator" && option.value === "relevance"
-                    ? "크리에이터 순"
-                    : option.value === "relevance"
-                      ? search.active
-                        ? "검색 일치순"
-                        : option.label
-                      : option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </details>
-        <button
-          className="mobile-search-close lg:hidden"
-          aria-label="장소 검색 닫기"
-          onClick={() => {
-            setSearchOpen(false);
-            searchToggle.current?.focus();
-          }}
-        >
-          <X size={18} />
-        </button>
-        {pendingPlaces.length > 0 && (
-          <Button
-            size="sm"
-            variant={showPending ? "default" : "outline"}
-            className="h-8 shrink-0 rounded-full px-3 text-xs"
-            onClick={() => setShowPending((v) => !v)}
-          >
-            <Clock size={12} />
-            승인대기 {pendingPlaces.length}
-          </Button>
-        )}
-      </div>
-      <MapTagBar
-        tags={map.place_tags ?? []}
-        selected={selectedTags}
-        onChange={changeTags}
-        floating={mobile && mobileView === "map"}
-        anchor={toolbarElement}
-      />
+      {mobile && searchToolbar}
+      {mobile && tagFilters}
       {error && (
         <p
           role="alert"
@@ -1565,50 +1623,7 @@ function ExplorerContent({
           isPending={(id) => actions.isPending("vote", id)}
         />
       )}
-      {search.active && (
-        <div
-          className="flex flex-wrap items-center gap-2 border-b px-5 py-2 text-xs"
-          aria-live="polite"
-        >
-          {searchStation && (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setSearchStation(null)}
-              aria-label="역 필터 해제"
-            >
-              {searchStation.name} 주변 2km <X size={12} />
-            </Button>
-          )}
-          <span>
-            {search.error
-              ? "검색 실패 · 이전 결과 표시"
-              : search.loading
-                ? "지도 전체 검색 중…"
-                : search.result?.mode === "local"
-                  ? "현재 불러온 장소 내 검색"
-                  : "지도 전체 공개 장소 검색"}
-          </span>
-          {searchStation && <span>역 반경은 직선거리 기준입니다.</span>}
-          {search.result?.stationsStatus !== "ready" && !search.loading && (
-            <span>
-              {search.result?.stationsStatus === "unsupported"
-                ? "이 지역은 역 검색을 지원하지 않습니다."
-                : "역 검색 데이터 준비 중"}
-            </span>
-          )}
-          {search.error && (
-            <>
-              <span role="alert" className="text-destructive">
-                {search.error}
-              </span>
-              <Button variant="outline" size="sm" onClick={search.retry}>
-                검색 재시도
-              </Button>
-            </>
-          )}
-        </div>
-      )}
+      {mobile && searchStatus}
       <div
         data-mobile-view={mobileView}
         className={`glass-map-shell explorer-layout ${selectedPlace ? "has-detail" : ""}`}
@@ -1619,13 +1634,83 @@ function ExplorerContent({
           className="place-list lg:h-fit lg:max-h-[calc(100dvh-250px)] lg:min-h-[480px] lg:self-start lg:overflow-y-auto"
           aria-label="장소 목록"
         >
-          <div className="place-list-heading sticky top-0 z-10 flex items-center justify-between border-b px-3 py-3">
-            <span className="text-xs font-medium">
-              {resultCount}개의 발견
-              {resultCount > visiblePlaces.length &&
-                ` · 현재 ${visiblePlaces.length}곳 표시`}
-              {!search.active && truncated && " · 일부 결과"}
-            </span>
+          <div className="discovery-header sticky top-0 z-20">
+            {!mobile && searchToolbar}
+            <div className="place-list-heading flex items-center justify-between border-b px-3 py-3">
+              <span
+                className="discovery-result-count text-xs font-medium"
+                aria-live="polite"
+                aria-atomic="true"
+              >
+                {resultCount}개의 발견
+                {resultCount > visiblePlaces.length &&
+                  ` · 현재 ${visiblePlaces.length}곳 표시`}
+                {!search.active && truncated && " · 일부 결과"}
+              </span>
+              {!mobile && (
+                <details
+                  className="discovery-filter-menu"
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      event.preventDefault();
+                      event.currentTarget.open = false;
+                      event.currentTarget.querySelector("summary")?.focus();
+                    }
+                  }}
+                >
+                  <summary aria-label="발견 목록 필터">
+                    <SlidersHorizontal size={14} aria-hidden="true" />
+                    필터
+                    {(region || searchStation || selectedTags.length > 0) && (
+                      <span
+                        className="discovery-filter-indicator"
+                        aria-label="필터 적용 중"
+                      />
+                    )}
+                  </summary>
+                  <div className="discovery-filter-content">
+                    <label>
+                      장소 지역
+                      <select
+                        aria-label="장소 지역"
+                        value={region}
+                        onChange={(event) => {
+                          setRegion(event.target.value);
+                          setRestoreBounds(null);
+                          setPage(1);
+                          setPreviewId(null);
+                          setSelected(null);
+                        }}
+                      >
+                        <option value="">전체 지역</option>
+                        {regions.map((city) => (
+                          <option key={city} value={city}>
+                            {city}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    {searchStation && <p>{searchStation.name} 주변 2km</p>}
+                    {map.place_tags?.length ? (
+                      <p>아래 태그를 선택해 장소를 좁혀 보세요.</p>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRegion("");
+                        setSearchStation(null);
+                        changeTags([]);
+                        setPage(1);
+                      }}
+                    >
+                      필터 초기화
+                    </button>
+                  </div>
+                </details>
+              )}
+            </div>
+            {!mobile && tagFilters}
+            {!mobile && searchStatus}
           </div>
           {mobile && mobileView === "list" && (
             <MobilePlaceList
@@ -1717,7 +1802,8 @@ function ExplorerContent({
                   </div>
                   <div className="mt-2 ml-8 flex items-center justify-between">
                     <div
-                      className={`place-card-votes hidden ${map.kind !== "creator" ? "lg:flex" : ""} items-center gap-1.5`}
+                      className={`place-card-votes vote-capsule hidden ${map.kind !== "creator" ? "lg:flex" : ""} items-center`}
+                      role="group"
                       aria-label={`${p.name} 주제 적합성 투표`}
                     >
                       <button
@@ -1823,6 +1909,7 @@ function ExplorerContent({
             onSelect={selectMapPlace}
             onFocusComplete={completeMapFocus}
             focusRequest={focusRequest}
+            detailOpen={!mobile && Boolean(selectedPlace)}
             bounds={mapBounds}
             onBoundsChange={onBoundsChange}
             config={config}

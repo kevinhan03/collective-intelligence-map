@@ -1,100 +1,54 @@
-# Place participation UI verification
+# Desktop discovery redesign — design QA
 
 final result: passed
 
-Scope: implement the user's accumulated place-detail and comment-flow changes in the existing application. This is a functional adaptation of the selected mockups, retaining the application's real photographs, attribution, photo upload and moderation controls.
+## Visual truth and scope
 
-## Visual evidence
+- Selected direction: second displayed ideation image, with the user's later request for a tightly padded shared like/dislike capsule and one central divider.
+- Source: `artifacts/design-review/search-sidebar/selected-compact-capsule.png` (1586 × 992).
+- Implementation: `http://localhost:3000/maps/tokyo-fashion`.
+- Desktop evidence: `artifacts/design-review/search-sidebar/implementation-desktop.png` (1425 × 891).
+- Browser CSS viewport: 1440 × 900. Native browser capture is approximately 0.99 pixels per CSS pixel. The mock was normalized to the captured 1425 × 891 size; aspect ratios differ by less than 0.04%.
+- Normalized truth: `artifacts/design-review/search-sidebar/reference-normalized.png`.
+- Full comparison (source left, implementation right): `artifacts/design-review/search-sidebar/comparison-full.png`.
+- Focused search/list/reaction comparison: `artifacts/design-review/search-sidebar/comparison-controls.png`.
+- State: desktop, default recommendation order, no search or filters, same seven public places, logged-in owner context, first-place vote and save selected. Mobile search was also inspected at 390 × 844: `artifacts/design-review/search-sidebar/implementation-mobile-search.png`.
 
-- Detail source: `/Users/kevin_han/.codex/generated_images/01a144dd-2e25-7ba3-842d-96f468f5b38f/exec-2a17eb6e-92a6-4614-bf87-9771ece3dfcc.png`
-- Comment source: `/Users/kevin_han/.codex/generated_images/01a144dd-2e25-7ba3-842d-96f468f5b38f/exec-70392d9a-1819-4f06-83ef-789e536cf148.png`
-- Live detail capture: `artifacts/participation/detail-mobile.png`, 485 × 722 pixels / CSS viewport 485 × 722.
-- Empty thread: `artifacts/participation/comments-empty-mobile.png`, 485 × 722.
-- Populated thread, isolated in-memory fixture: `artifacts/participation/comments-list-mobile.png`, 500 × 722.
-- Narrow detail with long title: `artifacts/participation/detail-320.png`, 320 × 740.
-- Desktop fixture: `artifacts/participation/comments-desktop.png`, 1440 × 1024. This standalone fixture omits the real application's parent map grid; it verifies interactions and overflow, not desktop panel width.
-- Same-input visual comparisons: `artifacts/participation/detail-comparison.png` and `artifacts/participation/comments-comparison.png`. Both were opened and inspected. Source images were downsampled proportionally into the corresponding CSS-size frame with contain/padding, without stretching. Implementation captures are 1 image pixel per CSS pixel. Original generated sources are 1024 × 1536.
-- Important controls and typography remain readable in these comparisons, so an additional magnified region was unnecessary.
+## Findings and comparison history
 
-## Findings and accepted differences
+1. Initial implementation had a double grid gutter because the inactive detail column still consumed two gaps. Reduced the empty-column gutter so the effective sidebar-to-map gap is 16px. The layout regression verifies a positive gap no greater than 20px and aligned list/map tops.
+2. Initial focused comparison showed description text too small relative to the chosen visual. Increased desktop list description text to 13px / 20px and row vertical padding to 14px. Post-fix full and focused comparisons above show the corrected hierarchy. Earlier evidence is preserved in `comparison-full-before-type.png` and `comparison-controls-before-type.png`.
+3. No remaining actionable P0/P1/P2 differences. The capsule is deliberately smaller than the generated mock: 82px × 28px for single-digit counts, following the user's final correction. Each side has its own button, accessible name, selected state and keyboard focus; longer counts can grow naturally.
 
-No outstanding P0/P1/P2 findings within the requested scope.
+## Required fidelity surfaces
 
-- Typography: existing SUIT retained. Place title 20px; intro body retains existing 15px mobile style; participation question and comment body 14px. Long titles wrap while save and close retain their own 44px targets. Long map names wrap independently of reaction counts.
-- Layout: introduction → compact reaction row → comment preview → photographs → stations. No repeated content dividers. Intro menu is inside its surface; bookmark sits immediately left of close. No bottom save/directions bar. Directions is inside the station section, including unsupported/error station states.
-- Color: existing charcoal/navy surface and lime selected states retained. Olive introduction surface follows the user's supplied reference. Comment preview has a distinct subtle surface; icon reactions have no visible button containers.
-- Assets: real existing place photographs retained. User avatars render when available; initials/person fallback is used for profiles without an avatar. No generated mock photographs or invented user data were added to the product.
-- Copy: introduction title removed; dynamic `{mapTitle}에 어울리는 장소인가요?`; section called `댓글`; no preview pagination dots.
-- Comments: a dedicated mode in the same panel with a fixed composer, back action and right-aligned fixed-width likes. At 500px all five tested likes had identical x=436 and row-relative y=0. At 320px all five had identical x=264 and y=0; no horizontal overflow; composer ended at the viewport bottom.
-- Source mocks use shortened descriptions, illustrative counts and two compact photo thumbnails. The live screen has real attribution/help text and the existing upload/photo viewer. This increases its intro/photo height and puts stations below the fold. These existing functional surfaces are intentionally retained; the user requested their actions and styling to change, not their information to be removed.
-- Populated-comment comparison uses a long-title fixture and mock network responses. Live service has no comments for the inspected place; its empty state was verified separately.
+- **Fonts / typography:** retained the application's Korean SUIT/system typography and existing heading weights. Search is 14px, segmented controls 12px, descriptions 13px / 20px, compact reaction counts 11px. Existing global header and hero typography are outside this change. Long place names wrap and descriptions retain two-line truncation.
+- **Spacing / layout:** full-width toolbar removed on desktop; one search field and visible three-way sort group are inside the sticky discovery header. Result count and filter disclosure sit below. Responsive sidebar is 304–348px wide, effective map gutter 16px, and map/list top edges align. The detail panel remains its own grid column. Sidebar controls remain visible when the list scrolls.
+- **Colors / tokens:** retained charcoal and the existing lime primary token. Flat sidebar surfaces, thin separators, subdued input border and tinted active control. No new decorative gradients or shadows. Existing global page background retained.
+- **Images / assets:** retained the application's map renderer, live place pins, original brand mark and existing Lucide icons; no rasterized interface or substitute map image. Map zoom/position can differ from a generated illustration because it is interactive.
+- **Copy / content:** kept the same real seven-place map and existing actions. Search says “이 지도에서 장소 검색”. Existing precise sort copy “최근 추가순” retained. Result count remains visible. Filter disclosure reuses existing region/tag capabilities; it does not introduce new backend behavior.
 
-## Comparison and correction history
+## Functional and accessibility evidence
 
-1. Browser verification found that returning from comments could change detail scroll offset (294 → 55). Added an explicit offset snapshot before entering comments and restoration before restoring focus.
-2. Retested against the live service: 294 → comments → back → 294. Final detail capture was taken after this fix. Layout remained unchanged.
+- Browser checked: search “Graphpaper” reduces both list and map to one matching place; clearing restores the full map. Filter opens, closes with Escape and restores summary focus. Mobile search opens and closes in its original floating layout.
+- Regression checked: sticky search stays visible after list scroll; empty search has zero pins and recovery restores six demo pins; segmented sort is discoverable in the header; reaction group contains two compact independently named buttons.
+- Existing full E2E run: 188 passed and 61 conditional skips, with one newly authored selector error. The selector was fixed to target the labelled desktop filter summary; that new desktop regression passed separately. After the final typography adjustment, all eight applicable discovery/responsive tests passed (eight conditional skips).
+- Unit tests: 175 passed. Typecheck, lint and production build passed. Final lint has no warnings or errors. Production audit reports zero vulnerabilities.
+- Browser console error log checked through the browser API: no errors returned.
+- No new database writes were used for manual visual validation. Existing optimistic vote/save and mobile gesture tests passed in the isolated test environment.
 
-## Interaction and validation evidence
+## Accepted differences / follow-up polish
 
-- Live browser: intro menu → add form → cancel; detail → comments → back; save/un-save, then original saved state restored; station directions placement; footer removal; compact reactions.
-- Isolated browser fixture: four comments → like/unlike; submit fifth comment; count and list update; input clears; long text and fixed reaction column; 320px, 390px and desktop layouts.
-- Browser log review: recent live logs contained development refresh messages, no observed runtime error in the verified flow. Initial local fixture encoding error was fixed before interaction testing.
-- `npm run typecheck`: passed.
-- `npm run lint`: passed.
-- `npm test`: 42 files / 139 tests passed, including new thread API authorization/input tests.
-- `npm run test:db`: passed; includes pagination past 30, idempotent likes, unlikes, public totals/private identities, anonymous write denial, hidden/introduction comment denial and no public SECURITY DEFINER functions.
-- `NEXT_TEST_BUILD=true npm run build`: passed.
-- `git diff --check`: passed.
-- Regression browser test added/updated in `tests/e2e/workflows.spec.ts`; the full automated Playwright suite was not run in this session. Browser interaction checks above used CUA.
-- Remote additive migration applied through the project's existing database connection after isolated DB tests passed. Functions, RLS and a public thread read were verified. Application deployment was not performed.
+- P3: existing hero spacing is retained; the live map starts approximately 12px below the normalized generated mock's map. This does not hide controls or alter the requested hierarchy.
+- P3: generated typography and map geography are illustrative. The existing SUIT font, real map data, exact labels and latest request for an 82px capsule take precedence over pixel-level generated details.
+- Desktop-only compact reaction controls have 26px-high button interiors; mobile continues using its existing larger touch controls.
 
-## Follow-up polish
+## Implementation checklist
 
-- Retained small report/delete actions add some height versus the purely visual mock. Moving these to per-comment menus can be considered separately.
-- Native mobile keyboard behavior uses the existing visualViewport panel sizing; no physical-phone keyboard test was performed.
-
-## Follow-up: share placement, attribution menu, adaptive copy, station disclosure
-
-final result: passed
-
-The user's subsequent instructions supersede the earlier mock's menu position and station presentation. Source evidence is the newly supplied introduction screenshot plus the explicit requested changes. Final browser capture: `artifacts/participation/detail-refined-390.png` (390 × 844 CSS/image pixels).
-
-- Header order verified as share → save → close. The same ShareButton handler remains in use; desktop keyboard activation displayed `링크를 복사했어요.`. Sharing was removed from More.
-- Introduction menu is now the attribution row's trailing control, not positioned over the introduction text. Main paragraph can use the complete width.
-- Both contextual sentences render complete with nowrap and measured font fitting. At 390px the helper used 11.98px (308.98px of 310px available) and the question used 13.06px (243.23px of 244px available). At 320px they used 9.58px / 10.49px and stayed within available width, with no page overflow. Font size grows again as width grows, capped at each sentence's intended normal size. No ellipsis or text truncation is used.
-- Stations use native details/summary with default closed state. Keyboard activation exposed the actual station list; activating again closed it. Directions stays alongside the summary independently of open state. This supersedes the earlier always-open layout.
-- Final screenshot inspected for typography, grouped spacing, original charcoal/olive/lime tokens, real photograph fidelity, full copy and header icon alignment. No actionable P0/P1/P2 issue remains for this follow-up.
-- Typecheck, lint, isolated production build and 139 unit tests passed. Existing browser regression coverage was extended for header sharing, native disclosure and adaptive text; full automated Playwright suite was not run.
-- Recent browser log inspection returned no errors. No additional database or deployment changes were made for this follow-up.
-
-## Follow-up: content-sized mobile summary card
-
-Visual result: passed.
-
-- Source: user's screenshot of excess space below participation actions on a no-photo place.
-- Track now measures the selected summary with ResizeObserver; off-screen descriptions no longer set its height. Photo load/empty/error and viewport changes remeasure it. Vertical overflow remains inside the selected slide on short screens.
-- Reduced summary/slide bottom spacing. Measured action-row-to-footer gap is 8px, plus 6px footer top inset (14px to its interactive content).
-- Verified La Cruda with no photos at 650px and 390px; photo card expanded to 415px at 650 × 844; at 390 × 600 it caps at 312px, with a 160px scrollable slide and 263px content, keeping footer inside the viewport.
-- Initial resize/rapid-navigation check exposed native scroll-snap restoring an older slide after programmatic alignment. Native snapping was removed in favor of the existing JS nearest-slide settlement/custom swipe. Pending selection timers are canceled while aligning. Retested selected title/body agreement, x=0 active slide alignment, delayed stability and actual horizontal drag to the next place.
-- Final capture: `artifacts/participation/preview-compact-final.png`, 390 × 600. Real place data/photo/no-photo states were used. No runtime errors observed in this verification flow.
-- Lint passed; all 143 unit tests passed. Typecheck/build are blocked by two unrelated errors in the concurrently added `tests/unit/external-search-limit.test.ts` at lines 97 and 99 (`name`, `externalLimit`). That test and associated search changes were not modified for this card fix. Application compilation itself succeeded before the typecheck gate failed.
-
-## Follow-up: quiet mobile saving and summary header action
-
-Visual result: passed.
-
-- Removed mobile save success/undo notice; desktop notice and save failure feedback remain available.
-- Summary-card bookmark moved from footer to the header, immediately before close. Badge wrapper removed. Browser computed border=0px, transparent background; 44px hit target retained.
-- Browser checked saved → unsaved → saved, restoring the original saved state. Unselected SVG fill=none and selected fill=currentColor; no `.save-notice` rendered on mobile.
-- Typecheck, lint and diff whitespace checks passed for this follow-up. No DB changes required.
-
-## Follow-up: comment empty state and per-comment actions
-
-Visual result: passed.
-
-- Per user instruction, panel height remains unchanged. Empty state now centers a restrained message icon, heading and place-specific experience question inside the existing list area. Initial browser comparison exposed an older mobile display:block rule overriding the empty flex layout; narrowed it to non-empty lists and recaptured. Post-fix center deviation was 2px.
-- Place subtitle uses muted foreground rather than lime.
-- Disabled send is a muted arrow without a filled circle; valid input activates its existing lime background. Verified by typing into a separate no-comment place, then clearing without submitting. No real comment was posted or deleted.
-- Moved delete/report into accessible Radix per-comment menu on the author line; only the author sees Delete. Opened the current user's real comment menu and verified Delete/Report, then dismissed it. The right-side like column stays in the same place, with no action links beneath the body.
-- Captures: `artifacts/participation/comments-refined-empty.png` (390 × 844) and `artifacts/participation/comments-refined-menu.png` (populated live thread). Existing real avatar/initials fallback and comment content retained.
-- Typecheck, lint, production build and all 143 unit tests passed. Browser regression scenario extended for the new comment menu; full Playwright suite was not run. No backend changes required.
+- [x] Search and sorting moved into desktop discovery header.
+- [x] Result count, keyboard-accessible filter and existing map tags retained.
+- [x] Shared compact capsule, short central divider and independent selected states.
+- [x] Search/list/map synchronization and empty-state recovery verified.
+- [x] Mobile search layout and existing interactions verified.
+- [x] Same-state full and focused visual comparison completed after fixes.
+- [x] Existing unrelated local changes to AGENTS.md and next.config.ts preserved.

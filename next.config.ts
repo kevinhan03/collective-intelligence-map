@@ -3,6 +3,10 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   devIndicators: false,
   cacheComponents: true,
+  // Keep the existing Link prefetch behavior until routes are reviewed for
+  // Partial Prefetching (docs: adopting-partial-prefetching). Flip to true
+  // after moving URL data behind Suspense; this only silences the startup notice.
+  partialPrefetching: false,
   // Preserve Next 16's HTML-limited bots and include AI search fetchers that
   // need complete HTML and metadata without running the streaming scripts.
   htmlLimitedBots:

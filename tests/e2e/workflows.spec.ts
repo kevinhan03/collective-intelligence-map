@@ -274,7 +274,10 @@ test.beforeAll(async () => {
         },
         { find: "next/link", replacement: "workflow-link" },
         { find: "next/image", replacement: "workflow-image" },
-        { find: "@/components/map/map-canvas", replacement: primitives },
+        {
+          find: "@/components/map/map-canvas",
+          replacement: resolve("tests/fixtures/workflow-map.tsx"),
+        },
         {
           find: "@",
           replacement: resolve("src"),
@@ -326,7 +329,7 @@ async function open(page: Page, fixture = "proposal") {
   await page.route("**/workflow-fixture*", (route) =>
     route.fulfill({
       contentType: "text/html",
-      body: `<html lang="ko" class="dark"><head><meta name="viewport" content="width=device-width, initial-scale=1"><style>${css}</style></head><body><div id="root" class="${fixture.startsWith("profile-") || fixture === "recommendations" ? "" : `page-wrap ${fixture === "admin" ? "max-w-4xl" : "max-w-2xl"}`}"></div></body></html>`,
+      body: `<html lang="ko" class="dark"><head><meta name="viewport" content="width=device-width, initial-scale=1"><style>${css}</style></head><body><div id="root" class="${fixture.startsWith("profile-") || fixture === "recommendations" || fixture === "photo-performance" ? "" : `page-wrap ${fixture === "admin" ? "max-w-4xl" : "max-w-2xl"}`}"></div></body></html>`,
     }),
   );
   await page.goto(`/workflow-fixture?fixture=${fixture}`);
@@ -1422,9 +1425,10 @@ test("place detail exposes compact participation and replaces its body with an i
     });
     await page.setViewportSize({ width, height: 844 });
     await page.evaluate(
-      () => new Promise<void>((resolve) => {
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-      }),
+      () =>
+        new Promise<void>((resolve) => {
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+        }),
     );
     await detail.evaluate((element) => {
       element.style.scale = "";
@@ -1719,4 +1723,140 @@ test("late personalization preserves local votes and user/map changes clear them
       .locator(".place-detail-panel")
       .getByRole("button", { name: /^이 지도에 어울리지 않아요 / }),
   ).toHaveAttribute("aria-pressed", "false");
+});
+
+test("photo loading benchmark and latest pin selection", async ({
+  page,
+  isMobile,
+}, testInfo) => {
+  test.skip(isMobile);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.route("**/photo-test-style.json", (route) =>
+    route.fulfill({
+      json: {
+        version: 8,
+        sources: {},
+        layers: [
+          {
+            id: "background",
+            type: "background",
+            paint: { "background-color": "#222d35" },
+          },
+        ],
+      },
+    }),
+  );
+  await page.route("**/map-data/*.geojson", (route) =>
+    route.fulfill({ json: { type: "FeatureCollection", features: [] } }),
+  );
+  await page.route("**/api/map-places/**", (route) =>
+    route.fulfill({
+      json: {
+        comments: [],
+        checks: [],
+        introductions: [],
+        tags: [],
+        summary: {},
+      },
+    }),
+  );
+  await page.route("**/api/places/*/stations", (route) =>
+    route.fulfill({ json: { stations: [], status: "unsupported" } }),
+  );
+  const calls: string[] = [];
+  await page.route("**/api/places/*/photos", async (route) => {
+    const id = route.request().url().split("/").at(-2)!;
+    calls.push(id);
+    await new Promise((resolve) => setTimeout(resolve, 650));
+    await route.fulfill({
+      json: {
+        photos: [
+          {
+            id: `new-${id}`,
+            place_id: id,
+            handle: "visitor",
+            caption: "최근 사진",
+            width: 480,
+            height: 320,
+            created_at: "2026-10-25T00:00:00Z",
+            author_id: null,
+          },
+        ],
+        backdropPhotoId: `old-${id}`,
+        nextCursor: null,
+      },
+    });
+  });
+  await page.route("**/api/photos/*/image?*", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1800));
+    await route.fulfill({
+      contentType: "image/svg+xml",
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="480" height="320"><rect width="480" height="320" fill="green"/></svg>',
+    });
+  });
+  await open(page, "photo-performance");
+  const pinA = page.locator('.map-marker[title="사진 장소 A"]');
+  const pinB = page.locator('.map-marker[title="사진 장소 B"]');
+  await expect(pinA).toBeVisible();
+  const measure = async (pin: typeof pinA, name: string) => {
+    const start = Date.now();
+    await pin.evaluate((button: HTMLElement) => button.click());
+    const panel = page.getByRole("complementary", {
+      name: `${name} 장소 상세`,
+      exact: true,
+    });
+    await expect(panel).toBeVisible();
+    const panelMs = Date.now() - start;
+    await expect(
+      panel.locator('.place-backdrop[data-loaded="true"]'),
+    ).toHaveCSS("opacity", "1", { timeout: 10000 });
+    const backdropMs = Date.now() - start;
+    await expect(
+      panel.locator("[data-photo-thumbnail] img").first(),
+    ).toHaveJSProperty("complete", true);
+    return { panelMs, backdropMs, photoMs: Date.now() - start };
+  };
+  const first = await measure(pinA, "사진 장소 A");
+  const switchPin = await measure(pinB, "사진 장소 B");
+  const revisit = await measure(pinA, "사진 장소 A");
+  console.log(
+    "PHOTO_BENCHMARK",
+    JSON.stringify({ first, switchPin, revisit, listRequests: calls.length }),
+  );
+  await testInfo.attach("photo-timings", {
+    body: JSON.stringify({
+      first,
+      switchPin,
+      revisit,
+      listRequests: calls.length,
+    }),
+    contentType: "application/json",
+  });
+  if (!process.env.PHOTO_BENCHMARK_BASELINE) {
+    await expect(page.locator(".place-backdrop img")).toHaveAttribute(
+      "src",
+      /old-/,
+    );
+    expect(first.backdropMs).toBeLessThan(3400);
+    expect(calls.length).toBe(2);
+    // Switching again during the camera animation must keep the last selection.
+    await pinB.evaluate((button: HTMLElement) => button.click());
+    await pinA.evaluate((button: HTMLElement) => button.click());
+    await expect(
+      page.locator('.map-marker[data-selected="true"]'),
+    ).toHaveAttribute("title", "사진 장소 A");
+    await expect(
+      page.getByRole("complementary", {
+        name: "사진 장소 A 장소 상세",
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(page.locator(".place-backdrop img")).toHaveAttribute(
+      "src",
+      /old-11111111/,
+    );
+    await page.screenshot({
+      path: `artifacts/photo-performance/desktop-${testInfo.repeatEachIndex}.png`,
+    });
+  }
 });

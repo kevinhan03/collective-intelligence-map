@@ -20,7 +20,12 @@ export type PlacePhoto = {
   height: number;
   created_at: string;
 };
-export type PhotoPage = { photos: PlacePhoto[]; nextCursor: string | null };
+export type PhotoPage = {
+  photos: PlacePhoto[];
+  nextCursor: string | null;
+  /** Oldest currently visible photo, independent of newest-first pagination. */
+  backdropPhotoId?: string | null;
+};
 export function photoImageUrl(id: string, thumbnail = false) {
   return `/api/photos/${id}/image${thumbnail ? "?size=thumbnail" : ""}`;
 }

@@ -1,8 +1,12 @@
+import { createHash } from "node:crypto";
+import { PhotoByteCache } from "@/server/photo-byte-cache";
 import { z } from "zod";
 import { db } from "@/lib/supabase/server";
 import { publicDb } from "@/lib/supabase/public";
 import { serviceDb } from "@/lib/supabase/admin";
 import { dbError, failure, HttpError } from "@/server/http";
+const thumbnails = new PhotoByteCache();
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -34,18 +38,31 @@ export async function GET(
         : data.status === "visible")
     )
       throw new HttpError("사진을 찾을 수 없습니다.", 404);
+    const path = thumbnail ? data.thumbnail_path : data.file_path;
+    const etag = `"${createHash("sha256").update(path).digest("hex")}"`;
+    // Revalidate public visibility BEFORE returning 304 or cached bytes. Hiding
+    // a photo (or its parent place) must take effect even on a warm cache.
+    const headers = {
+      "Content-Type": "image/webp",
+      "Cache-Control": admin ? "private, no-store" : "private, no-cache",
+      "X-Content-Type-Options": "nosniff",
+      ETag: etag,
+    };
+    if (!admin && request.headers.get("if-none-match") === etag)
+      return new Response(null, { status: 304, headers });
+    const cached = thumbnail && !admin ? thumbnails.get(path) : undefined;
+    if (cached) return new Response(cached, { headers });
     const { data: file, error: storageError } = await serviceDb()
       .storage.from("place-photos")
-      .download(thumbnail ? data.thumbnail_path : data.file_path);
+      .download(path);
     if (storageError || !file)
       throw new HttpError("사진을 불러오지 못했습니다.", 404);
-    return new Response(await file.arrayBuffer(), {
-      headers: {
-        "Content-Type": "image/webp",
-        "Cache-Control": "private, no-store",
-        "X-Content-Type-Options": "nosniff",
-      },
-    });
+    if (thumbnail && !admin) {
+      const bytes = await file.arrayBuffer();
+      thumbnails.set(path, bytes);
+      return new Response(bytes, { headers });
+    }
+    return new Response(file.stream(), { headers });
   } catch (e) {
     return failure(e);
   }

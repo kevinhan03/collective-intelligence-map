@@ -39,7 +39,12 @@ test.beforeAll(async () => {
     .map((item) => (item.type === "asset" ? String(item.source) : ""))
     .join("\n");
 });
-async function openMarkerFixture(page: Page, labels = false, focus = false) {
+async function openMarkerFixture(
+  page: Page,
+  labels = false,
+  focus = false,
+  detail?: "overlay" | "grid",
+) {
   await page.route("**/marker-regression*", (route) =>
     route.fulfill({
       contentType: "text/html",
@@ -65,7 +70,7 @@ async function openMarkerFixture(page: Page, labels = false, focus = false) {
     route.fulfill({ json: { type: "FeatureCollection", features: [] } }),
   );
   await page.goto(
-    `/marker-regression${focus ? "?focus" : labels ? "?labels" : ""}`,
+    `/marker-regression${focus ? "?focus" : labels ? "?labels" : ""}${detail ? `&detail=${detail}` : ""}`,
   );
   await page.addScriptTag({ content: script });
 }
@@ -357,7 +362,7 @@ test("selected pins focus at 40 percent of the screen on mobile and stay centere
       .locator('.map-marker[data-selected="true"]')
       .boundingBox();
     const canvas = await page.locator(".maplibregl-canvas").boundingBox();
-    const actual = isMobile ? pin!.y + pin!.height / 2 : pin!.y + pin!.height;
+    const actual = pin!.y + pin!.height / 2;
     const expected = isMobile
       ? page.viewportSize()!.height * 0.4
       : canvas!.y + canvas!.height / 2;
@@ -378,3 +383,83 @@ test("selected pins focus at 40 percent of the screen on mobile and stay centere
     path: `/tmp/pin-focus-${testInfo.project.name}.png`,
   });
 });
+
+for (const detail of ["overlay", "grid"] as const) {
+  test(`selected pin centers in the visible map after a ${detail} detail panel opens and resizes`, async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(isMobile);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openMarkerFixture(page, false, true, detail);
+    await page
+      .getByRole("button", { name: "서쪽 장소 · 주제 추천 0", exact: true })
+      .click();
+    const panel = page.getByLabel("선택 장소 상세", { exact: true });
+    await expect(panel).toBeVisible();
+    const assertCentered = async () => {
+      await expect
+        .poll(async () => {
+          const pin = (await page
+            .locator('.map-marker[data-selected="true"]')
+            .boundingBox())!;
+          const canvas = (await page
+            .locator(".maplibregl-canvas")
+            .boundingBox())!;
+          const detailBox = (await panel.boundingBox())!;
+          const left =
+            detail === "overlay"
+              ? Math.max(canvas.x, detailBox.x + detailBox.width)
+              : canvas.x;
+          return Math.max(
+            Math.abs(
+              pin.x + pin.width / 2 - (left + canvas.x + canvas.width) / 2,
+            ),
+            Math.abs(pin.y + pin.height / 2 - (canvas.y + canvas.height / 2)),
+          );
+        })
+        .toBeLessThan(3);
+    };
+    await assertCentered();
+    await page
+      .getByRole("button", { name: "상세 패널 넓히기", exact: true })
+      .click();
+    await assertCentered();
+    const switchedAt = Date.now();
+    await page
+      .getByRole("button", { name: "동쪽 장소로 이동", exact: true })
+      .click();
+    await expect(page.getByLabel("초점 이동 완료", { exact: true })).toHaveText(
+      "east",
+    );
+    // Replacing a panel with identical geometry must not instantly end the flight.
+    expect(Date.now() - switchedAt).toBeGreaterThanOrEqual(350);
+    await assertCentered();
+    // Layout correction must still let the user pan away from the selected pin.
+    const revision = page.getByLabel("지도 이동 횟수", { exact: true });
+    const beforePan = Number(await revision.innerText());
+    const canvas = (await page.locator(".maplibregl-canvas").boundingBox())!;
+    await page.mouse.move(canvas.x + canvas.width - 80, canvas.y + 120);
+    await page.mouse.down();
+    await page.mouse.move(canvas.x + canvas.width - 180, canvas.y + 120, {
+      steps: 8,
+    });
+    await page.mouse.up();
+    await expect
+      .poll(async () => Number(await revision.innerText()))
+      .toBeGreaterThan(beforePan);
+    const movedPin = (await page
+      .locator('.map-marker[data-selected="true"]')
+      .boundingBox())!;
+    const detailBox = (await panel.boundingBox())!;
+    const left =
+      detail === "overlay"
+        ? Math.max(canvas.x, detailBox.x + detailBox.width)
+        : canvas.x;
+    expect(
+      Math.abs(
+        movedPin.x + movedPin.width / 2 - (left + canvas.x + canvas.width) / 2,
+      ),
+    ).toBeGreaterThan(20);
+  });
+}

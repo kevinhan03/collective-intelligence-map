@@ -10,6 +10,40 @@ async function expandMobileDetail(page: Page) {
     .getByRole("button", { name: "장소 상세 펼치기", exact: true })
     .click();
 }
+test("desktop discovery keeps search, sorting and compact reactions beside the map", async ({ page, isMobile }) => {
+  test.skip(isMobile);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/maps/tokyo-fashion");
+  const list = page.getByRole("region", { name: "장소 목록", exact: true });
+  const header = list.locator(".discovery-header");
+  const search = header.getByRole("combobox", { name: "이 맵의 장소 검색" });
+  await expect(search).toBeVisible();
+  await expect(header.getByRole("group", { name: "장소 정렬" })).toBeVisible();
+  const bounds = await page.locator(".explorer-layout").evaluate((layout) => {
+    const list = layout.querySelector("#explorer-list")!.getBoundingClientRect();
+    const map = layout.querySelector("#explorer-map")!.getBoundingClientRect();
+    return { topDifference: Math.abs(list.top - map.top), gap: map.left - list.right };
+  });
+  expect(bounds.topDifference).toBeLessThanOrEqual(1);
+  expect(bounds.gap).toBeGreaterThan(0);
+  expect(bounds.gap).toBeLessThanOrEqual(20);
+  const capsule = list.locator(".vote-capsule").first();
+  await expect(capsule.getByRole("button")).toHaveCount(2);
+  const capsuleBox = (await capsule.boundingBox())!;
+  expect(capsuleBox.width).toBeLessThanOrEqual(100);
+  expect(capsuleBox.height).toBeLessThanOrEqual(30);
+  await header.getByLabel("발견 목록 필터", { exact: true }).click();
+  await expect(header.getByRole("combobox", { name: "장소 지역", exact: true })).toBeVisible();
+  await header.getByRole("combobox", { name: "장소 지역", exact: true }).press("Escape");
+  await expect(header.getByRole("combobox", { name: "장소 지역", exact: true })).toBeHidden();
+  await search.fill("no-matching-place");
+  await expect(list.getByText("조건에 맞는 장소가 없어요.", { exact: true })).toBeVisible();
+  await expect(page.locator(".map-pin")).toHaveCount(0);
+  await header.getByRole("button", { name: "검색·역 필터 초기화" }).click();
+  await expect(page.locator(".map-pin")).toHaveCount(6);
+  await list.evaluate((element) => { element.scrollTop = element.scrollHeight; });
+  await expect(search).toBeInViewport();
+});
 test("mobile logo stays visible after returning home from a map", async ({
   page,
   isMobile,

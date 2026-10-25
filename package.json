@@ -25,6 +25,7 @@
     "check:deployment": "node scripts/check-deployment.mjs",
     "check:seo": "node scripts/check-seo.mjs",
     "test:photos:live": "node scripts/test-place-photos-live.mjs",
+    "test:photos:performance": "playwright test tests/e2e/workflows.spec.ts --project=desktop --grep \"photo loading benchmark\" --repeat-each=3 --workers=1",
     "photos:cleanup": "node scripts/cleanup-place-photos.mjs",
     "stations:collect": "node scripts/stations/import.mjs",
     "map-labels:generate": "node scripts/map-labels/generate.mjs"

@@ -367,7 +367,32 @@ function PersonalizationFixture() {
   );
 }
 createRoot(document.getElementById("root")!).render(
-  new URLSearchParams(location.search).get("fixture") === "personalization" ? (
+  new URLSearchParams(location.search).get("fixture") ===
+    "photo-performance" ? (
+    <CommunityExplorer
+      map={{
+        ...map,
+        bounds: { west: 126.98, east: 127.02, south: 36.98, north: 37.02 },
+      }}
+      initialPlaces={[
+        { ...sheetPlace, name: "사진 장소 A", lat: 37, lng: 127 },
+        {
+          ...sheetPlace,
+          id: "33333333-3333-4333-8333-333333333333",
+          place_id: "44444444-4444-4444-8444-444444444444",
+          name: "사진 장소 B",
+          lat: 37.003,
+          lng: 127.003,
+        },
+      ]}
+      pendingPlaces={[]}
+      viewer={null}
+      myState={{ votes: {}, saves: [], followed: false }}
+      config={{ provider: "maplibre", key: "/photo-test-style.json" }}
+      demo={false}
+    />
+  ) : new URLSearchParams(location.search).get("fixture") ===
+    "personalization" ? (
     <PersonalizationFixture />
   ) : new URLSearchParams(location.search).get("fixture") === "mutations" ? (
     <MutationFixture />

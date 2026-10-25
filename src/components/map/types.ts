@@ -11,6 +11,7 @@ export type MapProps = {
   onSelect: (id: string) => void;
   onFocusComplete?: (id: string) => void;
   focusRequest?: number;
+  detailOpen?: boolean;
   bounds: Bounds;
   onBoundsChange: (bounds: Bounds) => void;
   onMapClick?: (point: { lat: number; lng: number }) => void;

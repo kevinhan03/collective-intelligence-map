@@ -23,6 +23,9 @@ export type ThemeMap = {
   created_at: string;
   place_count: number;
   follower_count: number;
+  hype_count?: number;
+  hype_week_count?: number;
+  saved_count?: number;
   contributor_count: number;
 };
 export type MapPlace = {

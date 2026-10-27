@@ -12,9 +12,18 @@ export default async function Saved() {
   if (error) throw new Error("저장 목록을 불러올 수 없습니다.");
   const cards = (data ?? []) as SavedPlace[];
   const maps = await getMaps();
+  const saved = await (
+    await db()
+  )
+    .from("map_follows")
+    .select("map_id")
+    .eq("user_id", viewer.id);
+  if (saved.error) throw new Error("저장한 지도를 불러올 수 없습니다.");
+  const savedIds = new Set((saved.data ?? []).map((row) => row.map_id));
   return (
     <SavedPlaces
       initialCards={cards}
+      savedMaps={maps.filter((map) => savedIds.has(map.id))}
       maps={maps}
       config={rendererFor()}
     />

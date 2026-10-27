@@ -329,7 +329,7 @@ async function open(page: Page, fixture = "proposal") {
   await page.route("**/workflow-fixture*", (route) =>
     route.fulfill({
       contentType: "text/html",
-      body: `<html lang="ko" class="dark"><head><meta name="viewport" content="width=device-width, initial-scale=1"><style>${css}</style></head><body><div id="root" class="${fixture.startsWith("profile-") || fixture === "recommendations" || fixture === "photo-performance" ? "" : `page-wrap ${fixture === "admin" ? "max-w-4xl" : "max-w-2xl"}`}"></div></body></html>`,
+      body: `<html lang="ko" class="dark"><head><meta name="viewport" content="width=device-width, initial-scale=1"><style>${css}</style></head><body><div id="root" class="${fixture.startsWith("profile-") || fixture === "recommendations" || fixture === "photo-performance" || fixture === "map-engagement" ? "" : `page-wrap ${fixture === "admin" ? "max-w-4xl" : "max-w-2xl"}`}"></div></body></html>`,
     }),
   );
   await page.goto(`/workflow-fixture?fixture=${fixture}`);
@@ -1859,4 +1859,118 @@ test("photo loading benchmark and latest pin selection", async ({
       path: `artifacts/photo-performance/desktop-${testInfo.repeatEachIndex}.png`,
     });
   }
+});
+
+test("map actions are independent from preview, optimistic, reversible and ranked by selected signal", async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(isMobile);
+  await page.setViewportSize({ width: 1440, height: 1024 });
+  const calls: Record<string, unknown>[] = [];
+  let release!: () => void;
+  let fail = false;
+  await page.route("**/api/maps/engagement", async (route) => {
+    if (route.request().method() === "GET")
+      return route.fulfill({
+        json: { viewerId: "user", saved: [], hyped: [], hypeCreatedAt: {} },
+      });
+    const input = route.request().postDataJSON();
+    calls.push(input);
+    await new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await route.fulfill(
+      fail
+        ? { status: 500, json: { error: "추천 저장 실패" } }
+        : {
+            json: {
+              hype_count: input.enabled ? 4 : 3,
+              hype_week_count: input.enabled ? 4 : 3,
+              saved_count: input.enabled ? 2 : 1,
+            },
+          },
+    );
+  });
+  await open(page, "map-engagement");
+  const cards = page.locator("[data-desktop-home] ol > li");
+  await expect(cards.first()).toContainText("Seoul Taco Restaurant");
+  const hype = page.getByRole("button", {
+    name: "Seoul Taco Restaurant Hype 추천",
+    exact: true,
+  });
+  await expect(hype).toBeEnabled();
+  await hype.click();
+  const active = page.getByRole("button", {
+    name: "Seoul Taco Restaurant Hype 취소",
+    exact: true,
+  });
+  await expect(active).toHaveAttribute("aria-pressed", "true");
+  await expect(active).toBeDisabled();
+  await expect(active).toHaveText("4");
+  await expect(page.locator("details[open]")).toHaveCount(0);
+  const save = page.getByRole("button", {
+    name: "Seoul Taco Restaurant 지도 저장",
+    exact: true,
+  });
+  await expect(save).toBeEnabled();
+  await expect.poll(() => calls.length).toBe(1);
+  release();
+  await expect(active).toBeEnabled();
+  fail = true;
+  await active.click();
+  await expect(hype).toHaveAttribute("aria-pressed", "false");
+  await expect.poll(() => calls.length).toBe(2);
+  release();
+  await expect(active).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("alert")).toContainText("추천 저장 실패");
+  fail = false;
+  await save.click();
+  await expect(
+    page.getByRole("button", {
+      name: "Seoul Taco Restaurant 지도 저장 취소",
+      exact: true,
+    }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect.poll(() => calls.length).toBe(3);
+  release();
+  await expect(page.locator("details[open]")).toHaveCount(0);
+  expect(calls[0]).toMatchObject({ action: "hype", enabled: true });
+  expect(calls[2]).toMatchObject({ action: "save_map", enabled: true });
+  const sorts = page.getByRole("group", { name: "지도 정렬", exact: true });
+  await sorts.getByRole("button", { name: "저장순", exact: true }).click();
+  await expect(cards.first()).toContainText("Tokyo Fashion Store");
+  await sorts.getByRole("button", { name: "최신순", exact: true }).click();
+  await expect(cards.first()).toContainText("Korea Vintage Shop");
+  await sorts.getByRole("button", { name: "인기순", exact: true }).click();
+  await expect(cards.first()).toContainText("Seoul Taco Restaurant");
+});
+
+test("map engagement fails closed on private-state errors and prompts anonymous sign-in", async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(isMobile);
+  await page.setViewportSize({ width: 1440, height: 1024 });
+  let failed = true;
+  await page.route("**/api/maps/engagement", (route) =>
+    route.fulfill(
+      failed
+        ? { status: 503, json: { error: "failed" } }
+        : { json: { viewerId: null, saved: [], hyped: [], hypeCreatedAt: {} } },
+    ),
+  );
+  await open(page, "map-engagement");
+  const save = page.getByRole("button", {
+    name: "Tokyo Fashion Store 지도 저장",
+    exact: true,
+  });
+  await expect(save).toBeDisabled();
+  await expect(page.getByRole("alert")).toBeVisible();
+  failed = false;
+  await page.getByRole("button", { name: "다시 시도", exact: true }).click();
+  await expect(save).toBeEnabled();
+  await save.click();
+  await expect(page).toHaveURL(/\/login\?next=%2F$/);
+  await expect(page.locator("details[open]")).toHaveCount(0);
 });

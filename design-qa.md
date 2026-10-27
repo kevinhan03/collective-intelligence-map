@@ -1,3 +1,29 @@
+# Homepage map Hype and save — 2026-10-27
+
+final result: passed
+
+## Selected design and visual verification
+
+- User selected option 1: Hype glass pill at the top-left of each cover, bookmark circle at the top-right, and popular/saved/newest sorting above the grid.
+- Visual reference: `artifacts/map-engagement/selected-reference.png`. Final actual browser capture: `artifacts/map-engagement/implementation-desktop.png`, CSS viewport 1440 × 1024. Both images were opened together for direct visual review, accounting for the reference's different canvas scale.
+- Actual implementation retains the existing real cover photos, fallback gradients, lower title/count overlays and glass borders. Mock recommendation numbers and illustrative extra photographs were intentionally replaced by real data. Hype starts at zero; existing saved maps remain highlighted.
+- The selected design's placement, spacing hierarchy and compact corner controls are present. Existing typography and slightly shorter production cards are preserved. No unresolved P0/P1/P2 visual findings.
+- Narrow desktop capture: `artifacts/map-engagement/implementation-1024.png`; browser DOM verified width and document scrollWidth both 1024, with all nine Hype controls present. Temporary viewport override reset.
+
+## Functional and security verification
+
+- Hype is authenticated, idempotent and reversible; popularity uses enabled Hypes created within seven days. Retoggling an old reaction does not renew its original date. Zero-score ties favor populated maps.
+- Saves reuse existing map follows and appear in the existing saved page. Card controls are siblings of the preview, with independent pending states, accessible labels, visible keyboard focus, optimistic feedback and rollback on failure. Private state fetch has retry and never fabricates unchecked state after an error.
+- Live signed-in check: created Hype, verified it survived reload, then cancelled it; saved Korea Fashion Store, found it in the saved-map collection, then cancelled it. Final home confirms all Hypes unchecked and only the original Tokyo Fashion Store and Korea Vintage Shop saves selected. No browser console errors returned.
+- New production migration `20261027075253_map_hype_and_saved_maps.sql` applied to the actual app project; nine public map aggregates returned and anonymous direct reaction-table reads were denied. RLS restricts individual records to their owner; writes use authenticated validated RPCs. Existing map data preserved.
+- Typecheck, ESLint and production test build passed. Unit tests: 186 passed. Full browser suite: 195 passed, 67 skipped. Isolated Postgres/PostGIS tests passed, including duplicate toggles, time window, ownership, anonymous restrictions and direct-write denial. Local security advisors at error level returned no issues. Latest cold-start tie-break regression passed in the final unit run.
+- React best-practices review: parallel independent reads, private viewer state outside public cache, functional state updates, cancellation of stale reads, no nested interactive elements, no added heavy dependencies.
+- Code remains uncommitted on main; production frontend has not been pushed/deployed. Database schema is already applied.
+
+---
+
+# Earlier design QA (retained history)
+
 # Desktop home redesign — design QA
 
 final result: passed

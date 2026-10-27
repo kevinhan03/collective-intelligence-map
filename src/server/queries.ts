@@ -84,7 +84,7 @@ export const getMaps = cache(async (): Promise<ThemeMap[]> => {
   cacheTag("public-community");
   if (!configured()) return [demoMap];
   const client = publicDb();
-  const [{ data, error }, { data: statsRows, error: statsError }] =
+  const [{ data, error }, { data: statsRows, error: statsError }, engagement] =
     await Promise.all([
       client
         .from("theme_maps")
@@ -92,12 +92,16 @@ export const getMaps = cache(async (): Promise<ThemeMap[]> => {
         .eq("status", "published")
         .order("created_at"),
       client.rpc("map_stats_all"),
+      client.rpc("map_engagement_stats"),
     ]);
   if (error) throw new Error("커뮤니티 목록을 불러올 수 없습니다.");
   // Statistics are an enhancement to the public map shell. A deployment must
   // still be able to prerender the map list while an RPC migration is rolling
   // out, so render zero counts and retry on the next cache revalidation.
   if (statsError) console.error("map_stats_all_unavailable");
+  const engagementById = new Map(
+    (engagement.data ?? []).map((row) => [row.map_id, row]),
+  );
   const statsById = new Map(
     (statsRows ?? []).map((s) => [
       s.map_id,
@@ -119,6 +123,10 @@ export const getMaps = cache(async (): Promise<ThemeMap[]> => {
       return {
         ...row,
         ...counts,
+        hype_count: engagementById.get(row.id)?.hype_count ?? 0,
+        hype_week_count: engagementById.get(row.id)?.hype_week_count ?? 0,
+        saved_count:
+          engagementById.get(row.id)?.saved_count ?? counts.follower_count,
         bounds: row.bounds as unknown as Bounds,
       } as ThemeMap;
     });

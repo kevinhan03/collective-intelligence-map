@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { SavedMaps } from "./saved-maps";
 import { useMemo, useState } from "react";
 import {
   ArrowUpRight,
@@ -28,10 +29,12 @@ export type SavedPlace = MapPlace & {
 
 export function SavedPlaces({
   initialCards,
+  savedMaps = [],
   maps,
   config,
 }: {
   initialCards: SavedPlace[];
+  savedMaps?: ThemeMap[];
   maps: ThemeMap[];
   config: RendererConfig;
 }) {
@@ -92,7 +95,7 @@ export function SavedPlaces({
     }
   }
 
-  if (!cards.length) return <SavedEmpty />;
+  if (!cards.length) return <SavedEmpty savedMaps={savedMaps} />;
 
   return (
     <main
@@ -118,6 +121,7 @@ export function SavedPlaces({
         </div>
       </section>
 
+      <SavedMaps maps={savedMaps} />
       <section className="mt-4 grid gap-4 lg:min-h-[calc(100dvh-270px)] lg:grid-cols-[minmax(270px,0.8fr)_minmax(0,1.5fr)_minmax(300px,0.9fr)]">
         <aside className="glass-panel order-0 rounded-3xl p-4 lg:order-none lg:overflow-y-auto lg:p-5">
           <div className="flex items-center gap-2 text-sm font-medium">
@@ -364,13 +368,14 @@ export function SavedPlaces({
   );
 }
 
-function SavedEmpty() {
+function SavedEmpty({ savedMaps }: { savedMaps: ThemeMap[] }) {
   return (
     <main
       id="main"
-      className="mx-auto grid min-h-[calc(100dvh-96px)] max-w-[1440px] place-items-center px-5"
+      className="mx-auto min-h-[calc(100dvh-96px)] max-w-[1440px] px-5 py-6"
     >
-      <section className="glass-panel max-w-md rounded-4xl px-8 py-14 text-center">
+      <SavedMaps maps={savedMaps} />
+      <section className="glass-panel mx-auto mt-8 max-w-md rounded-4xl px-8 py-14 text-center">
         <span className="mx-auto grid size-14 place-items-center rounded-3xl bg-primary text-primary-foreground">
           <Bookmark size={25} />
         </span>

@@ -177,6 +177,27 @@ export type Database = {
           },
         ];
       };
+      map_hypes: {
+        Row: {
+          user_id: string;
+          map_id: string;
+          enabled: boolean;
+          created_at: string;
+        };
+        Insert: {
+          user_id: string;
+          map_id: string;
+          enabled?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          map_id?: string;
+          enabled?: boolean;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       map_follows: {
         Row: {
           created_at: string;
@@ -817,7 +838,10 @@ export type Database = {
       };
       search_map_places: { Args: { payload: Json }; Returns: Json };
       map_tag_catalog: { Args: { m: string }; Returns: Json };
-      map_place_tag_assignments: { Args: { m: string; ids: string[] }; Returns: Json };
+      map_place_tag_assignments: {
+        Args: { m: string; ids: string[] };
+        Returns: Json;
+      };
       map_place_tag_ids: { Args: { target: string }; Returns: string[] };
       map_tag_command: { Args: { payload: Json }; Returns: Json };
       search_normalize: { Args: { t: string }; Returns: string };
@@ -877,6 +901,19 @@ export type Database = {
         Returns: Json;
       };
       map_stats: { Args: { m: string }; Returns: Json };
+      map_engagement_stats: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          map_id: string;
+          hype_count: number;
+          hype_week_count: number;
+          saved_count: number;
+        }[];
+      };
+      set_map_hype: {
+        Args: { p_map: string; p_enabled: boolean };
+        Returns: Json;
+      };
       map_stats_all: {
         Args: never;
         Returns: {

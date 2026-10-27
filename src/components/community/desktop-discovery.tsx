@@ -3,11 +3,20 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
-import { ArrowRight, ArrowUpRight, Search, X } from "lucide-react";
+import {
+  ArrowRight,
+  ArrowUpRight,
+  Bookmark,
+  Flame,
+  Search,
+  X,
+} from "lucide-react";
 import type { ThemeMap } from "@/domain/types";
 import { formatLocation } from "@/domain/location";
 import { MapCardBackdrop } from "@/components/community/map-card-backdrop";
 import { mapTheme } from "@/domain/map-order";
+import { rankMaps, type MapSort } from "@/domain/map-engagement";
+import { useMapEngagement } from "./use-map-engagement";
 import styles from "./desktop-discovery.module.css";
 
 export function DesktopDiscovery({
@@ -20,6 +29,8 @@ export function DesktopDiscovery({
   demo?: boolean;
 }) {
   const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<MapSort>("popular");
+  const engagement = useMapEngagement(maps, demo);
   const heading = useRef<HTMLHeadingElement>(null);
   const searchInput = useRef<HTMLInputElement>(null);
   const [theme, setTheme] = useState("all");
@@ -44,15 +55,18 @@ export function DesktopDiscovery({
     },
   ];
   const activeTheme = themes.find((item) => item.id === theme)!;
-  const results = maps.filter((map) => {
-    const matchesTheme =
-      !activeTheme.pattern ||
-      activeTheme.pattern.test(`${map.title} ${map.tags.join(" ")}`);
-    const text = `${map.title} ${map.description} ${map.city} ${map.country} ${map.tags.join(" ")} ${locationTerms[map.id] ?? ""}`;
-    return (
-      matchesTheme && text.toLowerCase().includes(query.trim().toLowerCase())
-    );
-  });
+  const results = rankMaps(
+    maps.map(engagement.withCounts).filter((map) => {
+      const matchesTheme =
+        !activeTheme.pattern ||
+        activeTheme.pattern.test(`${map.title} ${map.tags.join(" ")}`);
+      const text = `${map.title} ${map.description} ${map.city} ${map.country} ${map.tags.join(" ")} ${locationTerms[map.id] ?? ""}`;
+      return (
+        matchesTheme && text.toLowerCase().includes(query.trim().toLowerCase())
+      );
+    }),
+    sort,
+  );
   const reset = () => {
     setQuery("");
     setTheme("all");
@@ -126,9 +140,41 @@ export function DesktopDiscovery({
       </section>
       <section id="communities" aria-labelledby="desktop-maps-heading">
         <div className={styles.sectionHeading}>
-          <h2 id="desktop-maps-heading" ref={heading} tabIndex={-1}>
-            함께 만드는 지도
+          <h2
+            id="desktop-maps-heading"
+            className="sr-only"
+            ref={heading}
+            tabIndex={-1}
+          >
+            지도 목록
           </h2>
+          <div className={styles.sorting}>
+            <div role="group" aria-label="지도 정렬">
+              {(
+                [
+                  { id: "popular", label: "인기순" },
+                  { id: "saved", label: "저장순" },
+                  { id: "newest", label: "최신순" },
+                ] as const
+              ).map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  aria-pressed={sort === item.id}
+                  onClick={() => setSort(item.id)}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+            <span>
+              {sort === "popular"
+                ? "최근 7일 Hype 기준"
+                : sort === "saved"
+                  ? "지도 저장 수 기준"
+                  : "최근 추가된 지도부터"}
+            </span>
+          </div>
           <p role="status" aria-live="polite">
             {query.trim() || theme !== "all" ? `전체 ${maps.length}개 중 ` : ""}
             {results.length}개의 지도
@@ -138,6 +184,14 @@ export function DesktopDiscovery({
           <p className={styles.demo}>
             미리보기 모드입니다. 장소는 화면 확인을 위한 가상 예시이며 실제
             추천·검증 데이터가 아닙니다.
+          </p>
+        )}
+        {engagement.error && (
+          <p className={styles.actionError} role="alert">
+            {engagement.error}{" "}
+            <button type="button" onClick={() => void engagement.reload()}>
+              다시 시도
+            </button>
           </p>
         )}
         <ol className={styles.cards}>
@@ -196,7 +250,11 @@ export function DesktopDiscovery({
                     </Link>
                   )}
                   <p className={styles.followers}>
-                    팔로워 {map.follower_count.toLocaleString("ko-KR")}명
+                    저장{" "}
+                    {(map.saved_count ?? map.follower_count).toLocaleString(
+                      "ko-KR",
+                    )}
+                    명
                   </p>
                   <Link
                     href={`/maps/${map.slug}`}
@@ -209,6 +267,51 @@ export function DesktopDiscovery({
                   </Link>
                 </div>
               </details>
+              <div className={styles.cardActions}>
+                <button
+                  type="button"
+                  className={styles.hypeButton}
+                  aria-label={`${map.title} Hype ${engagement.isHyped(map.id) ? "취소" : "추천"}`}
+                  title="이 지도 추천하기"
+                  aria-pressed={engagement.isHyped(map.id)}
+                  aria-busy={engagement.isPending("hype", map.id)}
+                  disabled={
+                    demo ||
+                    !engagement.ready ||
+                    engagement.isPending("hype", map.id)
+                  }
+                  onClick={() => void engagement.toggle("hype", map.id)}
+                >
+                  <Flame
+                    size={17}
+                    fill={engagement.isHyped(map.id) ? "currentColor" : "none"}
+                    aria-hidden="true"
+                  />
+                  <span>{(map.hype_count ?? 0).toLocaleString("ko-KR")}</span>
+                </button>
+                <button
+                  type="button"
+                  className={styles.saveButton}
+                  aria-label={`${map.title} 지도 ${engagement.isSaved(map.id) ? "저장 취소" : "저장"}`}
+                  title={
+                    engagement.isSaved(map.id) ? "지도 저장 취소" : "지도 저장"
+                  }
+                  aria-pressed={engagement.isSaved(map.id)}
+                  aria-busy={engagement.isPending("save_map", map.id)}
+                  disabled={
+                    demo ||
+                    !engagement.ready ||
+                    engagement.isPending("save_map", map.id)
+                  }
+                  onClick={() => void engagement.toggle("save_map", map.id)}
+                >
+                  <Bookmark
+                    size={18}
+                    fill={engagement.isSaved(map.id) ? "currentColor" : "none"}
+                    aria-hidden="true"
+                  />
+                </button>
+              </div>
             </li>
           ))}
         </ol>

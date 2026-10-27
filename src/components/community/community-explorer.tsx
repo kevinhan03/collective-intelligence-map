@@ -1400,7 +1400,7 @@ function ExplorerContent({
               onClick={toggleFollow}
             >
               {actions.followed ? <Check size={14} /> : <Plus size={14} />}{" "}
-              {actions.followed ? "팔로우 중" : "팔로우"}
+              {actions.followed ? "지도 저장됨" : "지도 저장"}
             </Button>
             <Button asChild>
               <Link
@@ -1424,7 +1424,7 @@ function ExplorerContent({
           </span>
           <span className="flex gap-1.5">
             <Users size={13} />
-            {followerCount} 팔로워
+            {followerCount} 저장
           </span>
           <span>{map.contributor_count} 기여자</span>
           <a
@@ -1508,7 +1508,7 @@ function ExplorerContent({
             </span>
             <span className="flex items-center gap-1.5">
               <Users size={14} />
-              {followerCount} 팔로워
+              {followerCount} 저장
             </span>
             <span>{map.contributor_count} 기여자</span>
           </div>
@@ -1533,7 +1533,7 @@ function ExplorerContent({
               onClick={toggleFollow}
             >
               {actions.followed ? <Check size={15} /> : <Plus size={15} />}
-              {actions.followed ? "팔로우 중" : "팔로우"}
+              {actions.followed ? "지도 저장됨" : "지도 저장"}
             </Button>
             <Button asChild>
               <Link

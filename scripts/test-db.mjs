@@ -1,4 +1,5 @@
 import pg from "pg";
+import { testMapEngagement } from "./test-map-engagement-db.mjs";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { tmpdir } from "node:os";
@@ -1279,6 +1280,7 @@ create function storage.foldername(text) returns text[] language sql immutable a
     "PASS: proposal search SQL Editor script repeats safely and all three checks are true",
   );
   await testProposalSearch(c);
+  await testMapEngagement(c);
   await testCreatorMaps(c);
   await testIntroductions(c);
   await testCommentThread(c);

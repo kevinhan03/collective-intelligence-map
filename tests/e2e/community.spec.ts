@@ -1081,7 +1081,7 @@ test("desktop home combines theme and text filters and keeps metadata inside cle
   await search.fill("no-such-map");
   await search.press("Enter");
   await expect(
-    home.getByRole("heading", { name: "함께 만드는 지도" }),
+    home.getByRole("heading", { name: "지도 목록" }),
   ).toBeFocused();
   await expect(
     home.getByText("조건에 맞는 지도가 없어요.", { exact: false }),

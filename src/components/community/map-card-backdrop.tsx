@@ -11,10 +11,15 @@ const cardPalettes = [
 // Editorial images for the currently curated maps. New maps use the stable
 // palette fallback below until an intentional image is selected.
 const cardImages: Record<string, string> = {
+  "seoul-night-view": "/seoul-night-view.jpg",
+  "korea-ramen-restaurant": "/korea-ramen-restaurant.jpg",
+  "korea-sauna-map": "/korea-sauna-map.webp",
+  "korea-best-burger": "/korea-best-burger-whole.jpeg",
+  "korea-fashion-store": "/korea-fashion-store.jpg",
   "choiza-road-restaurants": "/choiza-road-restaurants.jpeg",
-  "korea-vintage": "/korea-vintage-gyeongbokgung.jpg",
+  "korea-vintage": "/korea-vintage-shop.jpg",
   "seoul-taco-restaurant": "/seoul-taco-restaurant.jpg",
-  "tokyo-fashion": "/tokyo-fashion-shinjuku.jpg",
+  "tokyo-fashion": "/tokyo-fashion-store-interior.jpg",
 };
 
 export function MapCardBackdrop({
@@ -25,6 +30,32 @@ export function MapCardBackdrop({
   sharp?: boolean;
 }) {
   const image = cardImages[slug];
+  if (image && slug === "korea-best-burger") {
+    return (
+      <div aria-hidden="true" className="absolute inset-0 overflow-hidden">
+        <Image
+          src={image}
+          alt=""
+          fill
+          sizes="(min-width: 1280px) 32vw, (min-width: 768px) 50vw, 100vw"
+          className="scale-110 object-cover blur-xl"
+        />
+        {/* Keep the entire burger (42–83% of the source height) in the card. */}
+        <Image
+          src={image}
+          alt=""
+          width={750}
+          height={938}
+          sizes="(min-width: 1280px) 32vw, (min-width: 768px) 50vw, 100vw"
+          className="absolute -top-[80%] left-0 h-[200%] w-full object-contain"
+          style={{
+            maskImage:
+              "linear-gradient(to right, transparent, black 14%, black 86%, transparent)",
+          }}
+        />
+      </div>
+    );
+  }
   if (image) {
     return (
       <div

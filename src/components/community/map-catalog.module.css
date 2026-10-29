@@ -22,13 +22,10 @@
 }
 .catalog button,
 .catalog a,
-.catalog input,
-.filterSheet button,
-.filterSheet select {
+.catalog input {
   -webkit-tap-highlight-color: transparent;
 }
-.catalog :is(button, a, input, select):focus-visible,
-.filterSheet :is(button, select):focus-visible {
+.catalog :is(button, a, input, select):focus-visible {
   outline: 2px solid #edff70;
   outline-offset: 3px;
 }
@@ -339,17 +336,13 @@
   color: var(--catalog-muted);
 }
 .discoveryHeading {
-  margin: 0 0 20px;
+  display: none;
 }
 .discoveryHeading > a {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  color: var(--catalog-muted);
-  font-size: 0.8125rem;
+  display: none;
 }
 .discoveryHeading h1 {
-  margin-top: 6px;
+  margin-top: 0;
   font-size: 1.625rem;
   line-height: 1.3;
 }
@@ -358,6 +351,22 @@
   font-size: 0.875rem;
   line-height: 1.6;
   color: var(--catalog-muted);
+}
+@media (width >= 1024px) {
+  .discoveryHeading {
+    display: block;
+    margin: 0 0 20px;
+  }
+  .discoveryHeading > a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    color: var(--catalog-muted);
+    font-size: 0.8125rem;
+  }
+  .discoveryHeading h1 {
+    margin-top: 6px;
+  }
 }
 .desktopFilters {
   display: none;
@@ -370,59 +379,12 @@
   margin: 20px 0 12px;
   font-size: 0.875rem;
 }
-.filterTrigger {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 44px;
-  padding: 0 14px;
-  border: 1px solid #ffffff30;
-  border-radius: 999px;
-  cursor: pointer;
-}
-.filterSheet {
-  font-family: var(--font-suit), sans-serif;
-  background: #20262e !important;
-  color: #f5f6f0;
-}
-.filterSheet h2 {
-  font-family: inherit;
-  font-weight: 500;
-}
-.filterSheet :global([data-slot="dialog-close"]) {
-  min-width: 44px;
-  min-height: 44px;
-}
-@media (width < 1024px) {
-  .filterSheet {
-    top: auto;
-    bottom: 12px;
-    left: 12px;
-    width: calc(100% - 24px);
-    max-width: none;
-    max-height: calc(100dvh - 24px);
-    overflow-y: auto;
-    transform: none;
-    translate: none;
-    --tw-translate-x: 0px;
-    --tw-translate-y: 0px;
-    animation: none;
-    border-radius: 24px;
-  }
-}
-.sheetFields {
-  display: grid;
-  gap: 16px;
-}
-.sheetFields label,
 .desktopFilters label {
   display: grid;
   gap: 7px;
   font-size: 0.8125rem;
   color: #c0c5cc;
 }
-.sheetFields select,
 .desktopFilters select {
   min-height: 44px;
   width: 100%;
@@ -432,20 +394,6 @@
   color: #f5f6f0;
   background: #171d25;
   font-size: 0.875rem;
-}
-.reset,
-.apply {
-  min-height: 44px;
-  border-radius: 999px;
-  cursor: pointer;
-}
-.reset {
-  border: 1px solid #ffffff30;
-}
-.apply {
-  color: #171b08;
-  background: #edff70;
-  font-weight: 500;
 }
 .conditions {
   display: flex;
@@ -577,9 +525,6 @@
     grid-template-columns: repeat(3, minmax(0, 200px));
     gap: 16px;
     margin-top: 24px;
-  }
-  .filterTrigger {
-    display: none;
   }
 }
 @media (width >= 1440px) {

@@ -12,6 +12,8 @@ Only public non-creator maps returned by the existing query enter the catalog. U
 
 ## Discovery contract
 
+Mobile discovery now exposes search and category only. The filter sheet is removed; region, detailed-theme and sort parameters from older URLs are ignored on mobile. Default ordering retains search relevance when a query is present. Desktop discovery retains its inline controls, and the restored desktop home is unchanged.
+
 `q`, `category`, `region`, `theme`, and `sort` encode the active result state. Invalid condition values are ignored. Search matches every normalized query token across discovery/original names, editorial aliases, description, tags and regional summaries. Default results use editorial order, with query relevance and selected-region specificity taking precedence. Explicit popularity uses enabled Hypes from the last seven days, while cards show cumulative Hypes. Newest means creation date, not publication date.
 
 Coverage is derived from public approved/disputed places and deduplicated on the server. Country/city values are available in the filter; recognized district summaries also assist text search. Unknown addresses are not guessed into regions. Original address strings are never passed as home search data. A nationwide map matching a selected city is labeled with city inclusion and an explicit total-place count.

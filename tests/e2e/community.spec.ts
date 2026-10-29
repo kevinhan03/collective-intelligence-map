@@ -599,43 +599,42 @@ for (const width of [360, 390, 430, 768, 1024, 1440, 1920]) {
   });
 }
 
-test("mobile discovery filter sheet restores focus and preserves conditions", async ({
+test("mobile discovery keeps search and category without obsolete filters", async ({
   page,
   isMobile,
 }) => {
   test.skip(!isMobile);
-  await page.goto("/discover");
-  const trigger = page.getByRole("button", { name: "필터", exact: true });
-  await trigger.click();
-  const sheet = page.getByRole("dialog", { name: "지도 필터" });
-  await expect(sheet).toBeVisible();
-  const sheetBox = (await sheet.boundingBox())!;
-  expect(sheetBox.x).toBeGreaterThanOrEqual(0);
-  expect(sheetBox.x + sheetBox.width).toBeLessThanOrEqual(
-    page.viewportSize()!.width,
-  );
-  expect(sheetBox.y + sheetBox.height).toBeLessThanOrEqual(
-    page.viewportSize()!.height,
+  await page.goto(
+    "/discover?category=fashion&theme=버거&region=서울&sort=saved",
   );
   await expect(
-    page.getByRole("navigation", { name: "모바일 주요 메뉴" }),
+    page.getByRole("button", { name: "필터", exact: true }),
   ).toBeHidden();
-  await sheet.getByRole("combobox", { name: "정렬" }).selectOption("saved");
-  await sheet.getByRole("button", { name: /결과 .*개 보기/ }).click();
-  await expect(trigger).toBeFocused();
+  await expect(
+    page.getByRole("link", { name: "도쿄 패션 스토어 지도 열기", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("combobox", { name: "정렬", exact: true }),
+  ).toBeHidden();
   await expect(
     page.getByRole("button", { name: "저장순 조건 해제", exact: true }),
+  ).toHaveCount(0);
+  await page
+    .getByRole("searchbox", { name: "지도 검색", exact: true })
+    .fill("no-matching-theme");
+  await page
+    .getByRole("button", { name: "지도 검색 결과 보기", exact: true })
+    .click();
+  await expect(page).not.toHaveURL(/region=|theme=|sort=/);
+  await expect(
+    page.getByRole("heading", { name: "조건에 맞는 지도가 없어요." }),
   ).toBeVisible();
-  await trigger.click();
-  await expect(sheet.getByRole("combobox", { name: "정렬" })).toHaveValue(
-    "saved",
-  );
-  await sheet.getByRole("button", { name: "필터 초기화", exact: true }).click();
-  await expect(sheet.getByRole("combobox", { name: "정렬" })).toHaveValue(
-    "default",
-  );
-  await page.keyboard.press("Escape");
-  await expect(trigger).toBeFocused();
+  await page
+    .getByRole("button", { name: "검색어 지우기", exact: true })
+    .click();
+  await expect(
+    page.getByRole("link", { name: "도쿄 패션 스토어 지도 열기", exact: true }),
+  ).toBeVisible();
 });
 
 test("mobile enlarged content and carousel swiping remain usable", async ({
@@ -880,6 +879,7 @@ test("conflicting catalog conditions remain visible and can be removed independe
   page,
   isMobile,
 }) => {
+  test.skip(isMobile, "Mobile discovery now uses search and category only");
   await page.goto(
     "/discover?category=food&theme=" + encodeURIComponent("빈티지"),
   );
@@ -889,15 +889,9 @@ test("conflicting catalog conditions remain visible and can be removed independe
       exact: true,
     }),
   ).toBeVisible();
-  if (isMobile)
-    await page.getByRole("button", { name: "필터", exact: true }).click();
-  const scope = isMobile
-    ? page.getByRole("dialog", { name: "지도 필터" })
-    : page;
   await expect(
-    scope.getByRole("combobox", { name: "세부 테마", exact: true }),
+    page.getByRole("combobox", { name: "세부 테마", exact: true }),
   ).toHaveValue("빈티지");
-  if (isMobile) await page.keyboard.press("Escape");
   await page
     .getByRole("button", { name: "음식·카페 조건 해제", exact: true })
     .click();

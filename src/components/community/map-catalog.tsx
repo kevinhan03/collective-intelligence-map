@@ -8,18 +8,10 @@ import {
   Mountain,
   Search,
   ShoppingBag,
-  SlidersHorizontal,
   UtensilsCrossed,
   X,
 } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-  DialogTrigger,
-  DialogClose,
-} from "@/components/ui/dialog";
+import { useMobile } from "@/hooks/use-mobile";
 import { catalogCategories } from "@/domain/catalog-config";
 import {
   catalogHref,
@@ -55,12 +47,16 @@ export function MapCatalog({
 }) {
   const params = useSearchParams();
   const router = useRouter();
+  const mobile = useMobile();
   const engagement = useMapEngagement(maps, demo, engagementSurface);
   const enriched = maps.map((map) => engagement.withCounts(map));
-  const filters = parseCatalogFilters(
+  const parsedFilters = parseCatalogFilters(
     new URLSearchParams(params.toString()),
     maps,
   );
+  const filters: CatalogFilters = mobile
+    ? { ...parsedFilters, region: "", theme: "", sort: "default" }
+    : parsedFilters;
   const resultKey = mode === "home" ? "/" : catalogHref(filters);
   const [limits, setLimits] = useState<Record<string, number>>({});
   const limit = limits[resultKey] ?? 24;
@@ -358,30 +354,6 @@ export function MapCatalog({
             <p role="status" aria-live="polite">
               지도 {results.length.toLocaleString("ko-KR")}개
             </p>
-            <Dialog>
-              <DialogTrigger className={styles.filterTrigger}>
-                <SlidersHorizontal size={16} aria-hidden="true" /> 필터
-              </DialogTrigger>
-              <DialogContent className={styles.filterSheet}>
-                <DialogTitle>지도 필터</DialogTitle>
-                <DialogDescription>
-                  지역, 세부 테마와 정렬을 선택하세요.
-                </DialogDescription>
-                <div className={styles.sheetFields}>{fields}</div>
-                <button
-                  type="button"
-                  className={styles.reset}
-                  onClick={() =>
-                    update({ region: "", theme: "", sort: "default" })
-                  }
-                >
-                  필터 초기화
-                </button>
-                <DialogClose className={styles.apply}>
-                  결과 {results.length}개 보기
-                </DialogClose>
-              </DialogContent>
-            </Dialog>
           </div>
           {activeConditions.length > 0 && (
             <div className={styles.conditions} aria-label="선택한 검색 조건">

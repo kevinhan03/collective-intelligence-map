@@ -201,22 +201,24 @@ async function cachedInitialPlaces(map: ThemeMap): Promise<MapPlace[]> {
 
 export { cachedInitialPlaces as getInitialPlaces };
 
-export async function getHomeLocationTerms(maps: ThemeMap[]) {
+export async function getCatalogRegions(maps: ThemeMap[]) {
   "use cache";
   if (process.env.NODE_ENV === "development") cacheLife("seconds");
   else cacheLife({ stale: 300, revalidate: 300, expire: 3600 });
   cacheTag("public-community");
   if (!maps.length) return {};
   if (!configured()) {
-    const terms = demoPlaces
-      .map((place) => `${place.address} ${placeArea(place.address)}`)
-      .join(" ");
+    const terms = [
+      ...new Set(
+        demoPlaces.map((place) => placeArea(place.address)).filter(Boolean),
+      ),
+    ];
     return Object.fromEntries(maps.map((map) => [map.id, terms]));
   }
 
   const client = publicDb();
-  const terms: Record<string, string[]> = Object.fromEntries(
-    maps.map((map) => [map.id, []]),
+  const terms: Record<string, Set<string>> = Object.fromEntries(
+    maps.map((map) => [map.id, new Set<string>()]),
   );
   // PostgREST caps response size. Read only map ID and address, in pages, so
   // search keeps covering every public place as a map grows.
@@ -235,13 +237,13 @@ export async function getHomeLocationTerms(maps: ThemeMap[]) {
     if (error) throw new Error("홈 지역 검색 정보를 불러오지 못했습니다.");
     for (const row of data ?? []) {
       const address = row.places?.address;
-      if (address && terms[row.map_id])
-        terms[row.map_id].push(`${address} ${placeArea(address)}`);
+      const area = address ? placeArea(address) : "";
+      if (area && terms[row.map_id]) terms[row.map_id].add(area);
     }
     if (!data || data.length < 500) break;
   }
   return Object.fromEntries(
-    Object.entries(terms).map(([id, values]) => [id, values.join(" ")]),
+    Object.entries(terms).map(([id, values]) => [id, [...values].sort()]),
   );
 }
 

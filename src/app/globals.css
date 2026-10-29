@@ -832,7 +832,7 @@ button:not(:disabled),
   }
   .proposal-form [data-slot="input"],
   .profile-form [data-slot="input"]:not([type="file"]),
-  .proposal-form button,
+  .proposal-form button:not(.map-pin):not(.map-marker),
   .profile-form button {
     min-height: 44px;
   }

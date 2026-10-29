@@ -21,7 +21,11 @@ const empty: Personal = {
   hyped: [],
   hypeCreatedAt: {},
 };
-export function useMapEngagement(maps: ThemeMap[], demo: boolean) {
+export function useMapEngagement(
+  maps: ThemeMap[],
+  demo: boolean,
+  surface: "desktop" | "mobile" | "all" = "desktop",
+) {
   const router = useRouter();
   const mobile = useMobile();
   const [personal, setPersonal] = useState<Personal>(empty);
@@ -57,7 +61,8 @@ export function useMapEngagement(maps: ThemeMap[], demo: boolean) {
     }
   }, []);
   useEffect(() => {
-    if (demo || mobile) return;
+    if (demo || (surface !== "all" && mobile !== (surface === "mobile")))
+      return;
     let active = true;
     queueMicrotask(() => {
       if (active) void load();
@@ -66,14 +71,18 @@ export function useMapEngagement(maps: ThemeMap[], demo: boolean) {
       active = false;
       controller.current?.abort();
     };
-  }, [demo, mobile, load]);
-  const withCounts = (map: ThemeMap) => ({ ...map, ...counts[map.id] });
+  }, [demo, mobile, surface, load]);
+  const withCounts = <T extends ThemeMap>(map: T) => ({ ...map, ...counts[map.id] });
   const isSaved = (id: string) => personal.saved.includes(id);
   const isHyped = (id: string) => personal.hyped.includes(id);
   async function toggle(action: "hype" | "save_map", id: string) {
     if (!ready || demo) return;
     if (!personal.viewerId) {
-      router.push(loginHref("/"));
+      router.push(
+        loginHref(
+          `${window.location.pathname}${window.location.search}${window.location.hash}`,
+        ),
+      );
       return;
     }
     const key = `${action}:${id}`;
@@ -177,6 +186,7 @@ export function useMapEngagement(maps: ThemeMap[], demo: boolean) {
     isHyped,
     toggle,
     ready,
+    interactive: !demo,
     error,
     reload: load,
     isPending: (action: string, id: string) =>

@@ -62,7 +62,7 @@ test("desktop discovery keeps search, sorting and compact reactions beside the m
   });
   await expect(search).toBeInViewport();
 });
-test("mobile logo stays visible after returning home from a map", async ({
+test("mobile logo stays visible after direct map entry and returning home", async ({
   page,
   isMobile,
 }) => {
@@ -70,73 +70,40 @@ test("mobile logo stays visible after returning home from a map", async ({
   await page.goto("/");
   const logo = page.getByRole("link", { name: "Ting map 홈", exact: true });
   await expect(logo).toBeVisible();
-  for (let i = 0; i < 2; i++) {
-    const card = page.getByRole("button", {
-      name: "Tokyo Fashion Store 미리보기",
-      exact: true,
-    });
-    await card.click();
-    await page
-      .getByRole("button", {
-        name: "Tokyo Fashion Store 전체 지도 열기",
-        exact: true,
-      })
-      .click();
-    await expect(page).toHaveURL(/\/maps\/tokyo-fashion/);
-    await expect(logo).toBeHidden();
-    await page
-      .getByRole("link", { name: "홈으로 돌아가기", exact: true })
-      .click();
-    await expect(page).toHaveURL("/");
-    await expect(logo).toBeVisible();
-    await page
-      .getByRole("button", {
-        name: "Tokyo Fashion Store 미리보기 닫기",
-        exact: true,
-      })
-      .click();
-  }
-  await page.goBack();
+  await page
+    .getByRole("link", { name: "도쿄 패션 스토어 지도 열기", exact: true })
+    .click();
   await expect(page).toHaveURL(/\/maps\/tokyo-fashion/);
-  await page.goForward();
-  await expect(page).toHaveURL("/");
+  await expect(logo).toBeHidden();
+  await page.goBack();
   await expect(logo).toBeVisible();
+  await expect(
+    page.getByRole("searchbox", { name: "지도 검색", exact: true }),
+  ).toBeVisible();
 });
-test("mobile home previews before navigation and search follows scroll direction", async ({
+test("mobile home exposes search above categories and submits to URL results", async ({
   page,
   isMobile,
 }) => {
   test.skip(!isMobile);
-  await page.setViewportSize({ width: 390, height: 400 });
-  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
-  const card = page.getByRole("button", {
-    name: "Tokyo Fashion Store 미리보기",
+  const search = page.getByRole("searchbox", {
+    name: "지도 검색",
     exact: true,
   });
-  const search = page.getByRole("searchbox", { name: "추천 지도 검색" });
-  await expect(search).toBeVisible();
-  await card.click();
-  await expect(page).toHaveURL("/");
-  await expect(
-    page.getByRole("region", { name: "Tokyo Fashion Store 미리보기 정보" }),
-  ).toBeVisible();
-  await page
-    .getByRole("button", { name: "Tokyo Fashion Store 미리보기 닫기" })
-    .click();
-  await expect(card).toBeFocused();
-  await expect(
-    page.getByRole("region", { name: "Tokyo Fashion Store 미리보기 정보" }),
-  ).toBeHidden();
-  await card.click();
-  await page.evaluate(() => window.scrollTo(0, 150));
-  await expect(search).toBeHidden();
-  await page.evaluate(() => window.scrollTo(0, 80));
-  await expect(search).toBeVisible();
-  await search.click();
-  await expect(search).toBeFocused();
+  await expect(search).toBeInViewport();
+  const input = await search.boundingBox(),
+    categories = await page
+      .getByRole("navigation", { name: "지도 카테고리" })
+      .boundingBox();
+  expect(input!.y + input!.height).toBeLessThan(categories!.y);
   await search.fill("Tokyo");
-  await expect(search).toHaveValue("Tokyo");
+  await search.press("Enter");
+  await expect(page).toHaveURL(/\/discover\?q=Tokyo/);
+  await expect(
+    page.locator("[data-map-catalog=discover] [data-catalog-card]"),
+  ).toHaveCount(1);
 });
 test("desktop header becomes solid after scrolling and restores at top", async ({
   page,
@@ -148,7 +115,7 @@ test("desktop header becomes solid after scrolling and restores at top", async (
   // scrollable page to exercise the shared header behavior.
   await page.goto("/discover");
   await expect(
-    page.getByRole("heading", { name: "Tokyo Fashion Store", exact: true }),
+    page.getByRole("heading", { name: "도쿄 패션 스토어", exact: true }),
   ).toBeVisible();
   await expect
     .poll(() =>
@@ -185,10 +152,10 @@ for (const viewport of [
     ).toBeVisible();
     const footer = page.locator("footer");
     const [panelBox, footerBox] = await Promise.all([
-      page.locator("#communities").boundingBox(),
+      page.locator("[data-map-catalog]").boundingBox(),
       footer.boundingBox(),
     ]);
-    expect(panelBox!.y + panelBox!.height).toBeLessThan(footerBox!.y);
+    expect(panelBox!.y + panelBox!.height).toBeLessThanOrEqual(footerBox!.y);
     await footer.scrollIntoViewIfNeeded();
     await expect(
       footer.getByRole("link", { name: "이용약관" }),
@@ -229,30 +196,11 @@ test("discover community, filter venues, open context and protect participation"
   });
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
-    isMobile ? "취향으로 찾는 테마지도" : "같은 취향이 모이는 지도",
+    "취향으로 찾는 테마 지도",
   );
-  if (isMobile) {
-    await page
-      .getByRole("button", {
-        name: "Tokyo Fashion Store 미리보기",
-        exact: true,
-      })
-      .click();
-    await expect(page).toHaveURL("/");
-    await page
-      .getByRole("button", {
-        name: "Tokyo Fashion Store 전체 지도 열기",
-        exact: true,
-      })
-      .click();
-  } else {
-    await page
-      .locator('summary[aria-label="Tokyo Fashion Store 미리보기"]')
-      .click();
-    await page
-      .getByRole("link", { name: /전체 지도 열기.*Tokyo Fashion/ })
-      .click();
-  }
+  await page
+    .getByRole("link", { name: "도쿄 패션 스토어 지도 열기", exact: true })
+    .click();
   // The mobile heading contains a button named "지도 정보 보기". Its
   // accessible name can include that action; the displayed map title is stable.
   const mapHeading = page.getByRole("heading", { level: 1 });
@@ -378,24 +326,21 @@ test("server rejects unauthenticated mutations and unknown maps", async ({
   ).toBe(404);
 });
 
-test("mobile discovery filters and recovers from empty results", async ({
+test("mobile catalog filters and recovers from empty results", async ({
   page,
   isMobile,
 }) => {
-  test.skip(!isMobile, "Mobile discovery surface");
-  await page.goto("/");
-  await page
-    .getByRole("searchbox", { name: "추천 지도 검색" })
-    .fill("no-matching-theme");
-  await expect(page.getByText("조건에 맞는 지도가 아직 없어요.")).toBeVisible();
-  await page.getByRole("button", { name: "검색 조건 초기화" }).click();
+  test.skip(!isMobile);
+  await page.goto("/discover?q=no-matching-theme");
   await expect(
-    page.getByRole("heading", { name: "Tokyo Fashion Store", exact: true }),
+    page.getByRole("heading", { name: "조건에 맞는 지도가 없어요." }),
   ).toBeVisible();
   await page
-    .getByRole("searchbox", { name: "추천 지도 검색" })
-    .fill("Tokyo Fashion Store");
-  await expect(page.getByRole("status")).toHaveText("1개 지도");
+    .getByRole("button", { name: "검색어 지우기", exact: true })
+    .click();
+  await expect(page.locator("[data-catalog-card]")).toHaveCount(1);
+  await page.getByRole("link", { name: "패션·쇼핑", exact: true }).click();
+  await expect(page).toHaveURL(/category=fashion/);
   await page.getByRole("button", { name: "메뉴 열기" }).click();
   await expect(
     page
@@ -403,7 +348,6 @@ test("mobile discovery filters and recovers from empty results", async ({
       .getByRole("link", { name: "발견" }),
   ).toHaveAttribute("aria-current", "page");
 });
-
 test("mobile view switching preserves scroll position and detail returns focus", async ({
   page,
   isMobile,
@@ -483,13 +427,7 @@ test("mobile theme entry and saved-place deep links open the intended context", 
   test.skip(!isMobile, "Mobile entry points");
   await page.goto("/");
   await page
-    .getByRole("button", { name: "Tokyo Fashion Store 미리보기", exact: true })
-    .click();
-  await page
-    .getByRole("link", {
-      name: "Tokyo Fashion Store 전체 지도 열기",
-      exact: true,
-    })
+    .getByRole("link", { name: "도쿄 패션 스토어 지도 열기", exact: true })
     .click();
   await expect(page.getByRole("region", { name: "장소 지도" })).toBeVisible();
   await page.getByRole("button", { name: "목록 보기", exact: true }).click();
@@ -514,46 +452,24 @@ for (const width of [360, 390, 430, 768, 1024, 1440, 1920]) {
     const mobile = width < 1024;
     await page.goto("/");
     await expect(page.getByRole("heading", { level: 1 })).toContainText(
-      mobile ? "취향으로 찾는 테마지도" : "같은 취향이 모이는 지도",
+      "취향으로 찾는 테마 지도",
     );
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
       ),
     ).toBe(true);
-    if (!mobile) {
-      // Intro and results stack vertically; cards use the page's natural scroll.
-      const intro = await page.getByRole("heading", { level: 1 }).boundingBox();
-      const section = await page.locator("#communities").boundingBox();
-      expect(intro!.y + intro!.height).toBeLessThan(section!.y);
-      expect(
-        await page
-          .locator("[data-desktop-home] ol")
-          .evaluate((element) => getComputedStyle(element).overflowY),
-      ).toBe("visible");
-
-      const panel = page.locator("#communities");
-      const footer = page.locator("footer");
-      const [panelBox, footerBox] = await Promise.all([
-        panel.boundingBox(),
-        footer.boundingBox(),
-      ]);
-      expect(panelBox!.y + panelBox!.height).toBeLessThan(footerBox!.y);
-      await footer.scrollIntoViewIfNeeded();
-      await expect(
-        footer.getByRole("link", { name: "이용약관" }),
-      ).toBeInViewport();
-    }
-    await page.screenshot({ path: testInfo.outputPath(`home-${width}.png`) });
-    if (mobile) {
-      const rows = page.locator("[data-mobile-story-home] article");
-      expect(await rows.count()).toBeGreaterThan(0);
-      await expect(rows.first().getByRole("button").first()).toHaveAttribute(
-        "aria-expanded",
-        "false",
-      );
-      await expect(rows.first().locator("p").first()).toBeHidden();
-    }
+    await expect(
+      page.locator("[data-map-catalog=home] [data-catalog-card]"),
+    ).toHaveCount(1);
+    await expect(page.locator("[data-map-catalog=home] details")).toHaveCount(
+      0,
+    );
+    const footer = page.locator("footer");
+    await footer.scrollIntoViewIfNeeded();
+    await expect(
+      footer.getByRole("link", { name: "이용약관" }),
+    ).toBeInViewport();
     await page.goto("/maps/tokyo-fashion");
     if (mobile) {
       await expect(
@@ -704,19 +620,19 @@ test("mobile discovery filter sheet restores focus and preserves conditions", as
   await expect(
     page.getByRole("navigation", { name: "모바일 주요 메뉴" }),
   ).toBeHidden();
-  await sheet.getByRole("combobox", { name: "정렬" }).selectOption("places");
+  await sheet.getByRole("combobox", { name: "정렬" }).selectOption("saved");
   await sheet.getByRole("button", { name: /결과 .*개 보기/ }).click();
   await expect(trigger).toBeFocused();
   await expect(
-    page.getByRole("status").filter({ hasText: "장소 많은 순" }),
+    page.getByRole("button", { name: "저장순 조건 해제", exact: true }),
   ).toBeVisible();
   await trigger.click();
   await expect(sheet.getByRole("combobox", { name: "정렬" })).toHaveValue(
-    "places",
+    "saved",
   );
-  await sheet.getByRole("button", { name: "초기화", exact: true }).click();
+  await sheet.getByRole("button", { name: "필터 초기화", exact: true }).click();
   await expect(sheet.getByRole("combobox", { name: "정렬" })).toHaveValue(
-    "popular",
+    "default",
   );
   await page.keyboard.press("Escape");
   await expect(trigger).toBeFocused();
@@ -825,129 +741,31 @@ test("mobile map load failure keeps list navigation available", async ({
 });
 
 for (const width of [320, 390, 768]) {
-  test(`mobile home expands top cards in place and centers later cards at ${width}px`, async ({
+  test(`catalog cards keep text and reactions inside their bounds at ${width}px`, async ({
     page,
     isMobile,
   }) => {
     test.skip(!isMobile);
     await page.setViewportSize({ width, height: 844 });
-    await page.emulateMedia({
-      reducedMotion: width === 320 ? "reduce" : "no-preference",
-    });
     await page.goto("/");
-    const cards = page.locator("[data-mobile-story-home] article");
-    for (const index of new Set([
-      0,
-      Math.floor((await cards.count()) / 2),
-      (await cards.count()) - 1,
-    ])) {
-      const card = cards.nth(index);
-      await card.locator("button[aria-expanded]").click();
-      await expect(card).toHaveAttribute("data-expanded", "true");
-      await expect(
-        page.locator('[data-mobile-story-home] article[data-expanded="true"]'),
-      ).toHaveCount(1);
-      if (index >= 2) {
-        await expect
-          .poll(async () => {
-            const bounds = (await card.boundingBox())!;
-            return Math.abs(bounds.y + bounds.height / 2 - 422);
-          })
-          .toBeLessThan(3);
-      } else {
-        expect(
-          await card
-            .locator("..")
-            .evaluate((element) => (element as HTMLElement).style.paddingTop),
-        ).toBe("");
-      }
-      await expect(card.getByRole("region")).toBeInViewport();
-      await expect(page).toHaveURL("/");
+    const card = page.locator("[data-catalog-card]").first();
+    await expect(card).toBeVisible();
+    const boxes = await card.evaluate((e) => ({
+      card: e.getBoundingClientRect().toJSON(),
+      title: e.querySelector("h3")!.getBoundingClientRect().toJSON(),
+      buttons: [...e.querySelectorAll("button")].map((b) =>
+        b.getBoundingClientRect().toJSON(),
+      ),
+    }));
+    expect(boxes.title.right).toBeLessThanOrEqual(boxes.card.right);
+    for (const box of boxes.buttons) {
+      expect(box.width).toBeGreaterThanOrEqual(44);
+      expect(box.height).toBeGreaterThanOrEqual(44);
+      expect(box.right).toBeLessThanOrEqual(boxes.card.right);
     }
-    await page.screenshot({
-      path: `artifacts/home-centered-card-${width}.png`,
-    });
-    const last = cards.last();
-    await last.getByRole("button", { name: /미리보기 닫기/ }).click();
-    await expect(last).toHaveAttribute("data-expanded", "false");
-    await expect(last.locator("button[aria-expanded]")).toBeFocused();
+    await expect(card.locator("button[aria-expanded]")).toHaveCount(0);
   });
 }
-
-test("mobile home keeps even a tall first preview in place", async ({
-  page,
-  isMobile,
-}) => {
-  test.skip(!isMobile);
-  await page.setViewportSize({ width: 390, height: 400 });
-  await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto("/");
-  const card = page.locator("[data-mobile-story-home] article").first();
-  await card
-    .locator('[role="region"] p')
-    .first()
-    .evaluate((element) => {
-      element.textContent = "추천하는 장소를 지도로 만나보세요. ".repeat(25);
-    });
-  const top = (await card.boundingBox())!.y;
-  await card.locator("button[aria-expanded]").click();
-  await expect(card).toHaveAttribute("data-expanded", "true");
-  expect((await card.boundingBox())!.y).toBe(top);
-  await expect(card.locator("button[aria-expanded]")).toBeInViewport();
-  await card.getByRole("button", { name: /미리보기 닫기/ }).click();
-  await expect(card).toHaveAttribute("data-expanded", "false");
-});
-
-test("mobile home centers only the latest preview and cancels a closed preview", async ({
-  page,
-  isMobile,
-}) => {
-  test.skip(!isMobile);
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/");
-  const cards = page.locator("[data-mobile-story-home] article");
-  await cards
-    .first()
-    .locator("button[aria-expanded]")
-    .evaluate((element) => (element as HTMLButtonElement).click());
-  if ((await cards.count()) > 1) {
-    await cards
-      .last()
-      .locator("button[aria-expanded]")
-      .evaluate((element) => (element as HTMLButtonElement).click());
-    await expect(cards.first()).toHaveAttribute("data-expanded", "false");
-  }
-  if ((await cards.count()) > 2) {
-    await expect
-      .poll(async () => {
-        const bounds = (await cards.last().boundingBox())!;
-        return Math.abs(bounds.y + bounds.height / 2 - 422);
-      })
-      .toBeLessThan(3);
-  }
-  await cards
-    .last()
-    .getByRole("button", { name: /미리보기 닫기/ })
-    .click();
-  await cards
-    .first()
-    .locator("button[aria-expanded]")
-    .evaluate((element) => (element as HTMLButtonElement).click());
-  await cards
-    .first()
-    .getByRole("button", { name: /미리보기 닫기/ })
-    .evaluate((element) => (element as HTMLButtonElement).click());
-  await page.waitForTimeout(400);
-  await expect(
-    page.locator('[data-mobile-story-home] article[data-expanded="true"]'),
-  ).toHaveCount(0);
-  expect(
-    await cards
-      .first()
-      .locator("..")
-      .evaluate((element) => (element as HTMLElement).style.paddingTop),
-  ).toBe("");
-});
 
 for (const width of [320, 390, 768]) {
   test(`mobile list shows brand header without covering map controls at ${width}px`, async ({
@@ -1058,72 +876,61 @@ test("mobile place opens its summary and dismisses to a bottom sheet edge", asyn
   );
 });
 
-test("desktop home combines theme and text filters and keeps metadata inside clear photo cards", async ({
+test("conflicting catalog conditions remain visible and can be removed independently", async ({
+  page,
+  isMobile,
+}) => {
+  await page.goto(
+    "/discover?category=food&theme=" + encodeURIComponent("빈티지"),
+  );
+  await expect(
+    page.getByRole("heading", {
+      name: "조건에 맞는 지도가 없어요.",
+      exact: true,
+    }),
+  ).toBeVisible();
+  if (isMobile)
+    await page.getByRole("button", { name: "필터", exact: true }).click();
+  const scope = isMobile
+    ? page.getByRole("dialog", { name: "지도 필터" })
+    : page;
+  await expect(
+    scope.getByRole("combobox", { name: "세부 테마", exact: true }),
+  ).toHaveValue("빈티지");
+  if (isMobile) await page.keyboard.press("Escape");
+  await page
+    .getByRole("button", { name: "음식·카페 조건 해제", exact: true })
+    .click();
+  await expect(
+    page.locator('[data-map-catalog="discover"] [data-catalog-card]'),
+  ).toHaveCount(1);
+});
+
+test("desktop catalog combines category and query while retaining clear images and light titles", async ({
   page,
   isMobile,
 }) => {
   test.skip(isMobile);
   await page.setViewportSize({ width: 1440, height: 1024 });
   await page.goto("/");
-  const home = page.locator("[data-desktop-home]");
-  const search = home.getByRole("searchbox", {
+  await page.getByRole("link", { name: "패션·쇼핑", exact: true }).click();
+  await expect(page).toHaveURL(/category=fashion/);
+  const search = page.getByRole("searchbox", {
     name: "지도 검색",
     exact: true,
   });
-  const card = home.locator("summary").first();
-  await expect(card).toBeVisible();
-  const theme = home.getByRole("group", { name: "지도 테마" });
-  await theme.getByRole("button", { name: "패션", exact: true }).click();
-  await expect(
-    theme.getByRole("button", { name: "패션", exact: true }),
-  ).toHaveAttribute("aria-pressed", "true");
-  await expect(home.locator("summary")).toHaveCount(1);
   await search.fill("no-such-map");
   await search.press("Enter");
   await expect(
-    home.getByRole("heading", { name: "지도 목록" }),
-  ).toBeFocused();
-  await expect(
-    home.getByText("조건에 맞는 지도가 없어요.", { exact: false }),
+    page.getByRole("heading", { name: "조건에 맞는 지도가 없어요." }),
   ).toBeVisible();
-  await home
-    .getByRole("button", { name: "검색·필터 초기화", exact: true })
+  await page
+    .getByRole("button", { name: "검색어 지우기", exact: true })
     .click();
-  await expect(search).toHaveValue("");
+  const card = page.locator("[data-catalog-card]").first();
+  await expect(card.locator("h3")).toHaveCSS("font-weight", "500");
+  await expect(card.locator("img")).toHaveCSS("filter", "none");
   await expect(
-    theme.getByRole("button", { name: "전체", exact: true }),
-  ).toHaveAttribute("aria-pressed", "true");
-  await theme.getByRole("button", { name: "맛집", exact: true }).click();
-  await expect(home.locator("summary")).toHaveCount(0);
-  await home
-    .getByRole("button", { name: "검색·필터 초기화", exact: true })
-    .click();
-  const layout = await card.evaluate((element) => {
-    const bounds = element.getBoundingClientRect();
-    const title = element.querySelector("h3")!.getBoundingClientRect();
-    const image = element.querySelector("img")!;
-    const count = element.lastElementChild!.getBoundingClientRect();
-    return {
-      columns: getComputedStyle(
-        element.closest("ol")!,
-      ).gridTemplateColumns.split(" ").length,
-      titleInside:
-        title.left >= bounds.left &&
-        title.right <= bounds.right &&
-        title.bottom <= bounds.bottom,
-      countInside: count.left >= title.right && count.bottom <= bounds.bottom,
-      imageFilter: getComputedStyle(image).filter,
-    };
-  });
-  expect(layout).toEqual({
-    columns: 3,
-    titleInside: true,
-    countInside: true,
-    imageFilter: "none",
-  });
-  await card.click();
-  await expect(card.locator("..")).toHaveAttribute("open", "");
-  await expect(
-    card.locator("..").getByRole("link", { name: /전체 지도 열기/ }),
-  ).toBeVisible();
+    page.getByRole("link", { name: "패션·쇼핑", exact: true }),
+  ).toHaveAttribute("aria-current", "page");
 });

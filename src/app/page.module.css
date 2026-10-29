@@ -1,8 +1,5 @@
-.footer {
-  width: calc(100% + 72px);
-  margin: 12px -36px 0;
-  padding-block: 3px;
-  line-height: 0.875rem;
+.desktop {
+  display: none;
 }
 
 @media (width >= 1024px) {
@@ -11,6 +8,9 @@
     width: 100%;
     max-width: 1440px;
     padding: 0 56px 24px;
+  }
+  .mobile {
+    display: none;
   }
   .desktop {
     display: block;

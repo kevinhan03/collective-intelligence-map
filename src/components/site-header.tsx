@@ -42,7 +42,7 @@ export async function SiteHeader() {
             className="flex items-center gap-2 text-sm text-muted-foreground"
           >
             <Bookmark size={16} />
-            <span className="hidden sm:inline">저장한 장소</span>
+            <span className="hidden sm:inline">저장</span>
           </Link>
           {viewer ? (
             <>

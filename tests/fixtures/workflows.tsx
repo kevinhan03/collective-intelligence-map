@@ -1,4 +1,6 @@
 import { DesktopDiscovery } from "@/components/community/desktop-discovery";
+import { MapCatalog } from "@/components/community/map-catalog";
+import { buildCatalog } from "@/domain/map-catalog";
 import { CommunityExplorer } from "@/components/community/community-explorer";
 import {
   ViewerStateProvider,
@@ -367,49 +369,114 @@ function PersonalizationFixture() {
     </>
   );
 }
+function EngagementFixture() {
+  const maps: ThemeMap[] = [
+    {
+      ...map,
+      id: "11111111-1111-4111-8111-111111111111",
+      slug: "tokyo-fashion",
+      title: "Tokyo Fashion Store",
+      tags: ["패션"],
+      created_at: "2026-09-01",
+      hype_count: 20,
+      hype_week_count: 1,
+      saved_count: 5,
+      place_count: 7,
+    },
+    {
+      ...map,
+      id: "22222222-2222-4222-8222-222222222222",
+      slug: "seoul-taco-restaurant",
+      title: "Seoul Taco Restaurant",
+      tags: ["타코"],
+      created_at: "2026-10-01",
+      hype_count: 3,
+      hype_week_count: 3,
+      saved_count: 1,
+      place_count: 24,
+    },
+    {
+      ...map,
+      id: "33333333-3333-4333-8333-333333333333",
+      slug: "korea-vintage",
+      title: "Korea Vintage Shop",
+      tags: ["빈티지"],
+      created_at: "2026-10-26",
+      hype_count: 0,
+      hype_week_count: 0,
+      saved_count: 2,
+      place_count: 47,
+    },
+  ];
+  return (
+    <>
+      <DesktopDiscovery maps={maps} locationTerms={{}} />
+      <MobileDiscovery maps={maps} locationTerms={{}} demo={false} />
+    </>
+  );
+}
+function CatalogFixture() {
+  const maps: ThemeMap[] = [
+    {
+      ...map,
+      id: "11111111-1111-4111-8111-111111111111",
+      slug: "korea-vintage",
+      title: "Korea Vintage Shop",
+      city: "Korea",
+      country: "KR",
+      tags: ["빈티지"],
+      place_count: 47,
+    },
+    {
+      ...map,
+      id: "22222222-2222-4222-8222-222222222222",
+      slug: "tokyo-fashion",
+      title: "Tokyo Fashion Store",
+      city: "Tokyo",
+      country: "JP",
+      tags: ["빈티지"],
+      place_count: 7,
+    },
+    {
+      ...map,
+      id: "33333333-3333-4333-8333-333333333333",
+      slug: "seoul-taco-restaurant",
+      title: "Seoul Taco Restaurant",
+      city: "Seoul",
+      country: "KR",
+      tags: ["타코"],
+      place_count: 24,
+    },
+    ...Array.from({ length: 30 }, (_, i) => ({
+      ...map,
+      id: `00000000-0000-4000-8000-${String(i).padStart(12, "0")}`,
+      slug: `extra-${i}`,
+      title: `추가 테마 ${i}`,
+      tags: ["산책"],
+      place_count: i + 1,
+    })),
+  ];
+  return (
+    <main style={{ maxWidth: 1280, margin: "0 auto", padding: 16 }}>
+      <MapCatalog
+        maps={buildCatalog(maps, {
+          "11111111-1111-4111-8111-111111111111": ["서울 · 강남구"],
+        })}
+        mode={
+          new URLSearchParams(location.search).get("fixture") === "catalog-home"
+            ? "home"
+            : "discover"
+        }
+      />
+    </main>
+  );
+}
 createRoot(document.getElementById("root")!).render(
-  new URLSearchParams(location.search).get("fixture") === "map-engagement" ? (
-    <DesktopDiscovery
-      maps={[
-        {
-          ...map,
-          id: "11111111-1111-4111-8111-111111111111",
-          slug: "tokyo-fashion",
-          title: "Tokyo Fashion Store",
-          tags: ["패션"],
-          created_at: "2026-09-01",
-          hype_count: 20,
-          hype_week_count: 1,
-          saved_count: 5,
-          place_count: 7,
-        },
-        {
-          ...map,
-          id: "22222222-2222-4222-8222-222222222222",
-          slug: "seoul-taco-restaurant",
-          title: "Seoul Taco Restaurant",
-          tags: ["타코"],
-          created_at: "2026-10-01",
-          hype_count: 3,
-          hype_week_count: 3,
-          saved_count: 1,
-          place_count: 24,
-        },
-        {
-          ...map,
-          id: "33333333-3333-4333-8333-333333333333",
-          slug: "korea-vintage",
-          title: "Korea Vintage Shop",
-          tags: ["빈티지"],
-          created_at: "2026-10-26",
-          hype_count: 0,
-          hype_week_count: 0,
-          saved_count: 2,
-          place_count: 47,
-        },
-      ]}
-      locationTerms={{}}
-    />
+  new URLSearchParams(location.search).get("fixture")?.startsWith("catalog") ? (
+    <CatalogFixture />
+  ) : new URLSearchParams(location.search).get("fixture") ===
+    "map-engagement" ? (
+    <EngagementFixture />
   ) : new URLSearchParams(location.search).get("fixture") ===
     "photo-performance" ? (
     <CommunityExplorer

@@ -2,11 +2,12 @@
 import { useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowUpRight, X } from "lucide-react";
+import { ArrowUpRight, Bookmark, ChevronUp, Flame } from "lucide-react";
 import type { ThemeMap } from "@/domain/types";
 import { mapTheme } from "@/domain/map-order";
 import { formatLocation } from "@/domain/location";
 import { MapCardBackdrop } from "./map-card-backdrop";
+import type { useMapEngagement } from "./use-map-engagement";
 import styles from "./mobile-discovery.module.css";
 
 export function MobileMapStory({
@@ -14,11 +15,13 @@ export function MobileMapStory({
   expanded,
   onExpand,
   onClose,
+  engagement,
 }: {
   map: ThemeMap;
   expanded: boolean;
   onExpand: () => void;
   onClose: () => void;
+  engagement: ReturnType<typeof useMapEngagement>;
 }) {
   const router = useRouter();
   const trigger = useRef<HTMLButtonElement>(null);
@@ -66,21 +69,56 @@ export function MobileMapStory({
           aria-label={`장소 ${map.place_count.toLocaleString("ko-KR")}개`}
         >
           {map.place_count ? (
-            map.place_count.toLocaleString("ko-KR")
+            <>
+              {map.place_count.toLocaleString("ko-KR")}
+              <span className={styles.countUnit}>곳</span>
+            </>
           ) : (
             <small className="text-xs">첫 장소 모집 중</small>
           )}
         </span>
       </button>
-      {expanded && (
+      <div className={styles.cardActions}>
         <button
-          className={styles.closePreview}
-          aria-label={`${map.title} 미리보기 닫기`}
-          onClick={close}
+          type="button"
+          className={styles.hypeAction}
+          aria-label={`${map.title} Hype ${engagement.isHyped(map.id) ? "취소" : "추천"}`}
+          aria-pressed={engagement.isHyped(map.id)}
+          aria-busy={engagement.isPending("hype", map.id)}
+          disabled={
+            !engagement.interactive ||
+            !engagement.ready ||
+            engagement.isPending("hype", map.id)
+          }
+          onClick={() => void engagement.toggle("hype", map.id)}
         >
-          <X size={27} strokeWidth={1.5} aria-hidden="true" />
+          <span className={styles.hypeVisual}>
+            <Flame size={14} aria-hidden="true" />
+            <span>{(map.hype_count ?? 0).toLocaleString("ko-KR")}</span>
+          </span>
         </button>
-      )}
+        <button
+          type="button"
+          className={styles.saveAction}
+          aria-label={`${map.title} 지도 ${engagement.isSaved(map.id) ? "저장 취소" : "저장"}`}
+          aria-pressed={engagement.isSaved(map.id)}
+          aria-busy={engagement.isPending("save_map", map.id)}
+          disabled={
+            !engagement.interactive ||
+            !engagement.ready ||
+            engagement.isPending("save_map", map.id)
+          }
+          onClick={() => void engagement.toggle("save_map", map.id)}
+        >
+          <span className={styles.saveVisual}>
+            <Bookmark
+              size={14}
+              fill={engagement.isSaved(map.id) ? "currentColor" : "none"}
+              aria-hidden="true"
+            />
+          </span>
+        </button>
+      </div>
       <div
         id={`map-preview-${map.id}`}
         className={styles.previewExpansion}
@@ -118,9 +156,23 @@ export function MobileMapStory({
                 </Link>
               )}
               <p className={styles.followers}>
-                팔로워 {map.follower_count.toLocaleString("ko-KR")}명
+                저장{" "}
+                {(map.saved_count ?? map.follower_count).toLocaleString(
+                  "ko-KR",
+                )}
+                명
               </p>
             </div>
+            <button
+              type="button"
+              className={styles.closePreview}
+              aria-label={`${map.title} 미리보기 닫기`}
+              onClick={close}
+            >
+              <span>
+                접기 <ChevronUp size={15} aria-hidden="true" />
+              </span>
+            </button>
           </div>
         </div>
       </div>

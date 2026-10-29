@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowUpRight, Search } from "lucide-react";
 import type { ThemeMap } from "@/domain/types";
 import { MobileMapStory } from "./mobile-map-story";
+import { useMapEngagement } from "./use-map-engagement";
 import styles from "./mobile-discovery.module.css";
 
 export function MobileDiscovery({
@@ -15,6 +16,7 @@ export function MobileDiscovery({
   locationTerms: Record<string, string>;
   demo: boolean;
 }) {
+  const engagement = useMapEngagement(maps, demo, "mobile");
   const [query, setQuery] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [dockVisible, setDockVisible] = useState(true);
@@ -141,11 +143,22 @@ export function MobileDiscovery({
       <span role="status" className="sr-only">
         {results.length}개 지도
       </span>
+      {engagement.error && (
+        <p role="alert" className={styles.engagementError}>
+          {engagement.error}{" "}
+          {!engagement.ready && (
+            <button type="button" onClick={() => void engagement.reload()}>
+              다시 시도
+            </button>
+          )}
+        </p>
+      )}
       <div ref={stories} className={styles.stories}>
         {results.map((map) => (
           <MobileMapStory
             key={map.id}
-            map={map}
+            map={engagement.withCounts(map)}
+            engagement={engagement}
             expanded={expandedId === map.id}
             onExpand={() => setExpandedId(map.id)}
             onClose={() => setExpandedId(null)}

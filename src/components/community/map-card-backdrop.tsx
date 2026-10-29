@@ -1,4 +1,7 @@
+"use client";
 import Image from "next/image";
+import { useState } from "react";
+import { catalogEditorial } from "@/domain/catalog-config";
 
 const cardPalettes = [
   ["#bd794f", "#533b54", "#1b2829"],
@@ -10,27 +13,20 @@ const cardPalettes = [
 
 // Editorial images for the currently curated maps. New maps use the stable
 // palette fallback below until an intentional image is selected.
-const cardImages: Record<string, string> = {
-  "seoul-night-view": "/seoul-night-view.jpg",
-  "korea-ramen-restaurant": "/korea-ramen-restaurant.jpg",
-  "korea-sauna-map": "/korea-sauna-map.webp",
-  "korea-best-burger": "/korea-best-burger-whole.jpeg",
-  "korea-fashion-store": "/korea-fashion-store.jpg",
-  "choiza-road-restaurants": "/choiza-road-restaurants.jpeg",
-  "korea-vintage": "/korea-vintage-shop.jpg",
-  "seoul-taco-restaurant": "/seoul-taco-restaurant.jpg",
-  "tokyo-fashion": "/tokyo-fashion-store-interior.jpg",
-};
 
 export function MapCardBackdrop({
   slug,
   sharp = false,
+  eager = false,
 }: {
   slug: string;
   sharp?: boolean;
+  eager?: boolean;
 }) {
-  const image = cardImages[slug];
-  if (image && slug === "korea-best-burger") {
+  const entry = catalogEditorial[slug];
+  const [failedImage, setFailedImage] = useState<string | null>(null);
+  const image = entry?.image !== failedImage ? entry?.image : undefined;
+  if (image && entry?.wholeSubject) {
     return (
       <div aria-hidden="true" className="absolute inset-0 overflow-hidden">
         <Image
@@ -39,6 +35,7 @@ export function MapCardBackdrop({
           fill
           sizes="(min-width: 1280px) 32vw, (min-width: 768px) 50vw, 100vw"
           className="scale-110 object-cover blur-xl"
+          onError={() => setFailedImage(image)}
         />
         {/* Keep the entire burger (42–83% of the source height) in the card. */}
         <Image
@@ -52,6 +49,7 @@ export function MapCardBackdrop({
             maskImage:
               "linear-gradient(to right, transparent, black 14%, black 86%, transparent)",
           }}
+          onError={() => setFailedImage(image)}
         />
       </div>
     );
@@ -70,11 +68,13 @@ export function MapCardBackdrop({
           src={image}
           alt=""
           fill
-          loading={slug === "tokyo-fashion" ? "eager" : "lazy"}
+          loading={eager || slug === "tokyo-fashion" ? "eager" : "lazy"}
           sizes="(min-width: 1280px) 32vw, (min-width: 768px) 50vw, 100vw"
           className={
             sharp ? "object-cover" : "scale-110 object-cover blur-[1px]"
           }
+          style={{ objectPosition: entry?.focalPoint ?? "50% 50%" }}
+          onError={() => setFailedImage(image)}
         />
       </div>
     );

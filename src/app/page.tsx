@@ -1,10 +1,13 @@
-import { homeMapFirst } from "@/domain/map-order";
 import Link from "next/link";
-import { MobileDiscovery } from "@/components/community/mobile-discovery";
+import { MapCatalog } from "@/components/community/map-catalog";
 import { DesktopDiscovery } from "@/components/community/desktop-discovery";
-import { getHomeLocationTerms, getMaps } from "@/server/queries";
+import { homeMapFirst } from "@/domain/map-order";
+import { CatalogLoading } from "@/components/community/catalog-loading";
+import { buildCatalog } from "@/domain/map-catalog";
+import { getCatalogRegions, getMaps } from "@/server/queries";
 import { configured } from "@/lib/supabase/server";
-import styles from "./page.module.css";
+import styles from "@/components/community/catalog-page.module.css";
+import homeStyles from "./page.module.css";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { jsonLd } from "@/domain/seo";
@@ -40,32 +43,45 @@ export default function Home() {
           </a>
         </section>
       </noscript>
-      <Suspense fallback={null}>
+      <Suspense
+        fallback={
+          <main id="main" className={styles.page} data-catalog-page>
+            <CatalogLoading />
+          </main>
+        }
+      >
         <HomeContent />
       </Suspense>
     </>
   );
 }
 async function HomeContent() {
-  const maps = [...(await getMaps())].sort(homeMapFirst);
-  const locationTerms = await getHomeLocationTerms(maps);
+  const maps = await getMaps();
+  const regions = await getCatalogRegions(maps);
   return (
-    <main id="main" className={`page-wrap ${styles.home}`}>
-      <MobileDiscovery
-        maps={maps}
-        locationTerms={locationTerms}
-        demo={!configured()}
-      />
-      <div className={`hidden ${styles.desktop}`}>
+    <main
+      id="main"
+      className={`${styles.page} ${homeStyles.home}`}
+      data-catalog-page
+    >
+      <div className={homeStyles.mobile}>
+        <MapCatalog
+          maps={buildCatalog(maps, regions)}
+          mode="home"
+          demo={!configured()}
+          engagementSurface="mobile"
+        />
+      </div>
+      <div className={homeStyles.desktop}>
         <DesktopDiscovery
-          maps={maps}
-          locationTerms={locationTerms}
+          maps={[...maps].sort(homeMapFirst)}
+          locationTerms={Object.fromEntries(
+            Object.entries(regions).map(([id, terms]) => [id, terms.join(" ")]),
+          )}
           demo={!configured()}
         />
       </div>
-      <footer
-        className={`${styles.footer} flex justify-end border-t text-xs text-muted-foreground`}
-      >
+      <footer className={homeStyles.footer}>
         <div className="flex flex-wrap items-center gap-2">
           <span>팅맵 · Ting map</span>
           <Link href="/terms" prefetch={false}>

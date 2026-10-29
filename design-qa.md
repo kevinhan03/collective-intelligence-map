@@ -1,3 +1,76 @@
+# Desktop home restoration — 2026-10-29
+
+final result: passed
+
+- User requested the previous desktop home while retaining the current mobile catalog. Home now displays existing DesktopDiscovery at widths >=1024px, and the current MapCatalog below that breakpoint. /discover remains unchanged.
+- Reused the existing desktop module and original page width/padding/footer. Desktop location search uses current deduplicated region summaries; raw addresses are not reintroduced. Personal engagement reads are limited to the active viewport surface.
+- Live desktop verification: original headline, search, theme filters, popular/saved sorting, image/title overlays and expandable preview are present. Searched vintage to one result, expanded its existing-map link, and switched saved/popular sorting. No reactions changed.
+- Live mobile verification at 390×844: top search, four categories, one featured plus six regular cards, saved/Hype state and current typography remain unchanged; desktop surface is hidden and no horizontal overflow. Temporary viewport reset.
+- Screenshots: artifacts/catalog-redesign/desktop-restored.png and mobile-after-desktop-restore.png. Both opened for visual inspection. Typecheck, scoped ESLint and git diff --check passed. The earlier full-suite results below predate this restoration and were not rerun for this scoped wiring change.
+- Remains uncommitted; no push or deployment.
+
+---
+
+# Home and discover catalog redesign — 2026-10-29
+
+final result: passed
+
+## Visual truth and comparison
+
+- Selected reference: `artifacts/catalog-redesign/selected-reference.png` (853 × 1844). Final implementation: `mobile-home.png` (375 × 812 at CSS 390 × 844), `desktop-home.png` (1425 × 1013 at CSS 1440 × 1024), and focused `feature-detail.png`, all in the same artifact directory. Reference and actual mobile/full and focused views were opened together. Compared normalized proportions, allowing for browser capture scaling and scrollbar width; reference/actual aspect ratios differ by less than 0.2%.
+- User's explicit specifications take precedence over generated reference pixels: featured card minimum height 210px mobile / 240px desktop, SUIT 500 titles, smaller place counts, one featured plus up to six standard maps. Existing logo, supplied photographs, charcoal/lemon identity and independent save/Hype controls retained. Featured Hype sits beside the place count; bookmark remains top-right. Real saved states and counts replace illustrative reference values.
+- Additional evidence: `desktop-discover.png`, `mobile-region-results.png`, `mobile-filters.png`, `mobile-320.png`. Checked 320,390,430,768,1024,1440px and 200% root text size. Narrow cards become horizontal rows; content grows without horizontal overflow. No remaining actionable P0/P1/P2 visual differences.
+- Fixed during comparison: mobile fixed header obscuring search (scoped top spacing), redundant desktop header spacing, mobile filter sheet retaining centered-dialog translation, uneven card footer alignment, and conflicting valid category/theme selections losing their visible selected option. Final screenshots follow the fixes. Viewport override reset after browser verification.
+
+## Functional and accessibility verification
+
+- Shared editorial configuration and summary model drive home/discover. Unknown public maps remain discoverable without invented categories; private/empty featured candidates are excluded. Search aliases, cross-field tokens, combined conditions, regional inclusion, ranking and canonical URL handling have unit coverage. Raw place addresses are summarized server-side rather than serialized to the client.
+- Browser coverage includes direct map navigation, browser-back URL/scroll/result-limit restoration, 24-at-a-time results, independently removable conditions, filter sheet focus restoration, empty results, image fallback, personal-state retry, optimistic reaction rollback and exact anonymous login return. No reaction is replayed automatically after login.
+- Live account checks verified Hype and save persistence after reload and map/back preservation of category and region. Temporary reactions were cancelled; original Vintage/Tokyo saves and Taco/Burger Hypes remain unchanged. Final browser error log was empty.
+- Controls are siblings of navigation links, with map-specific labels, pressed/busy states, keyboard focus and minimum 44px hit areas. Measured text contrast on the information surface: primary 14.02:1 and muted 8.78:1. Photo contrast was visually reviewed; this is scoped verification, not full screen-reader/WCAG certification.
+- React review: shared state hook, public/private data separation, cancelled stale reads/restoration frames, no nested interactive controls, no new heavy dependency, scoped catalog styling.
+
+## Test evidence and performance
+
+- Full unit suite: 190 passed. Full production-build browser suite: 205 passed, 67 platform-specific skips. Subsequent targeted verification after polish: 10 passed; layout checks 19 passed / 15 platform-specific skips; final featured-control checks 4 passed. Typecheck, full ESLint, production build and diff whitespace checks passed. Map pins, registration and saved-list regression coverage retained.
+- Same local dev environment, unauthenticated document requests, one warmup discarded and three samples: home HTML 140,779 → 78,108 bytes (44.5% smaller); discover 82,420 → 82,499 bytes. Median document response times 63 → 61ms and 51 → 45ms respectively. These noisy dev timings do not establish a production loading-time improvement; HTML reduction is not a claim about images, JS or LCP.
+- Cold regional summary generation still scans existing public place addresses server-side. This is documented for future scaling; client receives deduplicated summaries only. Home rendering remains capped at seven maps as inventory grows.
+
+## Scope and handoff
+
+- Configuration and operational notes: `docs/design/home-catalog.md`; editorial source: `src/domain/catalog-config.ts`. Existing preview components remain for compatibility fixtures and preserved prior work, but production home/discover no longer use accordion previews.
+- Prior uncommitted changes preserved. Work remains uncommitted on main. No database migration, commit, push or deployment performed.
+
+---
+
+# Mobile map Hype and save — 2026-10-28
+
+final result: passed
+
+## Visual truth and comparison
+
+- Selected target: `artifacts/mobile-engagement/selected-reference.png` (853 × 1844): option 1 revised with smaller controls. Implementation: `artifacts/mobile-engagement/implemented-390.png` (375 × 812 browser capture at CSS 390 × 844). Compared the full reference and actual capture together, normalizing by width (~0.44); matching aspect ratios, same collapsed/top-of-home state. Focused actual card: `artifacts/mobile-engagement/first-card.png`.
+- Top-left Hype pill 52 × 28px, top-right bookmark circle 28px, icons 14px. Tap targets measured as 52 × 44 and 44 × 44 CSS pixels. Selected state uses lime icon on dark glass rather than solid lime circle. Title/location lower-left, count lower-right, original capsule/photo/glass treatment and fixed search retained. Card min-height 144px accommodates distinct controls without overlapping title.
+- Actual user-provided cover photographs and real reaction/save counts intentionally replace illustrative mock photos/counts. Actual map order is retained. The selected design's button placement, size, hierarchy and four-row density are present; no actionable P0/P1/P2 differences. Existing SUIT and Lucide system reused; no new raster assets or dependencies needed.
+- Narrow viewport evidence `implemented-360.png`; document content does not exceed viewport width. Existing automated mobile preview regressions cover 320,390,768px. Viewport override reset after verification.
+
+## Interaction verification
+
+- Mobile now loads private reaction state through the existing shared hook/API; only the currently active mobile/desktop surface initiates its read. Existing authenticated RPCs and save/follow persistence are reused without schema changes.
+- Controls are siblings of the preview button; independent busy/disabled state, accessible map-specific labels, aria-pressed, focus indication, retry, optimistic update and rollback retained. Demo controls disabled. Close-preview moved into its own non-overlapping position. Preview counts now say 저장 rather than 팔로워.
+- Live signed-in mobile check: Vintage Hype persisted after reload, then cancelled; Korea Fashion Store save persisted after reload, then cancelled. Final state restores original two saves (Vintage, Tokyo) and preserves user's preexisting Taco/Burger Hypes. No other user reactions changed.
+- Targeted production-build browser suite: 12 passed, 12 platform-specific skips. Covers new mobile save loading, independent buttons,44px hit areas, Hype/cancel failure rollback, save cancellation, anonymous login, retry, preview open/close, desktop behavior and mobile search/preview scrolling. Unit suite186 passed; typecheck and full ESLint passed.
+- Console review: one development Fast Refresh warning was recorded while changing a hook dependency array during editing. Full reload cleared the transient condition; no new runtime errors after reload. Production browser tests passed.
+- React review: hooks remain unconditional; stale fetches cancelled; state changes stay in interaction handlers; personal data stays out of public cache; no nested interactive controls.
+
+## Comparison history / follow-up
+
+- Final polish aligned place count to the lower edge, matching the approved title/count hierarchy. Final screenshot recaptured after that adjustment.
+- No remaining P0/P1/P2 findings. P3: actual covers and the established mobile rim differ from generated illustrative photography. Full screen-reader certification is outside this scoped verification.
+- Local main changes remain uncommitted; no deployment performed.
+
+---
+
 # Homepage map Hype and save — 2026-10-27
 
 final result: passed

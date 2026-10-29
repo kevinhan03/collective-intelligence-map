@@ -329,12 +329,166 @@ async function open(page: Page, fixture = "proposal") {
   await page.route("**/workflow-fixture*", (route) =>
     route.fulfill({
       contentType: "text/html",
-      body: `<html lang="ko" class="dark"><head><meta name="viewport" content="width=device-width, initial-scale=1"><style>${css}</style></head><body><div id="root" class="${fixture.startsWith("profile-") || fixture === "recommendations" || fixture === "photo-performance" || fixture === "map-engagement" ? "" : `page-wrap ${fixture === "admin" ? "max-w-4xl" : "max-w-2xl"}`}"></div></body></html>`,
+      body: `<html lang="ko" class="dark"><head><meta name="viewport" content="width=device-width, initial-scale=1"><style>${css}</style></head><body><div id="root" class="${fixture.startsWith("profile-") || fixture === "recommendations" || fixture === "photo-performance" || fixture === "map-engagement" || fixture.startsWith("catalog") ? "" : `page-wrap ${fixture === "admin" ? "max-w-4xl" : "max-w-2xl"}`}"></div></body></html>`,
     }),
   );
   await page.goto(`/workflow-fixture?fixture=${fixture}`);
   await page.addScriptTag({ content: bundle });
 }
+
+test("catalog restores URL conditions, extra results and scroll after returning from a map", async ({
+  page,
+}) => {
+  await page.route("**/api/maps/engagement", (route) =>
+    route.fulfill({
+      json: { viewerId: null, saved: [], hyped: [], hypeCreatedAt: {} },
+    }),
+  );
+  await open(page, "catalog");
+  await expect(page.locator("[data-catalog-card]")).toHaveCount(24);
+  await page.getByRole("button", { name: /더 보기/ }).click();
+  await expect(page.locator("[data-catalog-card]")).toHaveCount(33);
+  const link = page.getByRole("link", {
+    name: "도쿄 패션 스토어 지도 열기",
+    exact: true,
+  });
+  await link.scrollIntoViewIfNeeded();
+  const scroll = await page.evaluate(() => window.scrollY);
+  await link.click();
+  await expect(page).toHaveURL(/\/maps\/tokyo-fashion/);
+  await page.goBack();
+  // Reattach the client fixture after a document navigation if bfcache is unavailable.
+  if (!(await page.locator("[data-map-catalog]").count()))
+    await page.addScriptTag({ content: bundle });
+  await expect(page.locator("[data-catalog-card]")).toHaveCount(33);
+  await expect
+    .poll(() => page.evaluate(() => window.scrollY))
+    .toBeCloseTo(scroll, 0);
+  await page
+    .getByRole("searchbox", { name: "지도 검색", exact: true })
+    .fill("서울 빈티지");
+  await page
+    .getByRole("button", { name: "지도 검색 결과 보기", exact: true })
+    .click();
+  await expect(page).toHaveURL(/q=/);
+  await expect(page.locator("[data-catalog-card]")).toHaveCount(1);
+  await expect(page.locator("[data-catalog-card]")).toContainText(
+    "전국 빈티지숍",
+  );
+});
+
+test("catalog reactions stay independent, roll back failures, and login returns to filtered results", async ({
+  page,
+}) => {
+  let fail = false,
+    anonymous = false;
+  await page.route("**/api/maps/engagement", (route) =>
+    route.fulfill(
+      route.request().method() === "GET"
+        ? {
+            json: {
+              viewerId: anonymous ? null : "user",
+              saved: [],
+              hyped: [],
+              hypeCreatedAt: {},
+            },
+          }
+        : fail
+          ? { status: 500, json: { error: "반응 저장 실패" } }
+          : { json: { hype_count: 1, hype_week_count: 1, saved_count: 1 } },
+    ),
+  );
+  await open(page, "catalog");
+  const card = page.locator('[data-catalog-card][data-slug="korea-vintage"]');
+  await card
+    .getByRole("button", { name: "전국 빈티지숍 Hype 추천", exact: true })
+    .click();
+  await expect(
+    card.getByRole("button", { name: "전국 빈티지숍 Hype 취소", exact: true }),
+  ).toBeEnabled();
+  await expect(page).toHaveURL(/workflow-fixture/);
+  fail = true;
+  await card
+    .getByRole("button", { name: "전국 빈티지숍 Hype 취소", exact: true })
+    .click();
+  await expect(page.getByRole("alert")).toContainText("반응 저장 실패");
+  await expect(
+    card.getByRole("button", { name: "전국 빈티지숍 Hype 취소", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  anonymous = true;
+  await open(page, "catalog");
+  await page
+    .getByRole("searchbox", { name: "지도 검색", exact: true })
+    .fill("빈티지");
+  await page
+    .getByRole("button", { name: "지도 검색 결과 보기", exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/discover\?q=/);
+  const before = await page.url();
+  await page
+    .getByRole("button", { name: "전국 빈티지숍 지도 저장", exact: true })
+    .click();
+  expect(new URL(await page.url()).searchParams.get("next")).toBe(
+    new URL(before).pathname + new URL(before).search,
+  );
+});
+
+test("catalog home caps content and respects responsive widths and type hierarchy", async ({
+  page,
+}) => {
+  await page.route("**/api/maps/engagement", (route) =>
+    route.fulfill({
+      json: { viewerId: null, saved: [], hyped: [], hypeCreatedAt: {} },
+    }),
+  );
+  await open(page, "catalog-home");
+  await expect(page.locator("[data-catalog-card]")).toHaveCount(7);
+  await expect(
+    page.getByRole("heading", { name: "지금 둘러볼 지도", exact: true }),
+  ).toHaveCSS("font-weight", "500");
+  for (const width of [320, 390, 430, 768, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    for (const card of await page.locator("[data-catalog-card]").all()) {
+      const title = card.locator("h3");
+      await expect(title).toHaveCSS("font-weight", "500");
+      const box = await card.boundingBox(),
+        text = await title.boundingBox();
+      expect(text!.x + text!.width).toBeLessThanOrEqual(box!.x + box!.width);
+    }
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = "200%";
+  });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+});
+
+test("catalog image failures retain map links and fall back without broken images", async ({
+  page,
+}) => {
+  await page.route("**/korea-vintage-shop.jpg", (route) => route.abort());
+  await page.route("**/api/maps/engagement", (route) =>
+    route.fulfill({
+      json: { viewerId: null, saved: [], hyped: [], hypeCreatedAt: {} },
+    }),
+  );
+  await open(page, "catalog-home");
+  const card = page.locator('[data-catalog-card][data-slug="korea-vintage"]');
+  await expect(
+    card.getByRole("link", { name: "전국 빈티지숍 지도 열기", exact: true }),
+  ).toBeVisible();
+  await expect(card.locator("img")).toHaveCount(0);
+  await expect(card.locator("h3")).toHaveText("전국 빈티지숍");
+});
 
 test("visitors can add introductions to someone else's place and edit only their own", async ({
   page,
@@ -450,6 +604,60 @@ const internalPlace = (name: string, status: string | null = null) => ({
   currentMapStatus: status,
   currentMapPlaceId:
     status === "pending" || status === "approved" ? "existing-proposal" : null,
+});
+test("proposal preview preserves pin geometry and normal button touch targets", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 722, height: 980 });
+  await page.route("**/api/places/search", (route) =>
+    route.fulfill({
+      json: {
+        internal: [
+          { ...internalPlace("미리보기 장소"), lat: 35.67, lng: 139.71 },
+        ],
+        candidates: [],
+      },
+    }),
+  );
+  await open(page);
+  await page
+    .getByRole("textbox", { name: "제안할 장소 검색" })
+    .fill("미리보기");
+  await page.getByRole("button", { name: /미리보기 장소.*추천 가능/ }).click();
+  // This workflow fixture stubs the map SDK. Apply each production marker class
+  // to its existing pin button to exercise the real form/marker CSS cascade.
+  const pin = page.getByRole("button", {
+    name: "미리보기 장소 테스트 핀",
+    exact: true,
+  });
+  await pin.evaluate((e) => e.setAttribute("class", "map-pin"));
+  await expect(pin).toHaveCSS("min-height", "0px");
+  // The preview pin rotates45deg, so compare computed dimensions rather than its bounding rect.
+  const dimensions = await pin.evaluate((e) => ({
+    width: getComputedStyle(e).width,
+    height: getComputedStyle(e).height,
+  }));
+  expect(dimensions.width).toBe(dimensions.height);
+  // Real map renderers use a distinct marker class; the same form CSS must preserve it too.
+  await pin.evaluate((e) => {
+    e.setAttribute("class", "map-marker");
+  });
+  await expect(page.locator(".proposal-form .map-marker")).toHaveCSS(
+    "min-height",
+    "0px",
+  );
+  const marker = await page
+    .locator(".proposal-form .map-marker")
+    .evaluate((e) => ({
+      width: getComputedStyle(e).width,
+      height: getComputedStyle(e).height,
+    }));
+  expect(marker.width).toBe(marker.height);
+  const button = page.getByRole("button", {
+    name: "다른 장소 선택",
+    exact: true,
+  });
+  await expect(button).toHaveCSS("min-height", "44px");
 });
 test("workflow layouts fit the viewport", async ({ page }, testInfo) => {
   await open(page, "admin");
@@ -1861,6 +2069,125 @@ test("photo loading benchmark and latest pin selection", async ({
   }
 });
 
+test("mobile map actions preserve saved state, roll back failures and do not open previews", async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(!isMobile);
+  await page.setViewportSize({ width: 390, height: 844 });
+  let fail = false;
+  const posts: Record<string, unknown>[] = [];
+  await page.route("**/api/maps/engagement", async (route) => {
+    if (route.request().method() === "GET")
+      return route.fulfill({
+        json: {
+          viewerId: "user",
+          saved: ["11111111-1111-4111-8111-111111111111"],
+          hyped: [],
+          hypeCreatedAt: {},
+        },
+      });
+    const input = route.request().postDataJSON();
+    posts.push(input);
+    await route.fulfill(
+      fail
+        ? { status: 500, json: { error: "추천 저장 실패" } }
+        : {
+            json: {
+              hype_count: input.enabled ? 21 : 20,
+              hype_week_count: input.enabled ? 2 : 1,
+              saved_count: 4,
+            },
+          },
+    );
+  });
+  await open(page, "map-engagement");
+  const mobile = page.locator("[data-mobile-story-home]");
+  const save = mobile.getByRole("button", {
+    name: "Tokyo Fashion Store 지도 저장 취소",
+    exact: true,
+  });
+  await expect(save).toHaveAttribute("aria-pressed", "true");
+  const hype = mobile.getByRole("button", {
+    name: "Tokyo Fashion Store Hype 추천",
+    exact: true,
+  });
+  await expect(hype).toBeEnabled();
+  const box = await hype.boundingBox();
+  expect(box!.height).toBeGreaterThanOrEqual(44);
+  expect(box!.width).toBeGreaterThanOrEqual(44);
+  await hype.click();
+  const active = mobile.getByRole("button", {
+    name: "Tokyo Fashion Store Hype 취소",
+    exact: true,
+  });
+  await expect(active).toBeEnabled();
+  await expect(active).toHaveText("21");
+  await expect(mobile.locator('article[data-expanded="true"]')).toHaveCount(0);
+  fail = true;
+  await active.click();
+  await expect(mobile.getByRole("alert")).toContainText("추천 저장 실패");
+  await expect(active).toHaveAttribute("aria-pressed", "true");
+  await expect(active).toHaveText("21");
+  fail = false;
+  await save.click();
+  await expect(
+    mobile.getByRole("button", {
+      name: "Tokyo Fashion Store 지도 저장",
+      exact: true,
+    }),
+  ).toHaveAttribute("aria-pressed", "false");
+  expect(posts[2]).toMatchObject({ action: "save_map", enabled: false });
+  await mobile
+    .getByRole("button", { name: "Tokyo Fashion Store 미리보기", exact: true })
+    .click();
+  await expect(
+    mobile.getByRole("button", {
+      name: "Tokyo Fashion Store 지도 저장",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await mobile
+    .getByRole("button", {
+      name: "Tokyo Fashion Store 미리보기 닫기",
+      exact: true,
+    })
+    .click();
+  await expect(mobile.locator('article[data-expanded="true"]')).toHaveCount(0);
+});
+
+test("mobile map actions retry failed state loading and route anonymous viewers to login", async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(!isMobile);
+  let fail = true;
+  await page.route("**/api/maps/engagement", (route) =>
+    route.fulfill(
+      fail
+        ? { status: 503, json: { error: "unavailable" } }
+        : {
+            json: { viewerId: null, saved: [], hyped: [], hypeCreatedAt: {} },
+          },
+    ),
+  );
+  await open(page, "map-engagement");
+  const mobile = page.locator("[data-mobile-story-home]");
+  const save = mobile.getByRole("button", {
+    name: "Tokyo Fashion Store 지도 저장",
+    exact: true,
+  });
+  await expect(save).toBeDisabled();
+  await expect(mobile.getByRole("alert")).toBeVisible();
+  fail = false;
+  await mobile.getByRole("button", { name: "다시 시도", exact: true }).click();
+  await expect(save).toBeEnabled();
+  await save.click();
+  await expect(page).toHaveURL(
+    /\/login\?next=%2Fworkflow-fixture%3Ffixture%3Dmap-engagement$/,
+  );
+});
+
 test("map actions are independent from preview, optimistic, reversible and ranked by selected signal", async ({
   page,
   isMobile,
@@ -1971,6 +2298,8 @@ test("map engagement fails closed on private-state errors and prompts anonymous 
   await page.getByRole("button", { name: "다시 시도", exact: true }).click();
   await expect(save).toBeEnabled();
   await save.click();
-  await expect(page).toHaveURL(/\/login\?next=%2F$/);
+  await expect(page).toHaveURL(
+    /\/login\?next=%2Fworkflow-fixture%3Ffixture%3Dmap-engagement$/,
+  );
   await expect(page.locator("details[open]")).toHaveCount(0);
 });

@@ -38,7 +38,6 @@ import {
   ArrowLeft,
   ArrowUpRight,
   Bookmark,
-  Check,
   ChevronDown,
   Clock,
   Info,
@@ -1399,7 +1398,11 @@ function ExplorerContent({
               disabled={actions.isPending("follow", map.id) || readOnly}
               onClick={toggleFollow}
             >
-              {actions.followed ? <Check size={14} /> : <Plus size={14} />}{" "}
+              <Bookmark
+                size={14}
+                fill={actions.followed ? "currentColor" : "none"}
+                aria-hidden="true"
+              />
               {actions.followed ? "지도 저장됨" : "지도 저장"}
             </Button>
             <Button asChild>
@@ -1532,7 +1535,11 @@ function ExplorerContent({
               disabled={actions.isPending("follow", map.id) || readOnly}
               onClick={toggleFollow}
             >
-              {actions.followed ? <Check size={15} /> : <Plus size={15} />}
+              <Bookmark
+                size={15}
+                fill={actions.followed ? "currentColor" : "none"}
+                aria-hidden="true"
+              />
               {actions.followed ? "지도 저장됨" : "지도 저장"}
             </Button>
             <Button asChild>

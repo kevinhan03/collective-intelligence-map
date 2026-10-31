@@ -1,4 +1,5 @@
 import { DesktopDiscovery } from "@/components/community/desktop-discovery";
+import { UnifiedDesktopHome } from "@/components/community/unified-desktop-home";
 import { MapCatalog } from "@/components/community/map-catalog";
 import { buildCatalog } from "@/domain/map-catalog";
 import { CommunityExplorer } from "@/components/community/community-explorer";
@@ -452,10 +453,25 @@ function CatalogFixture() {
       id: `00000000-0000-4000-8000-${String(i).padStart(12, "0")}`,
       slug: `extra-${i}`,
       title: `추가 테마 ${i}`,
+      city: "Korea",
+      country: "KR",
       tags: ["산책"],
       place_count: i + 1,
     })),
   ];
+  if (
+    new URLSearchParams(location.search).get("fixture") === "catalog-unified"
+  ) {
+    return (
+      <main style={{ maxWidth: 1328, margin: "0 auto", padding: 16 }}>
+        <UnifiedDesktopHome
+          maps={buildCatalog(maps, {
+            "11111111-1111-4111-8111-111111111111": ["서울 · 강남구"],
+          })}
+        />
+      </main>
+    );
+  }
   return (
     <main style={{ maxWidth: 1280, margin: "0 auto", padding: 16 }}>
       <MapCatalog

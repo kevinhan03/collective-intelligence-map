@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { MapCatalog } from "@/components/community/map-catalog";
+import { UnifiedDesktopHome } from "@/components/community/unified-desktop-home";
 import { CatalogLoading } from "@/components/community/catalog-loading";
 import { buildCatalog } from "@/domain/map-catalog";
 import styles from "@/components/community/catalog-page.module.css";
+import homeStyles from "../page.module.css";
 import { configured } from "@/lib/supabase/server";
 import { getCatalogRegions, getMaps } from "@/server/queries";
 
@@ -18,18 +20,31 @@ async function DiscoverMapResults() {
   const maps = await getMaps();
 
   const regions = await getCatalogRegions(maps);
+  const catalog = buildCatalog(maps, regions);
   return (
-    <MapCatalog
-      maps={buildCatalog(maps, regions)}
-      mode="discover"
-      demo={!configured()}
-    />
+    <>
+      <div className={homeStyles.mobile}>
+        <MapCatalog
+          maps={catalog}
+          mode="discover"
+          demo={!configured()}
+          engagementSurface="mobile"
+        />
+      </div>
+      <div className={homeStyles.desktop}>
+        <UnifiedDesktopHome maps={catalog} demo={!configured()} />
+      </div>
+    </>
   );
 }
 
 export default function DiscoverPage() {
   return (
-    <main id="main" className={styles.page} data-catalog-page>
+    <main
+      id="main"
+      className={`${styles.page} ${homeStyles.home}`}
+      data-catalog-page
+    >
       <Suspense fallback={<CatalogLoading />}>
         <DiscoverMapResults />
       </Suspense>

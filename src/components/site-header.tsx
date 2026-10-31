@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { connection } from "next/server";
-import { ArrowUpRight, Bookmark, Compass, Map as MapIcon } from "lucide-react";
+import { ArrowUpRight, Bookmark, Map as MapIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getViewer } from "@/server/queries";
 import { ScrollHeader } from "./scroll-header";
@@ -28,14 +28,6 @@ export async function SiteHeader() {
           className="hidden items-center gap-2 lg:flex lg:gap-6"
           aria-label="주요 메뉴"
         >
-          <Link
-            href="/discover"
-            prefetch={false}
-            className="hidden items-center gap-2 text-sm font-medium sm:flex"
-          >
-            <Compass size={16} />
-            발견
-          </Link>
           <Link
             href="/saved"
             prefetch={false}

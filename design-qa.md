@@ -1,3 +1,22 @@
+# Unified desktop home — 2026-10-30
+
+final result: passed
+
+## Visual comparison
+
+- Selected reference: `prototypes/archive/home-explore-2026-10-30/unified-selected-reference.png` (1487×1058). Actual: `artifacts/unified-home/desktop-1440.png` (1425×1013, CSS viewport 1440×1024). Opened both and reviewed at normalized width; aspect ratios differ by less than 0.1%. Reviewed `mobile-preserved.png` separately at CSS 390×844. Supporting filtered screenshot: `fashion-seoul.png`.
+- Unified centered title/search, four muted matte-gradient category pills, sort/region toolbar and three-column photo cards match the selected composition. Removed the redundant separate editorial Home/Explore hierarchy. Tightened intro spacing and reduced minimum card height from 210 to 200px after comparison to preserve the reference's information density. Titles remain SUIT 500 rather than the generated mock's heavier weight, honoring the user's typography preference. No remaining actionable P0/P1/P2 visual findings in the scoped comparison.
+- Real supplied photographs, real place counts and existing account/studio/admin navigation intentionally replace illustrative reference content. In particular ramen has 2 actual places, not the mock's 27. Existing photo focal points, including the complete burger subject, remain in use. Selected Hype uses a filled lime flame/count and olive border/dark surface; non-selected buttons remain neutral regardless of total count.
+
+## Functional checks and boundaries
+
+- Live local app: category Fashion → region Seoul gives 2 results with nationwide inclusion labels; entering a map uses the existing detail; browser back restores exact conditions. Existing viewer Hypes and saves are displayed correctly. No live reactions or database records were changed. Current mobile home, categories and enabled viewer state were checked after resizing. Browser error log was empty; viewport override reset and result tab retained.
+- Fixture E2E verifies 24→33 results, limit/scroll restoration, combined search/category/region, 3 columns and no horizontal overflow at 1024/1280/1440/1920, selected Hype color/fill, failed cancellation rollback, retry and exact anonymous login return. Full suite includes mobile map/place/registration/saved flows. Legacy desktop heading expectations were updated to the approved new text; no detail implementation changed to satisfy tests.
+- Validation: typecheck passed; unit tests 57 files / 191 passed; final full production-build E2E 208 passed / 70 platform or environment skips / 0 failed. ESLint has 0 errors and 2 warnings for the original prototype's unused-expression idiom and its archived copy. `git diff --check` passed. Image source/reference and final actual screenshots were visually inspected.
+- Production data/API/schema unchanged. Existing uncommitted `globals.css` and `community-explorer.tsx` edits were preserved and not edited in this task. Separate Home/Explore HTML/CSS/JS and assets are archived in `prototypes/archive/home-explore-2026-10-30/`, with a runnable nested-path preview and README. Original `prototypes/desktop-v2/` remains available. No commit, push or deployment.
+
+---
+
 # Desktop home restoration — 2026-10-29
 
 final result: passed

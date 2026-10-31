@@ -336,6 +336,128 @@ async function open(page: Page, fixture = "proposal") {
   await page.addScriptTag({ content: bundle });
 }
 
+test("unified desktop catalog restores its expanded list and applies same-page URL conditions", async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(isMobile);
+  await page.route("**/api/maps/engagement", (route) =>
+    route.fulfill({
+      json: { viewerId: null, saved: [], hyped: [], hypeCreatedAt: {} },
+    }),
+  );
+  await open(page, "catalog-unified");
+  const catalog = page.locator("[data-unified-desktop-home]");
+  await expect(catalog.locator("[data-catalog-card]")).toHaveCount(24);
+  await catalog.getByRole("button", { name: /더 보기/ }).click();
+  await expect(catalog.locator("[data-catalog-card]")).toHaveCount(33);
+  const link = catalog.getByRole("link", {
+    name: "도쿄 패션 스토어 지도 열기",
+    exact: true,
+  });
+  await link.scrollIntoViewIfNeeded();
+  const scroll = await page.evaluate(() => window.scrollY);
+  await link.click();
+  await expect(page).toHaveURL(/\/maps\/tokyo-fashion/);
+  await page.goBack();
+  if (!(await catalog.count())) await page.addScriptTag({ content: bundle });
+  await expect(catalog.locator("[data-catalog-card]")).toHaveCount(33);
+  await expect
+    .poll(() => page.evaluate(() => window.scrollY))
+    .toBeCloseTo(scroll, 0);
+  await catalog
+    .getByRole("combobox", { name: "지역", exact: true })
+    .selectOption("서울");
+  await expect(page).toHaveURL(/region=/);
+  await expect(catalog.locator("[data-catalog-card]")).toHaveCount(2);
+  await catalog
+    .getByRole("searchbox", { name: "지도 검색", exact: true })
+    .fill("빈티지");
+  await catalog
+    .getByRole("button", { name: "지도 검색 결과 보기", exact: true })
+    .click();
+  await expect(catalog.locator("[data-catalog-card]")).toHaveCount(1);
+  await expect(catalog.locator("[data-catalog-card]")).toContainText(
+    "전체 47곳",
+  );
+  await catalog.getByRole("button", { name: "저장순", exact: true }).click();
+  await expect(page).toHaveURL(/sort=saved/);
+  await expect(
+    catalog.getByRole("link", { name: "패션·쇼핑", exact: true }),
+  ).toHaveAttribute("href", /category=fashion/);
+  for (const width of [1024, 1280, 1440, 1920]) {
+    await page.setViewportSize({ width, height: 900 });
+    expect(
+      await catalog
+        .locator("ol")
+        .evaluate(
+          (el) => getComputedStyle(el).gridTemplateColumns.split(" ").length,
+        ),
+    ).toBe(3);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+  }
+});
+
+test("unified desktop Hype has a filled selected state, rolls back failure and keeps precise anonymous return", async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(isMobile);
+  let anonymous = false;
+  await page.route("**/api/maps/engagement", (route) =>
+    route.request().method() === "GET"
+      ? route.fulfill({
+          json: {
+            viewerId: anonymous ? null : "viewer",
+            saved: [],
+            hyped: anonymous ? [] : ["11111111-1111-4111-8111-111111111111"],
+            hypeCreatedAt: {},
+          },
+        })
+      : route.fulfill({ status: 500, json: { error: "추천 저장 실패" } }),
+  );
+  await open(page, "catalog-unified");
+  const catalog = page.locator("[data-unified-desktop-home]");
+  const hype = catalog.getByRole("button", {
+    name: "전국 빈티지숍 Hype 취소",
+    exact: true,
+  });
+  await expect(hype).toHaveAttribute("aria-pressed", "true");
+  await expect(hype.locator("svg")).toHaveAttribute("fill", "currentColor");
+  await expect(hype.locator(":scope > span")).toHaveCSS(
+    "color",
+    "rgb(237, 255, 112)",
+  );
+  await hype.click();
+  await expect(catalog.getByRole("alert")).toContainText("추천 저장 실패");
+  await expect(hype).toHaveAttribute("aria-pressed", "true");
+  await expect(page).toHaveURL(/workflow-fixture/);
+  anonymous = true;
+  await catalog.getByRole("button", { name: "다시 시도", exact: true }).click();
+  await expect(
+    catalog.getByRole("button", {
+      name: "전국 빈티지숍 Hype 추천",
+      exact: true,
+    }),
+  ).toHaveAttribute("aria-pressed", "false");
+  await catalog
+    .getByRole("combobox", { name: "지역", exact: true })
+    .selectOption("서울");
+  const returnPath = await page.evaluate(
+    () => location.pathname + location.search,
+  );
+  await catalog
+    .getByRole("button", { name: "전국 빈티지숍 지도 저장", exact: true })
+    .click();
+  await expect(page).toHaveURL(
+    new RegExp("/login\\?next=" + encodeURIComponent(returnPath)),
+  );
+});
+
 test("catalog restores URL conditions, extra results and scroll after returning from a map", async ({
   page,
 }) => {

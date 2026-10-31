@@ -7,6 +7,8 @@ import {
   filterCatalog,
   homeCatalog,
   parseCatalogFilters,
+  parseUnifiedCatalogFilters,
+  unifiedCatalogHref,
 } from "@/domain/map-catalog";
 import type { ThemeMap } from "@/domain/types";
 function map(slug: string, extra: Partial<ThemeMap> = {}): ThemeMap {
@@ -50,6 +52,36 @@ const maps = buildCatalog(
   ],
   { "korea-vintage": ["서울 · 강남구", "부산 · 해운대구"] },
 );
+test("unified desktop catalog defaults to weekly popularity and keeps shareable conditions without hidden theme filters", () => {
+  const filters = parseUnifiedCatalogFilters(
+    new URLSearchParams("category=fashion&region=서울&theme=빈티지&q=seoul"),
+    maps,
+  );
+  expect(filters).toMatchObject({
+    category: "fashion",
+    region: "서울",
+    q: "seoul",
+    theme: "",
+    sort: "popular",
+  });
+  expect(unifiedCatalogHref(filters)).toBe(
+    "/?q=seoul&category=fashion&region=%EC%84%9C%EC%9A%B8",
+  );
+  expect(
+    parseUnifiedCatalogFilters(
+      new URLSearchParams("category=bad&region=bad&sort=bad"),
+      maps,
+    ),
+  ).toEqual({ ...emptyCatalogFilters, sort: "popular" });
+  const saved = { ...filters, sort: "saved" as const };
+  expect(
+    parseUnifiedCatalogFilters(
+      new URL(unifiedCatalogHref(saved), "https://example.com").searchParams,
+      maps,
+    ),
+  ).toEqual(saved);
+  expect(unifiedCatalogHref(saved, "/discover")).toContain("/discover?q=");
+});
 test("metadata keeps original title and URL; unknown maps stay visible and unclassified", () => {
   expect(maps[0]).toMatchObject({
     title: "korea-vintage",

@@ -123,7 +123,7 @@ test("desktop header becomes solid after scrolling and restores at top", async (
         () => document.documentElement.scrollHeight - window.innerHeight,
       ),
     )
-    .toBeGreaterThan(100);
+    .toBeGreaterThan(24);
   const header = page.locator(".glass-header");
   await expect(header).toHaveAttribute("data-scrolled", "false");
   await page.evaluate(() => window.scrollTo(0, 100));
@@ -152,7 +152,7 @@ for (const viewport of [
     ).toBeVisible();
     const footer = page.locator("footer");
     const [panelBox, footerBox] = await Promise.all([
-      page.locator("[data-map-catalog]").boundingBox(),
+      page.locator("[data-map-catalog]:visible").boundingBox(),
       footer.boundingBox(),
     ]);
     expect(panelBox!.y + panelBox!.height).toBeLessThanOrEqual(footerBox!.y);
@@ -196,7 +196,7 @@ test("discover community, filter venues, open context and protect participation"
   });
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
-    "취향으로 찾는 테마 지도",
+    isMobile ? "취향으로 찾는 테마 지도" : "같은 취향이 모이는 지도",
   );
   await page
     .getByRole("link", { name: "도쿄 패션 스토어 지도 열기", exact: true })
@@ -338,7 +338,9 @@ test("mobile catalog filters and recovers from empty results", async ({
   await page
     .getByRole("button", { name: "검색어 지우기", exact: true })
     .click();
-  await expect(page.locator("[data-catalog-card]")).toHaveCount(1);
+  await expect(
+    page.locator('[data-map-catalog="discover"]:visible [data-catalog-card]'),
+  ).toHaveCount(1);
   await page.getByRole("link", { name: "패션·쇼핑", exact: true }).click();
   await expect(page).toHaveURL(/category=fashion/);
   await page.getByRole("button", { name: "메뉴 열기" }).click();
@@ -452,7 +454,7 @@ for (const width of [360, 390, 430, 768, 1024, 1440, 1920]) {
     const mobile = width < 1024;
     await page.goto("/");
     await expect(page.getByRole("heading", { level: 1 })).toContainText(
-      "취향으로 찾는 테마 지도",
+      mobile ? "취향으로 찾는 테마 지도" : "같은 취향이 모이는 지도",
     );
     expect(
       await page.evaluate(
@@ -460,7 +462,7 @@ for (const width of [360, 390, 430, 768, 1024, 1440, 1920]) {
       ),
     ).toBe(true);
     await expect(
-      page.locator("[data-map-catalog=home] [data-catalog-card]"),
+      page.locator(`[data-map-catalog=${mobile ? "home" : "unified"}] [data-catalog-card]`),
     ).toHaveCount(1);
     await expect(page.locator("[data-map-catalog=home] details")).toHaveCount(
       0,
@@ -875,7 +877,7 @@ test("mobile place opens its summary and dismisses to a bottom sheet edge", asyn
   );
 });
 
-test("conflicting catalog conditions remain visible and can be removed independently", async ({
+test("desktop unified catalog ignores obsolete detailed-theme conditions", async ({
   page,
   isMobile,
 }) => {
@@ -884,19 +886,19 @@ test("conflicting catalog conditions remain visible and can be removed independe
     "/discover?category=food&theme=" + encodeURIComponent("빈티지"),
   );
   await expect(
+    page.getByRole("combobox", { name: "세부 테마", exact: true }),
+  ).toHaveCount(0);
+  await expect(
     page.getByRole("heading", {
       name: "조건에 맞는 지도가 없어요.",
       exact: true,
     }),
   ).toBeVisible();
-  await expect(
-    page.getByRole("combobox", { name: "세부 테마", exact: true }),
-  ).toHaveValue("빈티지");
   await page
     .getByRole("button", { name: "음식·카페 조건 해제", exact: true })
     .click();
   await expect(
-    page.locator('[data-map-catalog="discover"] [data-catalog-card]'),
+    page.locator('[data-map-catalog="unified"] [data-catalog-card]'),
   ).toHaveCount(1);
 });
 
@@ -921,7 +923,9 @@ test("desktop catalog combines category and query while retaining clear images a
   await page
     .getByRole("button", { name: "검색어 지우기", exact: true })
     .click();
-  const card = page.locator("[data-catalog-card]").first();
+  const card = page
+    .locator("[data-unified-desktop-home] [data-catalog-card]")
+    .first();
   await expect(card.locator("h3")).toHaveCSS("font-weight", "500");
   await expect(card.locator("img")).toHaveCSS("filter", "none");
   await expect(

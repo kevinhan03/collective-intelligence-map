@@ -5092,3 +5092,59 @@ body:has(.profile-page) {
 @media (width >= 1280px) {
   .glass-header[data-home-route="true"] > div { padding-inline: 64px; }
 }
+
+/* Map header actions: flat Apple-style pills, no borders, shadows or blur. */
+.map-hero-actions [data-slot="button"] {
+  height: 36px;
+  gap: 6px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  box-shadow: none;
+  backdrop-filter: none;
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: -0.224px;
+  transition:
+    transform 0.15s ease,
+    background-color 0.15s ease;
+}
+.map-hero-actions [data-slot="button"] svg {
+  width: 16px;
+  height: 16px;
+}
+.map-hero-actions [data-slot="button"][data-variant="outline"],
+.map-hero-actions [data-slot="button"][data-variant="secondary"] {
+  background: rgb(255 255 255 / 14%);
+  color: rgb(255 255 255 / 92%);
+}
+.map-hero-actions [data-slot="button"][data-variant="secondary"] {
+  color: var(--primary);
+}
+.map-hero-actions [data-slot="button"][data-variant="outline"]:hover,
+.map-hero-actions [data-slot="button"][data-variant="secondary"]:hover {
+  background: rgb(255 255 255 / 20%);
+}
+.map-hero-actions [data-slot="button"][data-variant="default"] {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-weight: 600;
+}
+.map-hero-actions [data-slot="button"][data-variant="default"]:hover {
+  background: #f3ff9b;
+}
+.map-hero-actions [data-slot="button"]:active {
+  transform: scale(0.95);
+}
+.map-hero-actions [data-slot="button"]:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .map-hero-actions [data-slot="button"] {
+    transition: none;
+  }
+  .map-hero-actions [data-slot="button"]:active {
+    transform: none;
+  }
+}

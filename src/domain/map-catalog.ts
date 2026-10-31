@@ -139,6 +139,32 @@ export function catalogHref(filters: Partial<CatalogFilters>) {
   }
   return `/discover${params.size ? `?${params}` : ""}`;
 }
+/** Desktop home is the catalog; legacy /discover links remain usable. */
+export function parseUnifiedCatalogFilters(
+  params: URLSearchParams,
+  maps: CatalogMap[],
+): CatalogFilters {
+  const parsed = parseCatalogFilters(params, maps);
+  return {
+    ...parsed,
+    theme: "",
+    sort: ["popular", "saved", "newest"].includes(parsed.sort)
+      ? parsed.sort
+      : "popular",
+  };
+}
+export function unifiedCatalogHref(
+  filters: Partial<CatalogFilters>,
+  pathname = "/",
+) {
+  const params = new URLSearchParams();
+  for (const key of ["q", "category", "region", "sort"] as const) {
+    const value = filters[key];
+    if (value && !(key === "sort" && value === "popular"))
+      params.set(key, value);
+  }
+  return `${pathname === "/discover" ? "/discover" : "/"}${params.size ? `?${params}` : ""}`;
+}
 export function filterCatalog(
   maps: CatalogMap[],
   filters: CatalogFilters,

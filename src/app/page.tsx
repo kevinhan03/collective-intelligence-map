@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { MapCatalog } from "@/components/community/map-catalog";
-import { DesktopDiscovery } from "@/components/community/desktop-discovery";
-import { homeMapFirst } from "@/domain/map-order";
+import { UnifiedDesktopHome } from "@/components/community/unified-desktop-home";
 import { CatalogLoading } from "@/components/community/catalog-loading";
 import { buildCatalog } from "@/domain/map-catalog";
 import { getCatalogRegions, getMaps } from "@/server/queries";
@@ -58,6 +57,7 @@ export default function Home() {
 async function HomeContent() {
   const maps = await getMaps();
   const regions = await getCatalogRegions(maps);
+  const catalog = buildCatalog(maps, regions);
   return (
     <main
       id="main"
@@ -66,20 +66,14 @@ async function HomeContent() {
     >
       <div className={homeStyles.mobile}>
         <MapCatalog
-          maps={buildCatalog(maps, regions)}
+          maps={catalog}
           mode="home"
           demo={!configured()}
           engagementSurface="mobile"
         />
       </div>
       <div className={homeStyles.desktop}>
-        <DesktopDiscovery
-          maps={[...maps].sort(homeMapFirst)}
-          locationTerms={Object.fromEntries(
-            Object.entries(regions).map(([id, terms]) => [id, terms.join(" ")]),
-          )}
-          demo={!configured()}
-        />
+        <UnifiedDesktopHome maps={catalog} demo={!configured()} />
       </div>
       <footer className={homeStyles.footer}>
         <div className="flex flex-wrap items-center gap-2">

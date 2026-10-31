@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Ting Map · 홈과 탐색 디자인 시안</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <a class="skip" href="#main">본문으로 건너뛰기</a>
+    <header class="header">
+      <div class="header-inner">
+        <a class="brand" href="#home" aria-label="Ting map 홈"
+          ><span class="brand-mark"><img src="icons/map.svg" alt="" /></span
+          ><span>Ting <span class="brand-muted">map</span></span></a
+        >
+        <nav aria-label="주요 메뉴">
+          <a href="#home" data-nav="home">홈</a
+          ><a href="#explore" data-nav="explore">탐색</a
+          ><a href="#saved" data-nav="saved"
+            >저장 <span id="saved-count"></span
+          ></a>
+        </nav>
+        <form class="global-search" role="search" aria-label="테마 지도 검색">
+          <img src="icons/search.svg" alt="" /><input
+            type="search"
+            name="q"
+            aria-label="테마 지도 검색어"
+            placeholder="테마나 지역으로 지도 찾기"
+            autocomplete="off"
+          /><button aria-label="검색하기" type="submit">
+            <img src="icons/arrow-right.svg" alt="" />
+          </button>
+        </form>
+        <span class="prototype-label">DESIGN PREVIEW</span>
+      </div>
+    </header>
+    <main id="main" class="main"></main>
+    <footer class="footer">
+      <a class="brand" href="#home"
+        ><span class="brand-mark"><img src="icons/map.svg" alt="" /></span
+        ><span>Ting <span class="brand-muted">map</span></span></a
+      >
+      <p>취향 있는 사람들의 추천으로, 다음 장소를 발견하세요.</p>
+      <span>홈 · 탐색 시안 / 저장·Hype는 이 브라우저에서만 반영됩니다.</span
+      ><a href="http://localhost:3000/" target="_blank" rel="noopener"
+        >현재 사이트와 비교하기 <img src="icons/arrow-up-right.svg" alt=""
+      /></a>
+    </footer>
+    <div class="toast" role="status" aria-live="polite"></div>
+  </body>
+</html>

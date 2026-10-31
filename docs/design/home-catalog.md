@@ -1,4 +1,12 @@
-> 2026-10-29: Desktop home (>=1024px) temporarily restored to existing DesktopDiscovery at the user's request. The redesigned home remains active on mobile; /discover remains on the shared catalog. Desktop styling uses src/app/page.module.css. The design below records the broader catalog plan, not a claim that desktop home currently uses it.
+> 2026-10-30: Desktop home (>=1024px) now uses the approved unified catalog in `UnifiedDesktopHome`. Search, four subdued-gradient categories, region and popular/saved/creation sorting operate on one three-column image-card list. No separate recommendation/category-card sections or desktop Explore navigation. `/discover` is retained as a compatible route showing the same desktop catalog. The current mobile MapCatalog and map/place details are retained. The archived separate Home/Explore HTML concept is in `prototypes/archive/home-explore-2026-10-30/`; its README explains how to run it. The older plan below is historical where it differs from this note.
+
+## Unified desktop behavior
+
+`parseUnifiedCatalogFilters` and `unifiedCatalogHref` use `q`, `category`, `region`, `sort`. Popular (weekly Hype) is the default; saved/newest are explicit options. Legacy hidden theme parameters are ignored. Search, category and region combine; each active condition can be removed individually. Twenty-four results are initially exposed, with more in batches of 24 and per-URL tab-session restoration of limit and scroll.
+
+The desktop component reuses the server catalog summaries, editorial photo framing and `useMapEngagement` contracts. Viewer-selected Hype has a filled lime flame, lime count, olive border and dark tint; save/Hype remain separate from card links with optimistic failure rollback and exact login-return URLs. Map links open the existing detail directly. No database migration, raw-address payload, production data edit or new API is involved.
+
+Desktop styles are scoped to `unified-desktop-home.module.css`; current mobile styles, global map-pin styles and detail components are not part of this change. SUIT 500 headings and 400 metadata intentionally override the generated reference's heavier lettering. Real images, counts and account navigation are retained rather than generated illustrative content.
 
 # Home and catalog operations
 

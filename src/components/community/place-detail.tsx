@@ -47,7 +47,7 @@ import { ShareButton } from "./share-button";
 import { SingleLineText } from "./single-line-text";
 import { NearbyStationInfo } from "./nearby-stations";
 import { OperationSummary } from "./operation-summary";
-import { post } from "./api";
+import { ApiError, post } from "./api";
 
 export function PlaceDetail({
   place,
@@ -173,6 +173,10 @@ export function PlaceDetail({
     };
   }, [scrollBody, mode]);
   async function act(payload: unknown) {
+    if (!viewer) {
+      window.location.assign(loginHref);
+      return false;
+    }
     if (readOnly || submitting.current) return false;
     submitting.current = true;
     setBusy(true);
@@ -182,6 +186,10 @@ export function PlaceDetail({
       onChange();
       return true;
     } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        window.location.assign(loginHref);
+        return false;
+      }
       setError((error as Error).message);
       return false;
     } finally {

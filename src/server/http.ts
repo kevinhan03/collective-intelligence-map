@@ -48,7 +48,41 @@ export async function body(request: Request, maxLength = 12000) {
     )
   )
     throw new HttpError("허용되지 않은 요청입니다.", 403);
-  const raw = await request.text();
+  const maxBytes = maxLength * 4;
+  const declared = request.headers.get("content-length");
+  if (declared && /^\d+$/.test(declared) && Number(declared) > maxBytes) {
+    await request.body?.cancel().catch(() => {});
+    throw new HttpError("요청이 너무 큽니다.", 413);
+  }
+  const reader = request.body?.getReader();
+  const decoder = new TextDecoder();
+  const parts: string[] = [];
+  let bytes = 0;
+  let characters = 0;
+  if (reader) {
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        bytes += value.byteLength;
+        if (bytes > maxBytes) {
+          await reader.cancel().catch(() => {});
+          throw new HttpError("요청이 너무 큽니다.", 413);
+        }
+        const part = decoder.decode(value, { stream: true });
+        characters += part.length;
+        if (characters > maxLength) {
+          await reader.cancel().catch(() => {});
+          throw new HttpError("요청이 너무 큽니다.", 413);
+        }
+        parts.push(part);
+      }
+      parts.push(decoder.decode());
+    } finally {
+      reader.releaseLock();
+    }
+  }
+  const raw = parts.join("");
   if (raw.length > maxLength) throw new HttpError("요청이 너무 큽니다.", 413);
   try {
     return JSON.parse(raw);

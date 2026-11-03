@@ -40,6 +40,12 @@ create function storage.foldername(text) returns text[] language sql immutable a
       ),
     );
   await c.query(await fs.readFile("supabase/seed.sql", "utf8"));
+  // Verify migration privileges before any repair/SQL Editor scripts run.
+  const frozen = await c.query(`select
+    not has_function_privilege('service_role','public.record_anonymous_vote(uuid,text,smallint)','execute') as rpc_denied,
+    not has_table_privilege('service_role','public.anonymous_map_place_votes','insert') as insert_denied,
+    not has_table_privilege('service_role','public.anonymous_map_place_votes','update') as update_denied`);
+  assert.ok(Object.values(frozen.rows[0]).every((value) => value === true));
   const searchEditorSql = await fs.readFile(
     "docs/sql/add-map-public-search.sql",
     "utf8",
@@ -203,25 +209,64 @@ create function storage.foldername(text) returns text[] language sql immutable a
   );
   await command(b, { action: "vote", id: pid, value: 0 });
   const anonymousTokenHash = "d".repeat(64);
-  await as(
-    null,
-    () =>
-      c.query("select public.record_anonymous_vote($1,$2,$3::smallint)", [
-        pid,
-        anonymousTokenHash,
-        1,
-      ]),
-    "service_role",
+  // Historical fixtures are seeded as the database owner, not via the now-disabled RPC.
+  await c.query(
+    "insert into public.anonymous_map_place_votes(map_place_id,token_hash,value) values($1,$2,-1)",
+    [pid, anonymousTokenHash],
   );
-  await as(
-    null,
+  for (const role of ["anon", "authenticated", "service_role"]) {
+    for (const schema of ["public", "private"]) {
+      await assert.rejects(
+        () =>
+          as(
+            null,
+            () =>
+              c.query(
+                `select ${schema}.record_anonymous_vote($1,$2,1::smallint)`,
+                [pid, "e".repeat(64)],
+              ),
+            role,
+          ),
+        { code: "42501" },
+      );
+    }
+    await assert.rejects(
+      () =>
+        as(
+          null,
+          () =>
+            c.query(
+              "insert into public.anonymous_map_place_votes(map_place_id,token_hash,value) values($1,$2,1)",
+              [pid, "e".repeat(64)],
+            ),
+          role,
+        ),
+      { code: "42501" },
+    );
+    await assert.rejects(
+      () =>
+        as(
+          null,
+          () =>
+            c.query(
+              "update public.anonymous_map_place_votes set value=1 where map_place_id=$1",
+              [pid],
+            ),
+          role,
+        ),
+      { code: "42501" },
+    );
+  }
+  await assert.rejects(
     () =>
-      c.query("select public.record_anonymous_vote($1,$2,$3::smallint)", [
+      c.query("select private.record_anonymous_vote($1,$2,1::smallint)", [
         pid,
         anonymousTokenHash,
-        -1,
       ]),
-    "service_role",
+    { code: "42501" },
+  );
+  console.log(
+    "PASS: legacy anonymous votes preserved; all new anonymous RPC/direct writes denied including service role",
   );
   assert.equal(
     (
@@ -293,15 +338,9 @@ create function storage.foldername(text) returns text[] language sql immutable a
     );
   }
   await command(b, { action: "vote", id: pid, value: 0 });
-  await as(
-    null,
-    () =>
-      c.query("select public.record_anonymous_vote($1,$2,$3::smallint)", [
-        pid,
-        anonymousTokenHash,
-        -1,
-      ]),
-    "service_role",
+  await c.query(
+    "insert into public.anonymous_map_place_votes(map_place_id,token_hash,value) values($1,$2,-1)",
+    [pid, anonymousTokenHash],
   );
   await as(b, () =>
     c.query("select public.merge_anonymous_votes($1)", [anonymousTokenHash]),
@@ -459,6 +498,16 @@ create function storage.foldername(text) returns text[] language sql immutable a
     reason: "테스트 중복 승인 출처 확인",
   });
   await command(a, { action: "vote", id: pid2, value: 1 });
+  const legacyMergeHash = "f".repeat(64);
+  await c.query(
+    "insert into public.anonymous_map_place_votes(map_place_id,token_hash,value) values($1,$2,1)",
+    [pid2, legacyMergeHash],
+  );
+  assert.equal(
+    (await c.query("select private.place_stats($1) result", [pid2])).rows[0]
+      .result.positive,
+    2,
+  );
   await command(b, { action: "save", id: pid2, enabled: true });
   const place1 = (
     await c.query("select place_id from public.map_places where id=$1", [pid])
@@ -472,6 +521,20 @@ create function storage.foldername(text) returns text[] language sql immutable a
     targetId: place1,
     reason: "동일 현실 장소 중복 병합 테스트",
   });
+  assert.equal(
+    (
+      await c.query(
+        "select map_place_id from public.anonymous_map_place_votes where token_hash=$1",
+        [legacyMergeHash],
+      )
+    ).rows[0].map_place_id,
+    pid,
+  );
+  assert.equal(
+    (await c.query("select private.place_stats($1) result", [pid])).rows[0]
+      .result.positive,
+    2,
+  );
   assert.equal(
     (
       await c.query(

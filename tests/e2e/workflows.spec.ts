@@ -1977,7 +1977,7 @@ async function mockPersonalizationReads(page: Page) {
   );
 }
 for (const vote of [1, -1]) {
-  test(`anonymous vote ${vote} survives re-entry and toggles off`, async ({
+  test(`legacy anonymous vote ${vote} stays visible but new voting requires login`, async ({
     page,
     isMobile,
   }) => {
@@ -1995,15 +1995,114 @@ for (const vote of [1, -1]) {
           vote === 1 ? /^이 지도에 어울려요 / : /^이 지도에 어울리지 않아요 /,
       });
       await expect(reaction).toHaveAttribute("aria-pressed", "true");
-      if (visit === 1) {
-        await reaction.click();
-        await expect(reaction).toHaveAttribute("aria-pressed", "false");
-        await expect.poll(() => calls.length).toBe(1);
-        expect(calls[0]).toMatchObject({ action: "vote", value: 0 });
-      }
+      await reaction.click();
+      await expect(page).toHaveURL(/\/login\?next=/);
+      const destination = new URL(page.url()).searchParams.get("next");
+      expect(destination).toBe(
+        "/maps/test-map?place=11111111-1111-4111-8111-111111111111",
+      );
+      expect(calls).toHaveLength(0);
     }
+    expect(
+      (await page.context().cookies()).some(
+        (c) => c.name === "collective_vote_token",
+      ),
+    ).toBe(false);
   });
 }
+for (const surface of ["list", "preview"] as const) {
+  test(`guest ${surface} vote opens login without mutating counts`, async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(isMobile);
+    await mockPersonalizationReads(page);
+    let writes = 0;
+    await page.route("**/api/community", (r) => {
+      writes++;
+      return r.fulfill({ json: { ok: true } });
+    });
+    await open(
+      page,
+      `personalization&vote=0${surface === "preview" ? "&place=11111111-1111-4111-8111-111111111111" : ""}`,
+    );
+    if (surface === "preview") {
+      await page
+        .locator(".place-detail-panel")
+        .getByRole("button", { name: "장소 상세 닫기", exact: true })
+        .first()
+        .click();
+    }
+    const region = page.locator(
+      surface === "list" ? ".place-list" : ".place-preview-card",
+    );
+    const reaction = region.getByRole("button", { name: /테마에 잘 맞아요 / });
+    const label = await reaction.getAttribute("aria-label");
+    await expect(reaction).toHaveAttribute("aria-pressed", "false");
+    await reaction.click();
+    await expect(page).toHaveURL(/\/login\?next=/);
+    expect(new URL(page.url()).searchParams.get("next")).toBe(
+      "/maps/test-map?place=11111111-1111-4111-8111-111111111111",
+    );
+    await expect(reaction).toHaveAttribute("aria-label", label!);
+    await expect(reaction).toHaveAttribute("aria-pressed", "false");
+    expect(writes).toBe(0);
+  });
+}
+test("signed-in place votes support up, down and cancellation", async ({
+  page,
+  isMobile,
+}) => {
+  await mockPersonalizationReads(page);
+  const calls: { value: number }[] = [];
+  await page.route("**/api/community", (r) => {
+    calls.push(r.request().postDataJSON());
+    return r.fulfill({ json: { ok: true } });
+  });
+  await open(page, "personalization&member=1&vote=0");
+  await openPersonalizedDetail(page, isMobile);
+  const panel = page.locator(".place-detail-panel");
+  const up = panel.getByRole("button", { name: /^이 지도에 어울려요 / });
+  const down = panel.getByRole("button", {
+    name: /^이 지도에 어울리지 않아요 /,
+  });
+  await up.click();
+  await expect(up).toHaveAttribute("aria-label", "이 지도에 어울려요 13");
+  await expect(up).toBeEnabled();
+  await down.click();
+  await expect(up).toHaveAttribute("aria-label", "이 지도에 어울려요 12");
+  await expect(down).toHaveAttribute(
+    "aria-label",
+    "이 지도에 어울리지 않아요 2",
+  );
+  await expect(down).toBeEnabled();
+  await down.click();
+  await expect(down).toHaveAttribute("aria-pressed", "false");
+  await expect(down).toHaveAttribute(
+    "aria-label",
+    "이 지도에 어울리지 않아요 1",
+  );
+  expect(calls.map((c) => c.value)).toEqual([1, -1, 0]);
+});
+test("expired vote session rolls back before returning to login", async ({
+  page,
+  isMobile,
+}) => {
+  await mockPersonalizationReads(page);
+  await page.route("**/api/community", (r) =>
+    r.fulfill({ status: 401, json: { error: "로그인이 필요합니다." } }),
+  );
+  await open(page, "personalization&member=1&vote=0");
+  await openPersonalizedDetail(page, isMobile);
+  const reaction = page
+    .locator(".place-detail-panel")
+    .getByRole("button", { name: /^이 지도에 어울려요 / });
+  const before = await reaction.getAttribute("aria-label");
+  await reaction.click();
+  await expect(page).toHaveURL(/\/login\?next=/);
+  await expect(reaction).toHaveAttribute("aria-pressed", "false");
+  await expect(reaction).toHaveAttribute("aria-label", before!);
+});
 test("late personalization preserves local votes and user/map changes clear them", async ({
   page,
   isMobile,
@@ -2012,7 +2111,7 @@ test("late personalization preserves local votes and user/map changes clear them
   await page.route("**/api/community", (r) =>
     r.fulfill({ json: { ok: true } }),
   );
-  await open(page, "personalization&delayed=1&vote=1");
+  await open(page, "personalization&member=1&delayed=1&vote=1");
   await openPersonalizedDetail(page, isMobile);
   const dialog = page.locator(".place-detail-panel");
   const down = dialog.getByRole("button", {

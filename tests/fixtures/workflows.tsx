@@ -289,6 +289,15 @@ function SheetFixture() {
 const personalizationPlaces = [sheetPlace];
 function PersonalizationFixture() {
   const params = new URLSearchParams(location.search);
+  const initialViewer = params.has("member")
+    ? {
+        id: "initial-member",
+        handle: "tester",
+        bio: "",
+        avatar_path: null,
+        role: "member" as const,
+      }
+    : null;
   const vote = Number(params.get("vote") ?? "1");
   const [scope, setScope] = useState("map-a");
   const [response, setResponse] = useState<{
@@ -300,7 +309,7 @@ function PersonalizationFixture() {
       : {
           scope: "map-a",
           state: {
-            viewer: null,
+            viewer: initialViewer,
             myState: {
               votes: { [sheetPlace.id]: vote },
               saves: [],
@@ -316,7 +325,7 @@ function PersonalizationFixture() {
           setResponse({
             scope,
             state: {
-              viewer: null,
+              viewer: initialViewer,
               myState: {
                 votes: { [sheetPlace.id]: vote },
                 saves: [],
@@ -361,7 +370,7 @@ function PersonalizationFixture() {
           map={{ ...map, id: scope }}
           initialPlaces={personalizationPlaces}
           pendingPlaces={[]}
-          viewer={null}
+          viewer={initialViewer}
           myState={{ votes: {}, saves: [], followed: false }}
           config={{ provider: "preview", key: "" }}
           demo={false}

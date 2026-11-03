@@ -4,7 +4,10 @@ select
   not has_table_privilege('anon','public.anonymous_map_place_votes','select')
     and not has_table_privilege('authenticated','public.anonymous_map_place_votes','select')
     and has_table_privilege('service_role','public.anonymous_map_place_votes','select') as anonymous_table_private,
-  has_function_privilege('service_role','public.record_anonymous_vote(uuid,text,smallint)','execute')
+  not has_function_privilege('service_role','public.record_anonymous_vote(uuid,text,smallint)','execute')
+    and not has_function_privilege('service_role','private.record_anonymous_vote(uuid,text,smallint)','execute')
+    and not has_table_privilege('service_role','public.anonymous_map_place_votes','insert')
+    and not has_table_privilege('service_role','public.anonymous_map_place_votes','update')
     and not has_function_privilege('anon','public.record_anonymous_vote(uuid,text,smallint)','execute') as record_vote_ok,
   has_function_privilege('authenticated','private.merge_anonymous_votes(text)','execute')
     and not has_function_privilege('anon','private.merge_anonymous_votes(text)','execute')

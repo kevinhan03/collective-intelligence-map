@@ -11,6 +11,17 @@ export async function post<T = Record<string, unknown>>(
   });
   const result = await response.json();
   if (!response.ok)
-    throw new Error(result.error ?? "요청을 처리하지 못했습니다.");
+    throw new ApiError(
+      result.error ?? "요청을 처리하지 못했습니다.",
+      response.status,
+    );
   return result;
+}
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public status: number,
+  ) {
+    super(message);
+  }
 }

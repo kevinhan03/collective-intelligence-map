@@ -25,3 +25,5 @@ jobs:
           path: dependency-audit.json
       - name: Check production dependencies
         run: npm audit --omit=dev
+      - name: Reject high and critical findings in all dependencies
+        run: npm audit --audit-level=high

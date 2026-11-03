@@ -25,6 +25,7 @@ import { MapTagSettings } from "./map-tag-settings";
 import { useViewerState } from "./viewer-state";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { ApiError } from "./api";
 import {
   useCallback,
   useDeferredValue,
@@ -665,10 +666,24 @@ function ExplorerContent({
       (place) => place.id === id,
     );
     if (!place) return;
+    const signIn = () =>
+      router.push(
+        loginHref(
+          `/maps/${map.slug}?place=${encodeURIComponent(place.place_id)}`,
+        ),
+      );
+    if (!viewer) {
+      signIn();
+      return;
+    }
     setError("");
     try {
       await actions.vote(actions.withCounts(place), value);
     } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        signIn();
+        return;
+      }
       setError((error as Error).message);
     }
   };

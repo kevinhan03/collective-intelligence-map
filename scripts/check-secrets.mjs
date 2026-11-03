@@ -6,6 +6,8 @@ const keys = [
   "KAKAO_LOCAL_API_KEY",
   "PROVIDER_SIGNING_SECRET",
   "SUPABASE_DB_URL",
+  "OVERTURE_DATABASE_URL",
+  "ADMIN_USAGE_PASSWORD",
 ];
 const contents = await fs.readFile(".env.local", "utf8").catch(() => "");
 const secrets = contents
@@ -22,7 +24,8 @@ async function walk(p) {
   }
   return result;
 }
-for (const file of await walk(".next/static")) {
+const buildDir = process.env.NEXT_TEST_BUILD === "true" ? ".next-e2e" : ".next";
+for (const file of await walk(path.join(buildDir, "static"))) {
   const data = await fs.readFile(file, "utf8");
   for (const [key, value] of secrets) {
     if (data.includes(value))

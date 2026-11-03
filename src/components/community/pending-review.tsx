@@ -3,7 +3,8 @@ import { useState } from "react";
 import { Check, ThumbsDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { MapPlace, Viewer } from "@/domain/types";
-import { post } from "./api";
+import { ApiError, post } from "./api";
+import { loginHref } from "@/domain/login-return";
 export function PendingReview({
   places,
   viewer,
@@ -29,6 +30,16 @@ export function PendingReview({
       await onVote(place.id, value);
       return;
     }
+    const signIn = () =>
+      window.location.assign(
+        loginHref(
+          `${window.location.pathname}?place=${encodeURIComponent(place.place_id)}`,
+        ),
+      );
+    if (!viewer) {
+      signIn();
+      return;
+    }
     setBusyId(place.id);
     setError("");
     try {
@@ -39,6 +50,10 @@ export function PendingReview({
       });
       onChange?.();
     } catch (e) {
+      if (e instanceof ApiError && e.status === 401) {
+        signIn();
+        return;
+      }
       setError((e as Error).message);
     } finally {
       setBusyId(null);
@@ -71,7 +86,7 @@ export function PendingReview({
                 <Button
                   size="sm"
                   variant={myVote === 1 ? "default" : "outline"}
-                  disabled={!enabled || busyId === p.id || isPending?.(p.id)}
+                  disabled={demo || busyId === p.id || isPending?.(p.id)}
                   onClick={() => vote(p, 1)}
                 >
                   <Check size={13} />
@@ -80,7 +95,7 @@ export function PendingReview({
                 <Button
                   size="sm"
                   variant={myVote === -1 ? "default" : "outline"}
-                  disabled={!enabled || busyId === p.id || isPending?.(p.id)}
+                  disabled={demo || busyId === p.id || isPending?.(p.id)}
                   onClick={() => vote(p, -1)}
                 >
                   <ThumbsDown size={13} />

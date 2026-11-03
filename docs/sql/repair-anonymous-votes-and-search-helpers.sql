@@ -1,5 +1,5 @@
 -- 운영 DB에 빠진 두 기능을 보완합니다. 기존 데이터는 삭제하지 않으며 재실행 가능합니다.
--- 1) 비로그인 투표: 20260917100000_anonymous_place_votes, 20260918000000_merge_anonymous_votes_on_login
+-- 1) 기존 익명 표의 집계·계정 이전 복구. 신규 익명 표는 로그인 전용 정책에 따라 차단합니다.
 -- 2) 지도 전체 검색 보조 함수: 20261008112237_map_public_search 중 누락된 search_compact/city/area/category와 인덱스
 --
 -- 의도적으로 제외한 것:
@@ -10,9 +10,8 @@ begin;
 
 -- 1. 비로그인 투표 -------------------------------------------------------------
 
--- Signed-out visitors get one reversible vote per browser token and place.
--- The token itself stays in an HttpOnly cookie; only its SHA-256 digest reaches
--- Postgres, so this table is not a browser-identification store.
+-- Historical cookie-scoped votes remain readable and mergeable after sign-in.
+-- This repair must never reopen anonymous recording or service-role writes.
 create table if not exists public.anonymous_map_place_votes (
   map_place_id uuid not null references public.map_places(id) on delete cascade,
   token_hash text not null check (token_hash ~ '^[0-9a-f]{64}$'),
@@ -23,7 +22,8 @@ create table if not exists public.anonymous_map_place_votes (
 );
 alter table public.anonymous_map_place_votes enable row level security;
 revoke all on public.anonymous_map_place_votes from anon, authenticated, public;
-grant select, insert, update, delete on public.anonymous_map_place_votes to service_role;
+revoke insert, update on public.anonymous_map_place_votes from service_role;
+grant select, delete on public.anonymous_map_place_votes to service_role;
 
 -- 20260913020000 버전에 비로그인 투표 집계만 더한 버전입니다.
 create or replace function private.place_stats(m uuid) returns jsonb language sql stable security definer set search_path='' as $$
@@ -51,20 +51,9 @@ create or replace function private.record_anonymous_vote(
   p_value smallint
 ) returns jsonb language plpgsql security definer set search_path='' as $$
 begin
- if p_token_hash !~ '^[0-9a-f]{64}$' then raise exception '올바르지 않은 투표 식별자입니다.' using errcode='22023'; end if;
- if p_value not in (-1, 0, 1) then raise exception '잘못된 투표입니다.' using errcode='22023'; end if;
- if not (private.public_map_place(p_target) or private.pending_map_place(p_target)) then raise exception '공개된 장소를 찾을 수 없습니다.' using errcode='42501'; end if;
- if p_value=0 then
-  delete from public.anonymous_map_place_votes where map_place_id=p_target and token_hash=p_token_hash;
- else
-  insert into public.anonymous_map_place_votes(map_place_id,token_hash,value)
-  values(p_target,p_token_hash,p_value)
-  on conflict(map_place_id,token_hash) do update set value=excluded.value,updated_at=now();
- end if;
- return jsonb_build_object('ok',true);
+ raise exception '로그인 후 투표해 주세요.' using errcode='42501';
 end $$;
-revoke all on function private.record_anonymous_vote(uuid,text,smallint) from public;
-grant execute on function private.record_anonymous_vote(uuid,text,smallint) to service_role;
+revoke all on function private.record_anonymous_vote(uuid,text,smallint) from public, anon, authenticated, service_role;
 
 create or replace function public.record_anonymous_vote(
   p_target uuid,
@@ -73,8 +62,7 @@ create or replace function public.record_anonymous_vote(
 ) returns jsonb language sql security invoker set search_path='' as $$
  select private.record_anonymous_vote(p_target,p_token_hash,p_value)
 $$;
-revoke all on function public.record_anonymous_vote(uuid,text,smallint) from public, anon, authenticated;
-grant execute on function public.record_anonymous_vote(uuid,text,smallint) to service_role;
+revoke all on function public.record_anonymous_vote(uuid,text,smallint) from public, anon, authenticated, service_role;
 
 create or replace function private.move_anonymous_votes_after_merge() returns trigger language plpgsql security definer set search_path='' as $$
 begin

@@ -9,12 +9,12 @@ test("tags combine with AND, preserve URL history, and reset", async ({
   const bar = page.getByRole("group", { name: "장소 태그 필터" });
   await expect(bar).toBeVisible();
   const chip = bar.getByRole("button", { name: "#빈티지", exact: true });
-  await expect(chip).toHaveCSS("font-size", "14px");
-  await expect(chip).toHaveCSS("height", "36px");
-  await expect(chip).toHaveCSS("background-color", "rgb(255, 255, 255)");
+  await expect(chip).toHaveCSS("font-size", "13px");
+  await expect(chip).toHaveCSS("height", "32px");
+  await expect(chip).toHaveCSS("background-color", "rgb(44, 44, 46)");
   await chip.click();
   await expect(chip).toHaveAttribute("aria-pressed", "true");
-  await expect(chip).toHaveCSS("height", "36px");
+  await expect(chip).toHaveCSS("height", "32px");
   await expect(page).toHaveURL(new RegExp(`tag=${vintage}`));
   await expect(page.locator(".map-pin")).toHaveCount(3);
   await bar.getByRole("button", { name: "#아카이브", exact: true }).click();

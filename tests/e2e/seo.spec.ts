@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { demoMap, demoPlaces } from "../../src/server/demo";
 import { mapSearchTitle, placePath } from "../../src/domain/seo";
+const publicDemoMap = { ...demoMap, title: "도쿄 패션 스토어" };
 
 for (const userAgent of [
   "Googlebot",
@@ -175,7 +176,7 @@ test("public map keeps its title, description, canonical and sharing metadata", 
 }) => {
   await page.goto(`/maps/${demoMap.slug}`);
   await expect(page).toHaveTitle(
-    `${mapSearchTitle(demoMap)} · 팅맵 (Ting map)`,
+    `${mapSearchTitle(publicDemoMap)} · 팅맵 (Ting map)`,
   );
   await expect(page.locator('meta[name="description"]')).toHaveAttribute(
     "content",
@@ -187,7 +188,7 @@ test("public map keeps its title, description, canonical and sharing metadata", 
   );
   await expect(page.locator('meta[property="og:title"]')).toHaveAttribute(
     "content",
-    mapSearchTitle(demoMap),
+    mapSearchTitle(publicDemoMap),
   );
   await expect(page.locator('meta[property="og:description"]')).toHaveAttribute(
     "content",
@@ -203,7 +204,7 @@ test("public map keeps its title, description, canonical and sharing metadata", 
   );
   await expect(page.locator('meta[name="twitter:title"]')).toHaveAttribute(
     "content",
-    mapSearchTitle(demoMap),
+    mapSearchTitle(publicDemoMap),
   );
   await expect(page.locator('meta[name="twitter:image"]')).toHaveAttribute(
     "content",

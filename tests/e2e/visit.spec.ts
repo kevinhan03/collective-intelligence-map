@@ -120,12 +120,12 @@ test("map sharing copies a map-only URL", async ({ page }) => {
   await page.goto("/maps/tokyo-fashion");
   await page
     .getByRole("button", {
-      name: "Tokyo Fashion Store 지도 정보 보기",
+      name: "도쿄 패션 스토어 지도 정보 보기",
       exact: true,
     })
     .click();
   await page
-    .getByRole("button", { name: "Tokyo Fashion Store 공유", exact: true })
+    .getByRole("button", { name: "도쿄 패션 스토어 공유", exact: true })
     .click();
   await expect(
     page.getByRole("status").filter({ hasText: "링크를 복사했어요" }),
@@ -190,12 +190,12 @@ test("cancelling the native mobile share sheet is silent", async ({
   await page.goto("/maps/tokyo-fashion");
   await page
     .getByRole("button", {
-      name: "Tokyo Fashion Store 지도 정보 보기",
+      name: "도쿄 패션 스토어 지도 정보 보기",
       exact: true,
     })
     .click();
   const share = page.getByRole("button", {
-    name: "Tokyo Fashion Store 공유",
+    name: "도쿄 패션 스토어 공유",
     exact: true,
   });
   await share.click();

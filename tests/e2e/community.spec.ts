@@ -151,11 +151,25 @@ for (const viewport of [
       page.getByRole("link", { name: "로그인", exact: true }),
     ).toBeVisible();
     const footer = page.locator("footer");
-    const [panelBox, footerBox] = await Promise.all([
-      page.locator("[data-map-catalog]:visible").boundingBox(),
-      footer.boundingBox(),
-    ]);
-    expect(panelBox!.y + panelBox!.height).toBeLessThanOrEqual(footerBox!.y);
+    const catalog = page.locator("[data-map-catalog]:visible");
+    // The header can finish rendering before the streamed catalog and footer.
+    await expect(catalog).toBeVisible();
+    await expect(footer).toBeVisible();
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const catalog = Array.from(
+            document.querySelectorAll("[data-map-catalog]"),
+          ).find((element) => element.getClientRects().length > 0);
+          const footer = document.querySelector("footer");
+          if (!catalog || !footer) return Number.POSITIVE_INFINITY;
+          return (
+            catalog.getBoundingClientRect().bottom -
+            footer.getBoundingClientRect().top
+          );
+        }),
+      )
+      .toBeLessThanOrEqual(0);
     await footer.scrollIntoViewIfNeeded();
     await expect(
       footer.getByRole("link", { name: "이용약관" }),

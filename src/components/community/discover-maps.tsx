@@ -192,7 +192,7 @@ export function DiscoverMaps({ maps }: { maps: ThemeMap[] }) {
                   className="group flex h-full flex-col overflow-hidden rounded-3xl border border-white/15 bg-[#15191d] shadow-lg transition-[border-color,transform] hover:-translate-y-1 hover:border-white/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                 >
                   <div className="relative flex h-48 items-center justify-center overflow-hidden bg-[#28323a] p-5 text-white">
-                    <MapCardBackdrop slug={map.slug} />
+                    <MapCardBackdrop slug={map.slug} editorial={map.editorial} />
                     <div
                       aria-hidden="true"
                       className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/20 to-black/60"

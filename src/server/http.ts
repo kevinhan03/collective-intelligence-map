@@ -39,7 +39,7 @@ export function failure(error: unknown) {
     500,
   );
 }
-export async function body(request: Request) {
+export async function body(request: Request, maxLength = 12000) {
   if (
     !sameOrigin(
       request.headers.get("origin"),
@@ -49,7 +49,7 @@ export async function body(request: Request) {
   )
     throw new HttpError("허용되지 않은 요청입니다.", 403);
   const raw = await request.text();
-  if (raw.length > 12000) throw new HttpError("요청이 너무 큽니다.", 413);
+  if (raw.length > maxLength) throw new HttpError("요청이 너무 큽니다.", 413);
   try {
     return JSON.parse(raw);
   } catch {

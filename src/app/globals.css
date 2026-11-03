@@ -5148,3 +5148,6 @@ body:has(.profile-page) {
     transform: none;
   }
 }
+
+/* The catalog editor owns its full-width toolbar and home logo. */
+.glass-header[data-catalog-admin="true"] { display: none; }

@@ -33,7 +33,7 @@ export function SavedMaps({ maps }: { maps: ThemeMap[] }) {
               className="relative flex min-h-36 flex-col justify-end overflow-hidden p-5 focus-visible:outline-2 focus-visible:outline-primary"
             >
               <div className="absolute inset-0 -z-20">
-                <MapCardBackdrop slug={map.slug} sharp />
+                <MapCardBackdrop slug={map.slug} editorial={map.editorial} sharp />
               </div>
               <span className="absolute inset-0 -z-10 bg-linear-to-t from-black via-black/60 to-transparent" />
               <h3 className="max-w-[calc(100%-32px)] text-lg font-semibold text-white">

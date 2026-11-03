@@ -5,6 +5,7 @@ export type Bounds = {
   north: number;
 };
 export type ThemeMap = {
+  editorial?: import("./catalog-admin").CatalogValue;
   place_tags?: import("./map-tags").MapTag[];
   kind?: "community" | "creator";
   owner_id?: string | null;

@@ -24,6 +24,9 @@ export default async function Moderation() {
           <p className="kicker mb-2">Community operations</p>
           <h1 className="text-3xl font-semibold">커뮤니티 검토</h1>
         </div>
+        <Link href="/admin/catalog" className="text-sm underline">
+          홈 콘텐츠 →
+        </Link>
         <Link href="/admin/usage" className="text-sm underline">
           API 사용량 →
         </Link>

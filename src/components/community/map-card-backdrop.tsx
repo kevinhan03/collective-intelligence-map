@@ -1,7 +1,7 @@
 "use client";
 import Image from "next/image";
 import { useState } from "react";
-import { catalogEditorial } from "@/domain/catalog-config";
+import type { CatalogValue } from "@/domain/catalog-admin";
 
 const cardPalettes = [
   ["#bd794f", "#533b54", "#1b2829"],
@@ -16,14 +16,15 @@ const cardPalettes = [
 
 export function MapCardBackdrop({
   slug,
+  editorial: entry,
   sharp = false,
   eager = false,
 }: {
   slug: string;
+  editorial?: CatalogValue;
   sharp?: boolean;
   eager?: boolean;
 }) {
-  const entry = catalogEditorial[slug];
   const [failedImage, setFailedImage] = useState<string | null>(null);
   const image = entry?.image !== failedImage ? entry?.image : undefined;
   if (image && entry?.wholeSubject) {
@@ -31,6 +32,7 @@ export function MapCardBackdrop({
       <div aria-hidden="true" className="absolute inset-0 overflow-hidden">
         <Image
           src={image}
+          unoptimized={image.startsWith("/api/")}
           alt=""
           fill
           sizes="(min-width: 1280px) 32vw, (min-width: 768px) 50vw, 100vw"
@@ -40,6 +42,7 @@ export function MapCardBackdrop({
         {/* Keep the entire burger (42–83% of the source height) in the card. */}
         <Image
           src={image}
+          unoptimized={image.startsWith("/api/")}
           alt=""
           width={750}
           height={938}
@@ -66,6 +69,7 @@ export function MapCardBackdrop({
       >
         <Image
           src={image}
+          unoptimized={image.startsWith("/api/")}
           alt=""
           fill
           loading={eager || slug === "tokyo-fashion" ? "eager" : "lazy"}

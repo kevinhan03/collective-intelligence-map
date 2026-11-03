@@ -16,41 +16,53 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  gap: 6px;
-  min-height: 44px;
+  gap: 4px;
+  min-height: 32px;
   min-width: 44px;
-  padding: 10px 16px;
-  border: 1px solid #e0e0e0;
+  padding: 0 12px;
+  border: 0;
   border-radius: 9999px;
-  background: #fff;
-  color: #1d1d1f;
+  background: #2c2c2e;
+  color: rgb(255 255 255 / 88%);
   font-family:
     -apple-system, BlinkMacSystemFont, system-ui, var(--font-suit), sans-serif;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 400;
-  line-height: 20px;
-  letter-spacing: -0.224px;
+  line-height: 18px;
+  letter-spacing: -0.08px;
   white-space: nowrap;
   box-shadow: none;
+  transition:
+    transform 0.15s ease,
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
-.chip[aria-pressed="true"] {
-  border: 2px solid var(--primary);
-  padding: 9px 15px;
+button.chip:hover:not(:disabled) {
+  background: #3a3a3c;
+  color: #fff;
+}
+button.chip:active:not(:disabled) {
+  transform: scale(0.95);
+}
+.chip[aria-pressed="true"],
+button.chip[aria-pressed="true"]:hover {
+  background: var(--primary);
+  color: var(--primary-foreground);
   font-weight: 600;
 }
 .bar[data-map-tag-bar] button.chip[aria-pressed] {
-  min-height: 36px;
-  padding-block: 7px;
+  min-height: 32px;
 }
-.bar[data-map-tag-bar] button.chip[aria-pressed="true"] {
-  padding-block: 6px;
+.chip svg {
+  width: 12px;
+  height: 12px;
 }
 .chip:focus-visible {
-  outline: 2px solid #1d1d1f;
+  outline: 2px solid var(--ring);
   outline-offset: 2px;
 }
 .chip:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
 }
 .section {
   display: flex;
@@ -85,9 +97,9 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 2px 4px 2px 12px;
-  border: 1px solid var(--border);
+  padding: 2px 4px 2px 14px;
   border-radius: 9999px;
+  background: #2c2c2e;
 }
 .editorRow > span {
   font-size: 13px;
@@ -108,6 +120,27 @@
   display: flex;
   align-items: center;
   gap: 8px;
+}
+.save {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.08px;
+}
+.save:disabled {
+  opacity: 1;
+  background: #2c2c2e;
+  color: rgb(255 255 255 / 40%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .chip {
+    transition: none;
+  }
+  button.chip:active:not(:disabled) {
+    transform: none;
+  }
 }
 @media (max-width: 1023px) {
   .bar {

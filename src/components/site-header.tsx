@@ -1,3 +1,4 @@
+import { CatalogSessionGuard } from "./admin/catalog-session-guard";
 import Link from "next/link";
 import { connection } from "next/server";
 import { ArrowUpRight, Bookmark, Map as MapIcon } from "lucide-react";
@@ -10,6 +11,7 @@ export async function SiteHeader() {
   const viewer = await getViewer();
   return (
     <ScrollHeader>
+      <CatalogSessionGuard userId={viewer?.id ?? null} />
       <div className="mx-auto flex h-18 max-w-[1440px] items-center justify-between gap-4 px-5 md:px-9">
         <Link
           href="/"
@@ -60,13 +62,22 @@ export async function SiteHeader() {
                 @{viewer.handle}
               </Link>
               {viewer.role === "admin" && (
-                <Link
-                  href="/admin/moderation"
-                  prefetch={false}
-                  className="text-xs"
-                >
-                  관리
-                </Link>
+                <span className="flex items-center gap-4">
+                  <Link
+                    href="/admin/catalog"
+                    prefetch={false}
+                    className="text-xs"
+                  >
+                    홈 콘텐츠
+                  </Link>
+                  <Link
+                    href="/admin/moderation"
+                    prefetch={false}
+                    className="text-xs"
+                  >
+                    관리
+                  </Link>
+                </span>
               )}
             </>
           ) : (

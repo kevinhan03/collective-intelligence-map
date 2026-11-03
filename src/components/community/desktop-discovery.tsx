@@ -216,7 +216,7 @@ export function DesktopDiscovery({
                   className={`${styles.cover} group`}
                   aria-label={`${map.title} 미리보기`}
                 >
-                  <MapCardBackdrop slug={map.slug} sharp />
+                  <MapCardBackdrop slug={map.slug} editorial={map.editorial} sharp />
                   <span className={styles.shade} aria-hidden="true" />
                   <div className={styles.heading}>
                     <h3 className={styles.title}>{map.title}</h3>

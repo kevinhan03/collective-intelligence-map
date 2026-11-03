@@ -55,7 +55,7 @@ export function MobileMapStory({
           }
         }}
       >
-        <MapCardBackdrop slug={map.slug} />
+        <MapCardBackdrop slug={map.slug} editorial={map.editorial} />
         <span className={styles.coverShade} aria-hidden="true" />
         <h2 aria-label={map.title}>
           {map.title}

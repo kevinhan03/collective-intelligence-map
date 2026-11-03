@@ -8,7 +8,7 @@ export const catalogCategories = [
 export type CatalogCategory = (typeof catalogCategories)[number]["id"];
 export type CatalogEditorial = {
   title: string;
-  category: CatalogCategory;
+  category: CatalogCategory | null;
   aliases: string[];
   image: string;
   focalPoint?: string;

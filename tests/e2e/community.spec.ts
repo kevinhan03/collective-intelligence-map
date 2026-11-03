@@ -205,7 +205,7 @@ test("discover community, filter venues, open context and protect participation"
   // accessible name can include that action; the displayed map title is stable.
   const mapHeading = page.getByRole("heading", { level: 1 });
   await expect(mapHeading).toBeVisible();
-  await expect(mapHeading).toHaveText("Tokyo Fashion Store");
+  await expect(mapHeading).toHaveText("도쿄 패션 스토어");
   if (isMobile) {
     await expect(page.getByRole("region", { name: "장소 지도" })).toBeVisible();
     await page.getByRole("button", { name: "목록 보기", exact: true }).click();
@@ -369,9 +369,9 @@ test("mobile view switching preserves scroll position and detail returns focus",
     ),
   ).toBeHidden();
   await page
-    .getByRole("button", { name: "Tokyo Fashion Store 지도 정보 보기" })
+    .getByRole("button", { name: "도쿄 패션 스토어 지도 정보 보기" })
     .click();
-  const mapInfo = page.getByRole("dialog", { name: "Tokyo Fashion Store" });
+  const mapInfo = page.getByRole("dialog", { name: "도쿄 패션 스토어" });
   await expect(mapInfo).toBeVisible();
   await expect(mapInfo.getByText("커뮤니티 규칙 보기")).toBeVisible();
   await expect(mapInfo.getByRole("link", { name: "장소 제안" })).toBeVisible();
@@ -462,7 +462,9 @@ for (const width of [360, 390, 430, 768, 1024, 1440, 1920]) {
       ),
     ).toBe(true);
     await expect(
-      page.locator(`[data-map-catalog=${mobile ? "home" : "unified"}] [data-catalog-card]`),
+      page.locator(
+        `[data-map-catalog=${mobile ? "home" : "unified"}] [data-catalog-card]`,
+      ),
     ).toHaveCount(1);
     await expect(page.locator("[data-map-catalog=home] details")).toHaveCount(
       0,
@@ -931,4 +933,67 @@ test("desktop catalog combines category and query while retaining clear images a
   await expect(
     page.getByRole("link", { name: "패션·쇼핑", exact: true }),
   ).toHaveAttribute("aria-current", "page");
+});
+
+test("desktop catalog keeps place counts inside cards at narrow desktop widths", async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(isMobile, "Desktop catalog layout regression");
+  for (const route of ["/", "/discover"]) {
+    await page.goto(route);
+    const catalog = page.locator("[data-unified-desktop-home]");
+    for (const width of [1024, 1150, 1280, 1440]) {
+      await page.setViewportSize({ width, height: 1000 });
+      await expect(catalog).toBeVisible();
+      const measurements = await catalog
+        .locator("[data-catalog-card]")
+        .evaluateAll((cards) =>
+          cards.map((card) => {
+            const link = card.querySelector("a")!;
+            const count = link.querySelector("span:last-child")!;
+            const outer = card.getBoundingClientRect();
+            const inner = count.getBoundingClientRect();
+            return {
+              text: count.textContent,
+              visible:
+                inner.width > 0 &&
+                inner.height > 0 &&
+                inner.left >= outer.left &&
+                inner.right <= outer.right &&
+                inner.bottom <= outer.bottom,
+            };
+          }),
+        );
+      expect(measurements.length).toBeGreaterThan(0);
+      for (const measurement of measurements) {
+        expect(measurement.text).toMatch(/[\d,]+곳$/);
+        expect(
+          measurement.visible,
+          `${route} at ${width}px: ${measurement.text}`,
+        ).toBe(true);
+      }
+    }
+  }
+});
+
+test("catalog display title stays consistent in map detail, info and share metadata", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const card = page.locator("[data-catalog-card]:visible").first();
+  const title = await card.locator("h3").innerText();
+  await card.locator("a").first().click();
+  await expect(page.locator(".map-hero h1")).toHaveText(title);
+  expect(await page.title()).toContain(title);
+  await expect(page.locator('meta[property="og:title"]')).toHaveAttribute(
+    "content",
+    new RegExp(title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+  );
+  await page
+    .getByRole("button", { name: `${title} 지도 정보 보기`, exact: true })
+    .filter({ visible: true })
+    .first()
+    .click();
+  await expect(page.getByRole("dialog")).toHaveAccessibleName(title);
 });

@@ -1,3 +1,75 @@
+# Place detail scoped tags — option 1 — 2026-11-03
+
+final result: passed
+
+- Selected source: `/Users/kevin_han/.codex/generated_images/01a191ea-5c71-79b3-8425-6ee8091f5f5d/exec-0e1f41d0-3546-4c82-90e1-edc6a576dddd.png` (916 × 1717). Compared directly with `artifacts/place-tags-redesign/panel-mobile.png` (390 × 920, CSS viewport 390 × 920, deviceScaleFactor 1) in the same image-review input. The source is an illustrative enlarged mobile composition; this scoped implementation retains the real panel dimensions, actual place name, introduction, feedback and photos. Comparison concerns the tag section, not unrelated illustrative content.
+- Read mode matches the chosen hierarchy: “분류 태그”, a quiet pencil/“수정” action, and assigned-only neutral gray pills without hashtag prefixes. Focused `tags-read.png` confirms readable SUIT typography, rounded gray borders, horizontal alignment and wrapping. Existing charcoal/lime tokens and icon library are retained; no new raster assets were needed. Copy identifies map-local scope in editing guidance. Existing images remain untouched.
+- Additional captures: `panel-edit.png` and `panel-desktop.png` in the same directory. Editing reveals the map’s available tags with checked selections, save/cancel and the existing ten-tag limit. Read pills remain labels, rather than appearing interactive. Focus outlines and 44px edit targets remain available. No actionable P0/P1/P2 visual differences remain within the requested tag section.
+- Real-app route: `/maps/seoul-taco-restaurant?place=aa8d342e-af3f-4831-a55b-9f5c8b72fb80`. Visual captures used representative GET-only tag responses to show assigned/edit/visitor states; no tag assignments were written to the remote DB. Existing map-place API scoping and authorization are unchanged. Browser page errors: none. Visitor state exposes no management controls.
+- Desktop/mobile browser suite: 16 passed, covering save, cancel, Escape/focus return, failed save retry, loading retry, empty assignments, ten selections, long labels at 320/390/768/1440px and reset when switching map-place. Unit suite: 194 passed. Typecheck, targeted ESLint, production build and whitespace check passed. React review confirmed unconditional hooks, abort-on-unmount requests, derived assignment state and semantic selection controls.
+- Existing uncommitted work preserved. No migration, remote data changes, commit, push or deployment in this UI task.
+
+---
+
+# Catalog/detail title consistency — 2026-11-02
+
+final result: passed
+
+- Cause: catalog cards consumed the editorial display title, while the detail route and metadata consumed the stored original title. `getMap` now resolves the editorial title for public community-map presentation, including its demo fallback. Creator-authored titles remain unchanged; no DB title or slug mutation occurs.
+- The shared detail query also supplies map-info dialogs, share metadata, SEO place pages and proposal headers, so these use the same title without separate client overrides.
+- Existing-app check: home card and detail heading both showed the current configured title, and browser title contained it. New desktop/mobile production-build regression verifies home → detail → map-info title and Open Graph title consistency. Updated former assertions that explicitly expected the inconsistent English demo title.
+- Community browser suite: 44 passed, 34 platform-specific skips. Unit suite: 194 passed. Typecheck, targeted ESLint and diff whitespace checks passed. Production build passed as part of browser verification. No database change or deployment.
+
+---
+
+# Desktop catalog place-count clipping — 2026-11-02
+
+final result: passed
+
+- Public stats API returned the correct counts. At 1024px, a 293px card contained a 410px cover because `aspect-ratio: 2.05` and `min-height: 200px` expanded its automatic width. Right-aligned place counts were clipped by the card overflow.
+- Constrained the cover to `width: 100%; min-width: 0`, retaining the existing minimum height and large-screen aspect ratio. No data changes.
+- Real existing app: all nine counts remain within card bounds at 1024, 1150, 1280 and 1440px. Screenshot `artifacts/place-count-fix/home-1024.png` was opened and visually checked. New production-build browser regression covers both `/` and `/discover` at those four widths; 1 test passed. Diff whitespace check passed.
+
+---
+
+# Catalog administrator production database activation — 2026-11-02
+
+final result: passed
+
+- User explicitly authorized production DB activation after the existing app showed the setup message. Applied only `20261102000000_catalog_admin.sql` to the project configured in `.env.local`; recorded migration history atomically with schema and seed creation. Used the existing project-matching IPv4 pooler credentials because the connector/CLI account lacked project permissions and the direct hostname required IPv6.
+- Verification: administrator snapshot returns nine settings; public settings API HTTP 200 with nine entries; anonymous command execution, non-admin snapshot and direct client updates remain denied; all new tables have RLS; image bucket is private and limited to 5MB WebP uploads. Remote security Advisor reported no issues. Existing app home HTTP 200.
+- Original theme-map JSON fingerprint unchanged; map/place/map-place counts remain 9/201/202. No test edits, uploaded photos, audit mutations, app deployment, commit or push. Browser-level authenticated screen inspection was not performed in this activation; real local development and production browser flow tests are recorded below.
+
+---
+
+# Home catalog administration — 2026-11-02
+
+final result: passed
+
+## Visual comparison
+
+- Selected revised target: `artifacts/catalog-admin/selected-reference.png` (1487 × 1058). Final desktop: `artifacts/catalog-admin/desktop-final.png` (1440 × 1059 full page; CSS viewport 1440 × 1024, deviceScaleFactor 1). Source and implementation were opened together at full resolution, with explicit review of the toolbar, three-column cards and inspector fields. The additional 35px document height is normal page scroll, not clipped content.
+- Preserved charcoal/lime identity, supplied photographs, SUIT 500/400 typography, three-column desktop preview, selected/changed markers, 400px inspector, image/focal controls, aliases and one batch-apply primary action. Local data counts (mostly zero places, Tokyo two) and editorial order intentionally replace illustrative reference counts/order. Region is editable text with an automatic-default hint rather than a forced city dropdown.
+- Fixed during comparison: preview card aspect ratio widened cards and clipped counts; shared control specificity suppressed the lime primary/selected states; desktop media queries squeezed the mobile preview into four columns. Final captures confirm visible counts, distinct selected/changed badges, lime apply/viewport controls, and the existing mobile two-column/compact-row card patterns.
+- Additional evidence: `mobile-final.png`, `mobile-preview.png`, `full-preview.png`, `desktop-tested.png`, `mobile-editor.png` in `artifacts/catalog-admin/`. 320/390/768/1024/1440px have no horizontal document overflow. The mobile editor switches panes and retains a reachable sticky apply toolbar. Whole-subject burger framing remains intact until image replacement.
+- No remaining actionable P0/P1/P2 visual findings. The original source and final full-resolution render make inspector labels and toolbar controls readable; these regions were inspected explicitly without requiring a separate enlarged crop. This is scoped keyboard/responsive verification, not full screen-reader certification.
+
+## Functional and security evidence
+
+- `npm run test:catalog:live` passed against real local Supabase Auth, PostgreSQL and private Storage in both development and production modes. Covers multi-map edits, card switching/reload restoration, unchanged public home before apply, real second-admin conflicts with whole-batch rollback, retry and home/discover publication, unchanged source map titles, upload errors, private staging, pointer/keyboard focal editing, image expiry, retained edits, responsive panes, zero reaction writes, suspended administrators, blocked session storage, and draft removal after sign-out. No browser page errors in the tested editor flow.
+- `npm run test:db` passed, including fresh migration application, catalog RLS/column grants, anon/member/suspended denial, direct-write denial, missing/stale versions, batch rollback, audit records, cross-admin staged-image denial, public image visibility, expiry and cleanup claims. All public RPCs remain SECURITY INVOKER.
+- `supabase db advisors --local --type security --level warn --fail-on error`: no issues found. Cleanup command successfully removed expired local staged files and left live references protected.
+- Unit suite: 194 passed. Targeted production-build browser regression: 31 passed, 21 existing platform-specific skips (home/catalog/search/history/reactions/save flows). Typecheck and production local build passed; home/discover retain partial prerendering. ESLint has no errors and only the two pre-existing prototype warnings. Diff whitespace check passed.
+- React review: hooks unconditional, preview mutations disabled, no nested interactive card controls, pending application/upload prevents conflicting edits, server-only credentials, cancel-safe dialog focus handling, session restoration after hydration, and public metadata read/cache isolated from private administrator reads.
+
+## Delivery
+
+- Existing uncommitted search-focus CSS preserved. No commit, push, remote database change or deployment.
+- Deployment/cleanup instructions: `docs/catalog-admin.md`. New migration: `supabase/migrations/20261102000000_catalog_admin.sql`. Apply schema/storage before application rollout; image cleanup scheduling remains an explicit operations step.
+- In-app browser/computer-use surfaces were unavailable. User-requested browser verification used the repository's Playwright infrastructure and saved local screenshots; no interactive browser tab is claimed to be open.
+
+---
+
 # Unified desktop home — 2026-10-30
 
 final result: passed

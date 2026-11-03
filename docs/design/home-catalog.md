@@ -1,3 +1,5 @@
+> 2026-11-02: `/admin/catalog` 관리자 편집기가 추가되었습니다. 마이그레이션 적용 후 카탈로그 표시 정보와 이미지는 DB 설정을 우선 사용합니다. 기존 코드 설정은 초기 데이터 및 마이그레이션 전 호환용입니다. 운영 절차와 검증은 `docs/catalog-admin.md`를 참고하세요.
+
 > 2026-10-30: Desktop home (>=1024px) now uses the approved unified catalog in `UnifiedDesktopHome`. Search, four subdued-gradient categories, region and popular/saved/creation sorting operate on one three-column image-card list. No separate recommendation/category-card sections or desktop Explore navigation. `/discover` is retained as a compatible route showing the same desktop catalog. The current mobile MapCatalog and map/place details are retained. The archived separate Home/Explore HTML concept is in `prototypes/archive/home-explore-2026-10-30/`; its README explains how to run it. The older plan below is historical where it differs from this note.
 
 ## Unified desktop behavior

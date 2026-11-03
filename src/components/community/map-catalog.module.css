@@ -557,3 +557,42 @@
     transition: none !important;
   }
 }
+
+/* Mobile preview keeps mobile layout even when the surrounding admin viewport is wide. */
+.catalog[data-editor-mode] .grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.catalog[data-editor-mode] .categories {
+  gap: 8px;
+}
+.catalog[data-editor-mode] .categories a {
+  font-size: 0.75rem;
+  gap: 4px;
+}
+.catalog[data-editor-mode] .section {
+  margin-top: 24px;
+}
+.catalog[data-editor-mode] .featured,
+.catalog[data-editor-mode] .featured .cardLink {
+  min-height: 210px;
+}
+.catalog[data-editor-mode] .featured .cardInfo {
+  padding: 62px 18px 18px;
+}
+.catalog[data-editor-mode] .featured .cardInfo h3 {
+  font-size: 1.375rem;
+}
+.catalog[data-editor-mode] .featured .cardFooter {
+  right: calc(18px + 6ch);
+  bottom: 10px;
+}
+.catalog[data-editor-mode] .desktopFilters,
+.catalog[data-editor-mode] .discoveryHeading {
+  display: none;
+}
+@container (width < 332px) {
+  .catalog[data-editor-mode] .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

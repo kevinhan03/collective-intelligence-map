@@ -2,8 +2,7 @@ import Link from "next/link";
 import { MapCatalog } from "@/components/community/map-catalog";
 import { UnifiedDesktopHome } from "@/components/community/unified-desktop-home";
 import { CatalogLoading } from "@/components/community/catalog-loading";
-import { buildCatalog } from "@/domain/map-catalog";
-import { getCatalogRegions, getMaps } from "@/server/queries";
+import { getPublicCatalog } from "@/server/catalog";
 import { configured } from "@/lib/supabase/server";
 import styles from "@/components/community/catalog-page.module.css";
 import homeStyles from "./page.module.css";
@@ -55,9 +54,7 @@ export default function Home() {
   );
 }
 async function HomeContent() {
-  const maps = await getMaps();
-  const regions = await getCatalogRegions(maps);
-  const catalog = buildCatalog(maps, regions);
+  const catalog = await getPublicCatalog();
   return (
     <main
       id="main"

@@ -1,4 +1,5 @@
 import "server-only";
+import { readCatalogSettings, resolveEditorial } from "./catalog-read";
 import { z } from "zod";
 import { cache } from "react";
 import { cacheLife, cacheTag } from "next/cache";
@@ -82,7 +83,10 @@ export const getMaps = cache(async (): Promise<ThemeMap[]> => {
     cacheLife({ stale: 300, revalidate: 300, expire: 3600 });
   }
   cacheTag("public-community");
-  if (!configured()) return [demoMap];
+  if (!configured())
+    return [
+      { ...demoMap, editorial: resolveEditorial([demoMap], [])[demoMap.slug] },
+    ];
   const client = publicDb();
   const [{ data, error }, { data: statsRows, error: statsError }, engagement] =
     await Promise.all([
@@ -112,6 +116,10 @@ export const getMaps = cache(async (): Promise<ThemeMap[]> => {
       },
     ]),
   );
+  const editorial = resolveEditorial(
+    (data ?? []) as unknown as ThemeMap[],
+    await readCatalogSettings(),
+  );
   return (data ?? [])
     .filter((row) => row.kind !== "creator")
     .map((row) => {
@@ -122,6 +130,7 @@ export const getMaps = cache(async (): Promise<ThemeMap[]> => {
       };
       return {
         ...row,
+        editorial: editorial[row.slug],
         ...counts,
         hype_count: engagementById.get(row.id)?.hype_count ?? 0,
         hype_week_count: engagementById.get(row.id)?.hype_week_count ?? 0,
@@ -135,7 +144,11 @@ export const getMap = cache(async (slug: string): Promise<ThemeMap | null> => {
   "use cache";
   cacheLife({ stale: 300, revalidate: 300, expire: 3600 });
   cacheTag("public-community");
-  if (!configured()) return demoMap.slug === slug ? demoMap : null;
+  if (!configured()) {
+    if (demoMap.slug !== slug) return null;
+    const editorial = resolveEditorial([demoMap], [])[demoMap.slug];
+    return { ...demoMap, title: editorial?.title ?? demoMap.title, editorial };
+  }
   const client = publicDb();
   const { data: row, error } = await client
     .from("theme_maps")
@@ -171,8 +184,16 @@ export const getMap = cache(async (slug: string): Promise<ThemeMap | null> => {
             .maybeSingle()
         ).data
       : null;
+  const editorial = resolveEditorial(
+    [row as unknown as ThemeMap],
+    await readCatalogSettings(),
+  )[row.slug];
   return {
     ...row,
+    // Public detail, info dialogs and share metadata use the same title as the catalog.
+    // Keep the stored title intact, and creator-authored titles remain authoritative.
+    title: row.kind === "creator" ? row.title : (editorial?.title ?? row.title),
+    editorial,
     creator_handle: creator?.handle,
     place_tags: (await getMapTagCatalog(row.id))?.tags ?? [],
     ...counts,

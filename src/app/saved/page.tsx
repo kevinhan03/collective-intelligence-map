@@ -1,5 +1,6 @@
+import { getPublicCatalog } from "@/server/catalog";
 import { redirect } from "next/navigation";
-import { getMaps, getViewer, rendererFor } from "@/server/queries";
+import { getViewer, rendererFor } from "@/server/queries";
 import { db } from "@/lib/supabase/server";
 import {
   SavedPlaces,
@@ -11,7 +12,7 @@ export default async function Saved() {
   const { data, error } = await (await db()).rpc("saved_place_cards");
   if (error) throw new Error("저장 목록을 불러올 수 없습니다.");
   const cards = (data ?? []) as SavedPlace[];
-  const maps = await getMaps();
+  const maps = await getPublicCatalog();
   const saved = await (
     await db()
   )

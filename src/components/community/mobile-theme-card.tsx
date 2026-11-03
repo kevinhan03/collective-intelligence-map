@@ -15,7 +15,7 @@ export function MobileThemeCard({
     return (
       <Link href={`/maps/${map.slug}`} className="mobile-theme-row">
         <div className="mobile-theme-row-cover" aria-hidden="true">
-          <MapCardBackdrop slug={map.slug} />
+          <MapCardBackdrop slug={map.slug} editorial={map.editorial} />
         </div>
         <div className="min-w-0">
           <h3 className="text-base font-semibold leading-6">{map.title}</h3>
@@ -35,7 +35,7 @@ export function MobileThemeCard({
       className="mobile-theme-card group block overflow-hidden rounded-xl border"
     >
       <div className="relative h-32 overflow-hidden bg-card" aria-hidden="true">
-        <MapCardBackdrop slug={map.slug} />
+        <MapCardBackdrop slug={map.slug} editorial={map.editorial} />
         <ArrowUpRight
           className="absolute right-3 top-3 rounded-full bg-black/60 p-1 text-white"
           size={28}

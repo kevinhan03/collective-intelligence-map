@@ -7,7 +7,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { post } from "./api";
 import { DropdownMenu } from "radix-ui";
 import { MoreHorizontal } from "lucide-react";
-import { SingleLineText } from "./single-line-text";
 
 export function PlaceIntroductions({
   place,
@@ -204,19 +203,11 @@ export function PlaceIntroductions({
           아직 소개가 없어요. 이 장소의 첫 소개를 남겨 주세요.
         </p>
       )}
-      {!open && !readOnly && !demo && publicPlace && (
+      {!open && !readOnly && !demo && publicPlace && !viewer && (
         <div className="introduction-helper text-muted-foreground">
-          {viewer ? (
-            <SingleLineText maxFontSize={13}>
-              {
-                "등록자가 아니어도 이 장소의 특징과 추천하는 점을 소개할 수 있어요."
-              }
-            </SingleLineText>
-          ) : (
-            <Link href={loginHref} className="text-primary underline">
-              로그인하고 소개 추가하기
-            </Link>
-          )}
+          <Link href={loginHref} className="text-primary underline">
+            로그인하고 소개 추가하기
+          </Link>
         </div>
       )}
       {!readOnly && !demo && !publicPlace && (

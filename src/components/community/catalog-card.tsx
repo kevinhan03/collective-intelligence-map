@@ -57,12 +57,16 @@ export function CatalogCard({
   featured = false,
   region = "",
   onNavigate,
+  onSelect,
+  selected,
 }: {
   map: CatalogMap;
   engagement: Engagement;
   featured?: boolean;
   region?: string;
   onNavigate?: () => void;
+  onSelect?: () => void;
+  selected?: boolean;
 }) {
   const location = catalogLocation(map, region);
   const inclusive = Boolean(region && map.regions[0] !== region);
@@ -71,17 +75,28 @@ export function CatalogCard({
     <article
       className={`${styles.card} ${featured ? styles.featured : ""}`}
       data-catalog-card
+      data-editor-selected={selected || undefined}
       data-slug={map.slug}
     >
       <Link
         href={`/maps/${map.slug}`}
         prefetch={false}
-        onClick={onNavigate}
+        onClick={(event) => {
+          if (onSelect) {
+            event.preventDefault();
+            onSelect();
+          } else onNavigate?.();
+        }}
         className={styles.cardLink}
-        aria-label={`${map.displayTitle} 지도 열기`}
+        aria-label={`${map.displayTitle} ${onSelect ? "편집" : "지도 열기"}`}
       >
         <div className={styles.photo}>
-          <MapCardBackdrop slug={map.slug} sharp eager={featured} />
+          <MapCardBackdrop
+            slug={map.slug}
+            editorial={map.editorial}
+            sharp
+            eager={featured}
+          />
         </div>
         <div className={styles.cardInfo}>
           <h3>{map.displayTitle}</h3>

@@ -3,11 +3,10 @@ import { Suspense } from "react";
 import { MapCatalog } from "@/components/community/map-catalog";
 import { UnifiedDesktopHome } from "@/components/community/unified-desktop-home";
 import { CatalogLoading } from "@/components/community/catalog-loading";
-import { buildCatalog } from "@/domain/map-catalog";
+import { getPublicCatalog } from "@/server/catalog";
 import styles from "@/components/community/catalog-page.module.css";
 import homeStyles from "../page.module.css";
 import { configured } from "@/lib/supabase/server";
-import { getCatalogRegions, getMaps } from "@/server/queries";
 
 export const metadata: Metadata = {
   title: "지역·취향별 장소 추천 지도",
@@ -17,10 +16,7 @@ export const metadata: Metadata = {
 };
 
 async function DiscoverMapResults() {
-  const maps = await getMaps();
-
-  const regions = await getCatalogRegions(maps);
-  const catalog = buildCatalog(maps, regions);
+  const catalog = await getPublicCatalog();
   return (
     <>
       <div className={homeStyles.mobile}>

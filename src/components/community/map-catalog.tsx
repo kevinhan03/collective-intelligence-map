@@ -39,24 +39,35 @@ export function MapCatalog({
   mode,
   demo = false,
   engagementSurface = "all",
+  editor,
 }: {
   maps: CatalogMap[];
   mode: "home" | "discover";
   demo?: boolean;
   engagementSurface?: "all" | "mobile";
+  editor?: {
+    filters: CatalogFilters;
+    onFiltersChange: (filters: CatalogFilters) => void;
+    selectedId: string;
+    onSelect: (id: string) => void;
+    onNavigate: (mode: "home" | "discover") => void;
+  };
 }) {
   const params = useSearchParams();
   const router = useRouter();
-  const mobile = useMobile();
+  const deviceMobile = useMobile();
+  const editorMode = Boolean(editor);
+  const mobile = editorMode || deviceMobile;
   const engagement = useMapEngagement(maps, demo, engagementSurface);
   const enriched = maps.map((map) => engagement.withCounts(map));
   const parsedFilters = parseCatalogFilters(
     new URLSearchParams(params.toString()),
     maps,
   );
+  const currentFilters = editor?.filters ?? parsedFilters;
   const filters: CatalogFilters = mobile
-    ? { ...parsedFilters, region: "", theme: "", sort: "default" }
-    : parsedFilters;
+    ? { ...currentFilters, region: "", theme: "", sort: "default" }
+    : currentFilters;
   const resultKey = mode === "home" ? "/" : catalogHref(filters);
   const [limits, setLimits] = useState<Record<string, number>>({});
   const limit = limits[resultKey] ?? 24;
@@ -86,6 +97,7 @@ export function MapCatalog({
     .sort((a, b) => a.localeCompare(b, "ko"));
 
   useEffect(() => {
+    if (editorMode) return;
     let active = true;
     let frame = 0;
     let scrollFrame = 0;
@@ -143,8 +155,9 @@ export function MapCatalog({
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("pagehide", save);
     };
-  }, [resultKey, maps.length]);
+  }, [resultKey, maps.length, editorMode]);
   function remember() {
+    if (editor) return;
     try {
       sessionStorage.setItem(
         storageKey(resultKey),
@@ -155,6 +168,11 @@ export function MapCatalog({
     }
   }
   function update(patch: Partial<CatalogFilters>) {
+    if (editor) {
+      editor.onFiltersChange({ ...filters, ...patch });
+      editor.onNavigate("discover");
+      return;
+    }
     remember();
     skipRestore.current = true;
     router.push(catalogHref({ ...filters, ...patch }), { scroll: true });
@@ -219,12 +237,25 @@ export function MapCatalog({
         ? catalogSorts.find((s) => s.id === filters.sort)?.label
         : filters[key];
   return (
-    <div className={styles.catalog} data-map-catalog={mode}>
+    <div
+      className={styles.catalog}
+      data-map-catalog={mode}
+      data-editor-mode={editorMode || undefined}
+    >
       {mode === "home" ? (
         <h1 className={styles.srOnly}>취향으로 찾는 테마 지도</h1>
       ) : (
         <div className={styles.discoveryHeading}>
-          <Link href="/" onClick={remember}>
+          <Link
+            href="/"
+            onClick={(event) => {
+              if (editor) {
+                event.preventDefault();
+                editor.onNavigate("home");
+                editor.onFiltersChange({ ...filters, q: "", category: "" });
+              } else remember();
+            }}
+          >
             홈
           </Link>
           <h1>
@@ -279,7 +310,12 @@ export function MapCatalog({
                   ? "page"
                   : undefined
               }
-              onClick={() => {
+              onClick={(event) => {
+                if (editor) {
+                  event.preventDefault();
+                  update({ category: category.id });
+                  return;
+                }
                 remember();
                 skipRestore.current = true;
               }}
@@ -300,7 +336,7 @@ export function MapCatalog({
           )}
         </p>
       )}
-      {demo && (
+      {demo && !editor && (
         <p className={styles.demo}>미리보기 · 장소와 추천은 가상 예시입니다.</p>
       )}
       {mode === "home" ? (
@@ -312,6 +348,12 @@ export function MapCatalog({
                 map={selection.featured}
                 engagement={engagement}
                 featured
+                onSelect={
+                  editor
+                    ? () => editor.onSelect(selection.featured!.id)
+                    : undefined
+                }
+                selected={editor?.selectedId === selection.featured.id}
                 onNavigate={remember}
               />
             </section>
@@ -319,7 +361,15 @@ export function MapCatalog({
           <section className={styles.section} aria-label="더 많은 테마">
             <div className={styles.sectionHeader}>
               <h2>더 많은 테마</h2>
-              <Link href="/discover" onClick={remember}>
+              <Link
+                href="/discover"
+                onClick={(event) => {
+                  if (editor) {
+                    event.preventDefault();
+                    editor.onNavigate("discover");
+                  } else remember();
+                }}
+              >
                 전체 보기 <ArrowRight size={16} aria-hidden="true" />
               </Link>
             </div>
@@ -329,6 +379,10 @@ export function MapCatalog({
                   <CatalogCard
                     map={map}
                     engagement={engagement}
+                    onSelect={
+                      editor ? () => editor.onSelect(map.id) : undefined
+                    }
+                    selected={editor?.selectedId === map.id}
                     onNavigate={remember}
                   />
                 </li>
@@ -340,7 +394,12 @@ export function MapCatalog({
             <Link
               href="/discover"
               className={styles.allMaps}
-              onClick={remember}
+              onClick={(event) => {
+                if (editor) {
+                  event.preventDefault();
+                  editor.onNavigate("discover");
+                } else remember();
+              }}
             >
               전체 지도 {maps.length}개 보기{" "}
               <ArrowRight size={17} aria-hidden="true" />
@@ -405,6 +464,10 @@ export function MapCatalog({
                       map={map}
                       engagement={engagement}
                       region={filters.region}
+                      onSelect={
+                        editor ? () => editor.onSelect(map.id) : undefined
+                      }
+                      selected={editor?.selectedId === map.id}
                       onNavigate={remember}
                     />
                   </li>

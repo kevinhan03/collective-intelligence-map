@@ -33,17 +33,27 @@ const sorts = [
 export function UnifiedDesktopHome({
   maps,
   demo = false,
+  editor,
 }: {
   maps: CatalogMap[];
   demo?: boolean;
+  editor?: {
+    selectedId: string;
+    changedIds: string[];
+    filters: CatalogFilters;
+    onFiltersChange: (filters: CatalogFilters) => void;
+    onSelect: (id: string) => void;
+  };
 }) {
+  const editorMode = Boolean(editor);
   const params = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
-  const filters = parseUnifiedCatalogFilters(
+  const parsedFilters = parseUnifiedCatalogFilters(
     new URLSearchParams(params.toString()),
     maps,
   );
+  const filters = editor?.filters ?? parsedFilters;
   const href = unifiedCatalogHref(filters, pathname);
   const storageKey = `ting:unified-catalog:${href}`;
   const engagement = useMapEngagement(maps, demo, "desktop");
@@ -62,6 +72,7 @@ export function UnifiedDesktopHome({
     limitRef.current = limit;
   }, [limit]);
   useEffect(() => {
+    if (editorMode) return;
     let active = true;
     let frame = 0;
     let scrollFrame = 0;
@@ -119,7 +130,7 @@ export function UnifiedDesktopHome({
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("pagehide", save);
     };
-  }, [href, storageKey, maps.length]);
+  }, [href, storageKey, maps.length, editorMode]);
 
   function remember() {
     try {
@@ -132,6 +143,10 @@ export function UnifiedDesktopHome({
     }
   }
   function update(patch: Partial<CatalogFilters>) {
+    if (editor) {
+      editor.onFiltersChange({ ...filters, ...patch });
+      return;
+    }
     remember();
     skipRestore.current = true;
     router.push(unifiedCatalogHref({ ...filters, ...patch }, pathname), {
@@ -150,6 +165,7 @@ export function UnifiedDesktopHome({
     <div
       className={styles.catalog}
       data-unified-desktop-home
+      data-editor-mode={editorMode || undefined}
       data-map-catalog="unified"
     >
       <section className={styles.intro} aria-label="취향으로 지도 찾기">
@@ -214,7 +230,12 @@ export function UnifiedDesktopHome({
               prefetch={false}
               data-category={c.id || "all"}
               aria-current={filters.category === c.id ? "page" : undefined}
-              onClick={() => {
+              onClick={(event) => {
+                if (editor) {
+                  event.preventDefault();
+                  update({ category: c.id });
+                  return;
+                }
                 remember();
                 skipRestore.current = true;
               }}
@@ -291,7 +312,7 @@ export function UnifiedDesktopHome({
             )}
           </div>
         )}
-        {demo && (
+        {demo && !editor && (
           <p className={styles.note}>
             미리보기 · 장소와 추천은 가상 예시입니다.
           </p>
@@ -322,16 +343,31 @@ export function UnifiedDesktopHome({
                 key={map.id}
                 className={styles.card}
                 data-catalog-card
+                data-editor-selected={
+                  editor?.selectedId === map.id || undefined
+                }
+                data-editor-changed={
+                  editor?.changedIds.includes(map.id) || undefined
+                }
                 data-slug={map.slug}
               >
                 <Link
                   href={`/maps/${map.slug}`}
                   prefetch={false}
-                  onClick={remember}
+                  onClick={(event) => {
+                    if (editor) {
+                      event.preventDefault();
+                      editor.onSelect(map.id);
+                    } else remember();
+                  }}
                   className={styles.cover}
-                  aria-label={`${map.displayTitle} 지도 열기`}
+                  aria-label={`${map.displayTitle} ${editor ? "편집" : "지도 열기"}`}
                 >
-                  <MapCardBackdrop slug={map.slug} sharp />
+                  <MapCardBackdrop
+                    slug={map.slug}
+                    editorial={map.editorial}
+                    sharp
+                  />
                   <span className={styles.shade} aria-hidden="true" />
                   <div className={styles.heading}>
                     <h3>{map.displayTitle}</h3>
@@ -347,6 +383,13 @@ export function UnifiedDesktopHome({
                     <small>곳</small>
                   </span>
                 </Link>
+                {editor &&
+                  (editor.selectedId === map.id ||
+                    editor.changedIds.includes(map.id)) && (
+                    <span className={styles.editorBadge}>
+                      {editor.selectedId === map.id ? "편집 중" : "미적용"}
+                    </span>
+                  )}
                 <div className={styles.actions}>
                   <button
                     type="button"

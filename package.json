@@ -28,7 +28,9 @@
     "test:photos:performance": "playwright test tests/e2e/workflows.spec.ts --project=desktop --grep \"photo loading benchmark\" --repeat-each=3 --workers=1",
     "photos:cleanup": "node scripts/cleanup-place-photos.mjs",
     "stations:collect": "node scripts/stations/import.mjs",
-    "map-labels:generate": "node scripts/map-labels/generate.mjs"
+    "map-labels:generate": "node scripts/map-labels/generate.mjs",
+    "catalog:cleanup": "node scripts/cleanup-catalog-images.mjs",
+    "test:catalog:live": "node scripts/test-catalog-live.mjs"
   },
   "dependencies": {
     "@sun-typeface/suit": "2.0.5",

@@ -9,6 +9,29 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      catalog_settings: {
+        Row: {
+          map_id: string;
+          value: Json;
+          version: number;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: {
+          map_id: string;
+          value: Json;
+          version?: number;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: {
+          value?: Json;
+          version?: number;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Relationships: [];
+      };
       creator_profiles: {
         Row: {
           user_id: string;
@@ -805,6 +828,9 @@ export type Database = {
       };
     };
     Functions: {
+      admin_catalog_command: { Args: { payload: Json }; Returns: Json };
+      catalog_image_access: { Args: { image_id: string }; Returns: Json };
+      catalog_image_cleanup: { Args: { payload: Json }; Returns: Json };
       creator_add_resolved: {
         Args: {
           payload: Json;

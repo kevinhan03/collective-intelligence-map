@@ -7,6 +7,7 @@ import {
 import { formatLocation, regionName } from "./location";
 
 export type CatalogMap = ThemeMap & {
+  editorial?: import("./catalog-admin").CatalogValue;
   displayTitle: string;
   catalogCategory: CatalogCategory | null;
   categoryLabel: string;
@@ -58,12 +59,16 @@ const regionAliases: Record<string, string[]> = {
 export function buildCatalog(
   maps: ThemeMap[],
   summary: RegionSummary = {},
+  editorial: Record<
+    string,
+    import("./catalog-admin").CatalogValue
+  > = catalogEditorial,
 ): CatalogMap[] {
   return maps
     .filter((map) => map.kind !== "creator")
     .map((map) => {
-      const entry = catalogEditorial[map.slug];
-      const city = entry?.region ?? regionName(map);
+      const entry = editorial[map.slug];
+      const city = entry?.region || regionName(map);
       const label =
         map.country === "KR" && city === "한국"
           ? "전국"
@@ -89,6 +94,7 @@ export function buildCatalog(
         catalogCategories.find((c) => c.id === entry?.category)?.label ?? "";
       return {
         ...map,
+        editorial: entry,
         displayTitle: entry?.title ?? map.title,
         catalogCategory: entry?.category ?? null,
         categoryLabel,

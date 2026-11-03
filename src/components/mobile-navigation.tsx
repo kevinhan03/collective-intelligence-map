@@ -60,6 +60,7 @@ export function MobileNavigation() {
         pathname === "/my-proposals",
     },
   ];
+  if (pathname === "/admin/catalog") return null;
   return (
     <Dialog>
       <DialogTrigger

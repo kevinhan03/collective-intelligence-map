@@ -9,6 +9,7 @@ export const NEIGHBORHOOD_LABEL_ID = "ting-neighborhood-labels";
 export const NEIGHBORHOOD_SOURCE_ID = "ting-neighborhoods";
 export const CITY_LABEL_ID = "ting-city-labels";
 export const CITY_SOURCE_ID = "ting-cities";
+export const PROVINCE_LABEL_ID = "ting-province-labels";
 export const NEIGHBORHOOD_MIN_ZOOM = 12;
 export const NEIGHBORHOOD_DATA_URL =
   "/map-data/korea-dong-labels.20260701.geojson";
@@ -16,21 +17,41 @@ export const NEIGHBORHOOD_DATA_URL =
 type DongLabels = FeatureCollection<Point, { name: string; code: string }>;
 // A small independent source keeps these orientation labels available even
 // when the basemap omits lower-ranked cities from its low-zoom vector tiles.
-const cityLabels: FeatureCollection<Point, { name: string }> = {
+const orientationLabels: FeatureCollection<
+  Point,
+  { name: string; kind: "city" | "province" }
+> = {
   type: "FeatureCollection",
   features: [
-    { name: "서울", coordinates: [126.978, 37.5665] },
-    { name: "부산", coordinates: [129.0756, 35.1796] },
-    { name: "인천", coordinates: [126.7052, 37.4563] },
-    { name: "대구", coordinates: [128.6014, 35.8714] },
-    { name: "대전", coordinates: [127.3845, 36.3504] },
-    { name: "광주", coordinates: [126.8526, 35.1595] },
-    { name: "울산", coordinates: [129.3114, 35.5395] },
-  ].map(({ name, coordinates }) => ({
-    type: "Feature",
-    properties: { name },
-    geometry: { type: "Point", coordinates },
-  })),
+    ...[
+      { name: "서울", coordinates: [126.978, 37.5665] },
+      { name: "부산", coordinates: [129.0756, 35.1796] },
+      { name: "인천", coordinates: [126.7052, 37.4563] },
+      { name: "대구", coordinates: [128.6014, 35.8714] },
+      { name: "대전", coordinates: [127.3845, 36.3504] },
+      { name: "광주", coordinates: [126.8526, 35.1595] },
+      { name: "울산", coordinates: [129.3114, 35.5395] },
+    ].map(({ name, coordinates }) => ({
+      type: "Feature" as const,
+      properties: { name, kind: "city" as const },
+      geometry: { type: "Point" as const, coordinates },
+    })),
+    ...[
+      { name: "경기도", coordinates: [127.35, 37.4] },
+      { name: "강원특별자치도", coordinates: [128.2, 37.8] },
+      { name: "충청북도", coordinates: [127.8, 36.85] },
+      { name: "충청남도", coordinates: [126.8, 36.6] },
+      { name: "전북특별자치도", coordinates: [127.1, 35.75] },
+      { name: "전라남도", coordinates: [126.9, 34.8] },
+      { name: "경상북도", coordinates: [128.85, 36.3] },
+      { name: "경상남도", coordinates: [128.2, 35.35] },
+      { name: "제주특별자치도", coordinates: [126.53, 33.38] },
+    ].map(({ name, coordinates }) => ({
+      type: "Feature" as const,
+      properties: { name, kind: "province" as const },
+      geometry: { type: "Point" as const, coordinates },
+    })),
+  ],
 };
 let dataPromise: Promise<DongLabels> | undefined;
 
@@ -75,7 +96,9 @@ export function configureBasemapLabels(map: LabelMap) {
   for (const layer of layers) {
     if (
       layer.type === "symbol" &&
-      ![NEIGHBORHOOD_LABEL_ID, CITY_LABEL_ID].includes(layer.id)
+      ![NEIGHBORHOOD_LABEL_ID, CITY_LABEL_ID, PROVINCE_LABEL_ID].includes(
+        layer.id,
+      )
     ) {
       map.setLayoutProperty(layer.id, "visibility", "none");
     }
@@ -84,7 +107,7 @@ export function configureBasemapLabels(map: LabelMap) {
   if (!map.getStyle().glyphs) return () => {};
 
   if (!map.getSource(CITY_SOURCE_ID)) {
-    map.addSource(CITY_SOURCE_ID, { type: "geojson", data: cityLabels });
+    map.addSource(CITY_SOURCE_ID, { type: "geojson", data: orientationLabels });
   }
   if (!map.getLayer(CITY_LABEL_ID)) {
     map.addLayer({
@@ -93,6 +116,7 @@ export function configureBasemapLabels(map: LabelMap) {
       source: CITY_SOURCE_ID,
       minzoom: 4,
       maxzoom: NEIGHBORHOOD_MIN_ZOOM,
+      filter: ["==", ["get", "kind"], "city"],
       layout: {
         "text-field": ["get", "name"],
         "text-font": placeLayer?.layout?.["text-font"] ?? ["Noto Sans Regular"],
@@ -116,6 +140,34 @@ export function configureBasemapLabels(map: LabelMap) {
       },
       paint: {
         "text-color": "#4e5955",
+        "text-halo-color": "#ffffff",
+        "text-halo-width": 1.5,
+      },
+    });
+  }
+
+  if (!map.getLayer(PROVINCE_LABEL_ID)) {
+    map.addLayer({
+      id: PROVINCE_LABEL_ID,
+      type: "symbol",
+      source: CITY_SOURCE_ID,
+      minzoom: 4,
+      maxzoom: 9,
+      filter: ["==", ["get", "kind"], "province"],
+      layout: {
+        "text-field": ["get", "name"],
+        "text-font": placeLayer?.layout?.["text-font"] ?? ["Noto Sans Regular"],
+        "text-size": ["interpolate", ["linear"], ["zoom"], 4, 11, 8, 13],
+        "text-max-width": 6,
+        "text-letter-spacing": 0.04,
+        "text-variable-anchor": ["center", "top", "bottom", "left", "right"],
+        "text-radial-offset": 0.5,
+        "text-padding": 5,
+        "text-allow-overlap": false,
+        "text-ignore-placement": false,
+      },
+      paint: {
+        "text-color": "#7b847e",
         "text-halo-color": "#ffffff",
         "text-halo-width": 1.5,
       },

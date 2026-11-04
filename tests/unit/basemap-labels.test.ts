@@ -96,7 +96,7 @@ it("lazily loads an independent, collision-aware source at zoom 12 and caches it
   map.getZoom.mockReturnValue(12);
   move();
   move();
-  await vi.waitFor(() => expect(map.addLayer).toHaveBeenCalledTimes(2));
+  await vi.waitFor(() => expect(map.addLayer).toHaveBeenCalledTimes(3));
   const layer = map.addLayer.mock.calls.find(
     ([layer]) => layer.source === NEIGHBORHOOD_SOURCE_ID,
   )![0];
@@ -118,9 +118,9 @@ it("lazily loads an independent, collision-aware source at zoom 12 and caches it
   configureBasemapLabels(map);
   const second = setup();
   configureBasemapLabels(second.map);
-  await vi.waitFor(() => expect(second.map.addLayer).toHaveBeenCalledTimes(2));
+  await vi.waitFor(() => expect(second.map.addLayer).toHaveBeenCalledTimes(3));
   expect(fetcher).toHaveBeenCalledTimes(1);
-  expect(map.addLayer).toHaveBeenCalledTimes(2);
+  expect(map.addLayer).toHaveBeenCalledTimes(3);
 });
 
 it("does not download when viewing overseas", async () => {
@@ -144,7 +144,7 @@ it("isolates download failures and avoids repeated retries on pan", async () => 
   move();
   expect(fetcher).toHaveBeenCalledTimes(1);
   expect(map.addSource).toHaveBeenCalledTimes(1);
-  expect(map.addLayer).toHaveBeenCalledTimes(1);
+  expect(map.addLayer).toHaveBeenCalledTimes(2);
 });
 
 it("does not mutate a removed map when its download finishes", async () => {
@@ -167,20 +167,24 @@ it("does not mutate a removed map when its download finishes", async () => {
   await flush();
   expect(map.off).toHaveBeenCalledWith("moveend", expect.any(Function));
   expect(map.addSource).toHaveBeenCalledTimes(1);
-  expect(map.addLayer).toHaveBeenCalledTimes(1);
+  expect(map.addLayer).toHaveBeenCalledTimes(2);
 });
 
-it("shows the seven major Korean cities on entry without a network request or duplicate layers", async () => {
+it("shows cities and all nine provinces on entry without requests or duplicate layers", async () => {
   const fetcher = vi.fn();
   vi.stubGlobal("fetch", fetcher);
-  const { configureBasemapLabels, CITY_SOURCE_ID, CITY_LABEL_ID } =
-    await import("@/components/map/basemap-labels");
+  const {
+    configureBasemapLabels,
+    CITY_SOURCE_ID,
+    CITY_LABEL_ID,
+    PROVINCE_LABEL_ID,
+  } = await import("@/components/map/basemap-labels");
   const { map, style } = setup(5);
   configureBasemapLabels(map);
   configureBasemapLabels(map);
   expect(fetcher).not.toHaveBeenCalled();
   expect(map.addSource).toHaveBeenCalledTimes(1);
-  expect(map.addLayer).toHaveBeenCalledTimes(1);
+  expect(map.addLayer).toHaveBeenCalledTimes(2);
   const layer = map.addLayer.mock.calls[0][0];
   expect(layer).toMatchObject({
     id: CITY_LABEL_ID,
@@ -197,9 +201,43 @@ it("shows the seven major Korean cities on entry without a network request or du
   if (source.data.type !== "FeatureCollection")
     throw new Error("Expected city features");
   expect(
-    source.data.features.map((feature) => feature.properties?.name),
+    source.data.features
+      .filter((feature) => feature.properties?.kind === "city")
+      .map((feature) => feature.properties?.name),
   ).toEqual(["서울", "부산", "인천", "대구", "대전", "광주", "울산"]);
-  expect(validateStyleMin({ ...style, layers: [layer] })).toEqual([]);
+  const provinceLayer = map.addLayer.mock.calls.find(
+    ([layer]) => layer.id === PROVINCE_LABEL_ID,
+  )![0];
+  expect(provinceLayer).toMatchObject({
+    minzoom: 4,
+    maxzoom: 9,
+    filter: ["==", ["get", "kind"], "province"],
+    layout: { "text-allow-overlap": false, "text-ignore-placement": false },
+  });
+  expect(layer.filter).toEqual(["==", ["get", "kind"], "city"]);
+  expect(
+    source.data.features
+      .filter((feature) => feature.properties?.kind === "province")
+      .map((feature) => feature.properties?.name),
+  ).toEqual([
+    "경기도",
+    "강원특별자치도",
+    "충청북도",
+    "충청남도",
+    "전북특별자치도",
+    "전라남도",
+    "경상북도",
+    "경상남도",
+    "제주특별자치도",
+  ]);
+  expect(
+    validateStyleMin({ ...style, layers: [layer, provinceLayer] }),
+  ).toEqual([]);
+  expect(map.setLayoutProperty).not.toHaveBeenCalledWith(
+    PROVINCE_LABEL_ID,
+    "visibility",
+    "none",
+  );
   expect(map.setLayoutProperty).not.toHaveBeenCalledWith(
     CITY_LABEL_ID,
     "visibility",

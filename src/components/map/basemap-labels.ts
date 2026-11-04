@@ -7,11 +7,31 @@ import type {
 
 export const NEIGHBORHOOD_LABEL_ID = "ting-neighborhood-labels";
 export const NEIGHBORHOOD_SOURCE_ID = "ting-neighborhoods";
+export const CITY_LABEL_ID = "ting-city-labels";
+export const CITY_SOURCE_ID = "ting-cities";
 export const NEIGHBORHOOD_MIN_ZOOM = 12;
 export const NEIGHBORHOOD_DATA_URL =
   "/map-data/korea-dong-labels.20260701.geojson";
 
 type DongLabels = FeatureCollection<Point, { name: string; code: string }>;
+// A small independent source keeps these orientation labels available even
+// when the basemap omits lower-ranked cities from its low-zoom vector tiles.
+const cityLabels: FeatureCollection<Point, { name: string }> = {
+  type: "FeatureCollection",
+  features: [
+    { name: "서울", coordinates: [126.978, 37.5665] },
+    { name: "부산", coordinates: [129.0756, 35.1796] },
+    { name: "인천", coordinates: [126.7052, 37.4563] },
+    { name: "대구", coordinates: [128.6014, 35.8714] },
+    { name: "대전", coordinates: [127.3845, 36.3504] },
+    { name: "광주", coordinates: [126.8526, 35.1595] },
+    { name: "울산", coordinates: [129.3114, 35.5395] },
+  ].map(({ name, coordinates }) => ({
+    type: "Feature",
+    properties: { name },
+    geometry: { type: "Point", coordinates },
+  })),
+};
 let dataPromise: Promise<DongLabels> | undefined;
 
 function loadLabels() {
@@ -53,9 +73,53 @@ export function configureBasemapLabels(map: LabelMap) {
       ["place", "place_label"].includes(layer["source-layer"] ?? ""),
   );
   for (const layer of layers) {
-    if (layer.type === "symbol" && layer.id !== NEIGHBORHOOD_LABEL_ID) {
+    if (
+      layer.type === "symbol" &&
+      ![NEIGHBORHOOD_LABEL_ID, CITY_LABEL_ID].includes(layer.id)
+    ) {
       map.setLayoutProperty(layer.id, "visibility", "none");
     }
+  }
+  // A background-only/custom style may have no glyph endpoint at all.
+  if (!map.getStyle().glyphs) return () => {};
+
+  if (!map.getSource(CITY_SOURCE_ID)) {
+    map.addSource(CITY_SOURCE_ID, { type: "geojson", data: cityLabels });
+  }
+  if (!map.getLayer(CITY_LABEL_ID)) {
+    map.addLayer({
+      id: CITY_LABEL_ID,
+      type: "symbol",
+      source: CITY_SOURCE_ID,
+      minzoom: 4,
+      maxzoom: NEIGHBORHOOD_MIN_ZOOM,
+      layout: {
+        "text-field": ["get", "name"],
+        "text-font": placeLayer?.layout?.["text-font"] ?? ["Noto Sans Regular"],
+        "text-size": [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          4,
+          12,
+          8,
+          14,
+          11,
+          16,
+        ],
+        "text-variable-anchor": ["bottom", "top", "left", "right"],
+        // The capital's dense place pins extend beyond its center point.
+        "text-radial-offset": ["match", ["get", "name"], "서울", 2.4, 1.2],
+        "text-padding": 4,
+        "text-allow-overlap": false,
+        "text-ignore-placement": false,
+      },
+      paint: {
+        "text-color": "#4e5955",
+        "text-halo-color": "#ffffff",
+        "text-halo-width": 1.5,
+      },
+    });
   }
 
   let disposed = false;

@@ -12,6 +12,7 @@ import { appendRecommendation } from "../pin-content";
 import {
   configureBasemapLabels,
   NEIGHBORHOOD_SOURCE_ID,
+  CITY_SOURCE_ID,
 } from "../basemap-labels";
 
 function boundsMatch(a: MapProps["bounds"], b: MapProps["bounds"]) {
@@ -125,7 +126,11 @@ export default function MapLibreMap(props: MapProps) {
       setLoadedStyle(apiKey);
     });
     map.on("error", (event) => {
-      if (!("sourceId" in event) || event.sourceId !== NEIGHBORHOOD_SOURCE_ID) {
+      if (
+        !("sourceId" in event) ||
+        (event.sourceId !== NEIGHBORHOOD_SOURCE_ID &&
+          event.sourceId !== CITY_SOURCE_ID)
+      ) {
         setError(true);
       }
     });

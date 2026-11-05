@@ -1,37 +1,70 @@
+import { PHOTO_PREVIEW_BATCH_LIMIT } from "@/domain/place-photo";
+
 /** Scoped to one mounted mobile list; never caches public visibility across visits. */
 export function createThumbnailQueue() {
   type Job = {
     id: string;
-    controller: AbortController;
     listeners: Set<(id: string | null) => void>;
+    batch?: Batch;
   };
+  type Batch = { jobs: Job[]; controller: AbortController };
   const jobs = new Map<string, Job>();
-  const waiting: Job[] = [];
-  let running = 0;
+  const waiting = new Set<Job>();
+  const active = new Set<Batch>();
+  let timer: ReturnType<typeof setTimeout> | undefined;
   let disposed = false;
+
+  function schedule() {
+    if (disposed || timer !== undefined || !waiting.size || active.size >= 2)
+      return;
+    timer = setTimeout(() => {
+      timer = undefined;
+      pump();
+    }, 16);
+  }
   function pump() {
-    while (!disposed && running < 3 && waiting.length) {
-      const job = waiting.shift()!;
-      if (!job.listeners.size || job.controller.signal.aborted) continue;
-      running++;
-      void fetch(`/api/places/${encodeURIComponent(job.id)}/photos`, {
-        signal: job.controller.signal,
+    while (!disposed && active.size < 2 && waiting.size) {
+      const selected = [...waiting].slice(0, PHOTO_PREVIEW_BATCH_LIMIT);
+      const batch: Batch = {
+        jobs: selected,
+        controller: new AbortController(),
+      };
+      for (const job of selected) {
+        waiting.delete(job);
+        job.batch = batch;
+      }
+      active.add(batch);
+      void fetch("/api/places/photos/previews", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ placeIds: selected.map((job) => job.id) }),
+        signal: batch.controller.signal,
       })
         .then(async (response) => {
           if (!response.ok) throw new Error("Photo unavailable");
           const data = await response.json();
-          const id = data.photos?.[0]?.id;
-          return typeof id === "string" ? id : null;
+          return data.previews as Record<string, unknown>;
         })
         .catch(() => null)
-        .then((id) => {
-          if (!job.controller.signal.aborted)
-            job.listeners.forEach((listener) => listener(id));
+        .then((previews) => {
+          if (disposed || batch.controller.signal.aborted) return;
+          for (const job of selected) {
+            const value = previews?.[job.id];
+            const id = typeof value === "string" ? value : null;
+            // Remove before callbacks so reentrant loads get a new job.
+            if (jobs.get(job.id) === job) jobs.delete(job.id);
+            for (const listener of [...job.listeners]) {
+              if (disposed || batch.controller.signal.aborted) return;
+              if (job.listeners.has(listener)) listener(id);
+            }
+            job.listeners.clear();
+          }
         })
         .finally(() => {
-          running--;
-          if (jobs.get(job.id) === job) jobs.delete(job.id);
-          pump();
+          active.delete(batch);
+          for (const job of selected)
+            if (jobs.get(job.id) === job) jobs.delete(job.id);
+          schedule();
         });
     }
   }
@@ -40,29 +73,29 @@ export function createThumbnailQueue() {
       if (disposed) return () => {};
       let job = jobs.get(id);
       if (!job) {
-        job = {
-          id,
-          controller: new AbortController(),
-          listeners: new Set(),
-        };
+        job = { id, listeners: new Set() };
         jobs.set(id, job);
-        waiting.push(job);
+        waiting.add(job);
       }
       job.listeners.add(listener);
-      pump();
+      schedule();
       return () => {
         job.listeners.delete(listener);
-        if (!job.listeners.size) {
-          job.controller.abort();
-          if (jobs.get(id) === job) jobs.delete(id);
-        }
+        if (job.listeners.size) return;
+        waiting.delete(job);
+        if (jobs.get(id) === job) jobs.delete(id);
+        const batch = job.batch;
+        if (batch && batch.jobs.every((item) => !item.listeners.size))
+          batch.controller.abort();
       };
     },
     dispose() {
       disposed = true;
-      jobs.forEach((job) => job.controller.abort());
+      clearTimeout(timer);
+      for (const batch of active) batch.controller.abort();
+      for (const job of jobs.values()) job.listeners.clear();
       jobs.clear();
-      waiting.length = 0;
+      waiting.clear();
     },
   };
 }

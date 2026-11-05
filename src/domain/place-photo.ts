@@ -29,3 +29,9 @@ export type PhotoPage = {
 export function photoImageUrl(id: string, thumbnail = false) {
   return `/api/photos/${id}/image${thumbnail ? "?size=thumbnail" : ""}`;
 }
+
+export const PHOTO_PREVIEW_BATCH_LIMIT = 50;
+export const photoPreviewInputSchema = z.object({
+  placeIds: z.array(z.uuid()).min(1).max(PHOTO_PREVIEW_BATCH_LIMIT),
+});
+export type PhotoPreviews = Record<string, string | null>;

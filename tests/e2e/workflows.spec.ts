@@ -1496,12 +1496,18 @@ for (const width of [320, 390, 768]) {
     test.skip(!isMobile);
     await page.clock.setFixedTime(new Date("2026-10-13T00:00:00Z"));
     await page.setViewportSize({ width, height: 844 });
-    await page.route("**/api/places/*/photos", (route) =>
+    await page.route("**/api/places/photos/previews", (route) =>
       route.fulfill({
         json: {
-          photos: route.request().url().includes("000000000001/")
-            ? [{ id: "list-photo" }]
-            : [],
+          previews: Object.fromEntries(
+            route
+              .request()
+              .postDataJSON()
+              .placeIds.map((id: string) => [
+                id,
+                id.endsWith("000000000001") ? "list-photo" : null,
+              ]),
+          ),
         },
       }),
     );
@@ -1561,19 +1567,24 @@ for (const width of [320, 390, 768]) {
   });
 }
 
-test("mobile list limits pending photos, survives failures and cancels on exit", async ({
+test("mobile list batches pending photos, survives failures and cancels on exit", async ({
   page,
   isMobile,
 }) => {
   test.skip(!isMobile);
   const pending: import("@playwright/test").Route[] = [];
-  await page.route("**/api/places/*/photos", (route) => {
+  await page.route("**/api/places/photos/previews", (route) => {
     pending.push(route);
   });
   await open(page, "mobile-list");
-  await expect.poll(() => pending.length).toBe(3);
+  await expect.poll(() => pending.length).toBeGreaterThan(0);
+  expect(pending.length).toBeLessThanOrEqual(2);
+  expect(pending[0].request().postDataJSON().placeIds.length).toBeGreaterThan(
+    1,
+  );
   await pending[0].fulfill({ status: 500, json: { error: "failed" } });
-  await expect.poll(() => pending.length).toBe(4);
+  await page.locator(".mobile-list-place").last().scrollIntoViewIfNeeded();
+  await expect.poll(() => pending.length).toBeGreaterThan(1);
   await expect(
     page.locator(".mobile-list-place").first().locator("img"),
   ).toHaveCount(0);
@@ -1587,8 +1598,17 @@ test("mobile list drops unavailable images without leaving a placeholder", async
 }) => {
   test.skip(!isMobile);
   let imageRequests = 0;
-  await page.route("**/api/places/*/photos", (route) =>
-    route.fulfill({ json: { photos: [{ id: "hidden-photo" }] } }),
+  await page.route("**/api/places/photos/previews", (route) =>
+    route.fulfill({
+      json: {
+        previews: Object.fromEntries(
+          route
+            .request()
+            .postDataJSON()
+            .placeIds.map((id: string) => [id, "hidden-photo"]),
+        ),
+      },
+    }),
   );
   await page.route("**/api/photos/*/image?*", (route) => {
     imageRequests++;

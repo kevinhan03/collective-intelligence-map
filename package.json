@@ -30,7 +30,9 @@
     "stations:collect": "node scripts/stations/import.mjs",
     "map-labels:generate": "node scripts/map-labels/generate.mjs",
     "catalog:cleanup": "node scripts/cleanup-catalog-images.mjs",
-    "test:catalog:live": "node scripts/test-catalog-live.mjs"
+    "test:catalog:live": "node scripts/test-catalog-live.mjs",
+    "test:places:performance": "node scripts/test-place-loading-db.mjs",
+    "test:photos:batch-performance": "node scripts/benchmark-thumbnail-browser.mjs"
   },
   "dependencies": {
     "@sun-typeface/suit": "2.0.5",

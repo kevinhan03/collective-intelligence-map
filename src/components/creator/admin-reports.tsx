@@ -1,10 +1,11 @@
 "use client";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { useRouter } from "@/i18n/navigation";
+import Link from "@/i18n/link";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { post } from "@/components/community/api";
+import { useI18n } from "@/i18n/client";
 export type CreatorAdminSnapshot = {
   reports: {
     id: string;
@@ -27,6 +28,7 @@ export function CreatorAdminReports({
 }: {
   snapshot: CreatorAdminSnapshot;
 }) {
+  const { t } = useI18n();
   const router = useRouter();
   const [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
@@ -34,7 +36,7 @@ export function CreatorAdminReports({
   return (
     <details className="mt-8 rounded-xl border p-5">
       <summary className="cursor-pointer font-semibold">
-        크리에이터 지도 신고 {snapshot.reports.length}
+        {t("admin.creatorMapReports", { count: snapshot.reports.length })}
       </summary>
       {snapshot.reports.map((r) => (
         <article key={r.id} className="mt-4 border-t pt-4">
@@ -54,8 +56,8 @@ export function CreatorAdminReports({
               if (
                 !window.confirm(
                   action === "hide"
-                    ? `“${r.title}” 지도를 숨길까요? 공개 링크와 커버 접근을 차단하며 신고 처리는 별도입니다.`
-                    : "이 신고를 처리 완료할까요? 지도 공개 상태는 유지합니다.",
+                    ? t("admin.hideTheMapThisBlocks", { title: r.title })
+                    : t("admin.resolveThisReportTheMap"),
                 )
               )
                 return;
@@ -68,7 +70,7 @@ export function CreatorAdminReports({
                     ? { action: "hide", mapId: r.map_id, reason }
                     : { action: "resolve_creator_report", id: r.id, reason },
                 );
-                setMessage("조치를 완료했어요.");
+                setMessage(t("admin.actionCompleted"));
                 router.refresh();
               } catch (e) {
                 setError((e as Error).message);
@@ -82,8 +84,8 @@ export function CreatorAdminReports({
               minLength={5}
               maxLength={1000}
               required
-              aria-label={`${r.title} 조치 사유`}
-              placeholder="조치 사유 (5~1,000자)"
+              aria-label={t("admin.reasonForActionOn", { title: r.title })}
+              placeholder={t("admin.reasonForAction51")}
             />
             <div className="flex gap-2">
               <Button
@@ -92,10 +94,10 @@ export function CreatorAdminReports({
                 variant="outline"
                 disabled={busy || Boolean(r.hidden_at)}
               >
-                지도 숨김
+                {t("admin.hideMap")}
               </Button>
               <Button name="operation" value="resolve" disabled={busy}>
-                신고 처리 완료
+                {t("admin.reportResolved")}
               </Button>
             </div>
           </form>
@@ -111,17 +113,19 @@ export function CreatorAdminReports({
           {message}
         </p>
       )}
-      <h3 className="mt-6 font-semibold">지도 운영 이력 · 최근 50건</h3>
+      <h3 className="mt-6 font-semibold">
+        {t("admin.mapModerationLogLast50")}
+      </h3>
       {snapshot.actions.map((a) => (
         <p key={a.id} className="mt-3 break-all text-xs leading-6">
           <strong>
             {a.action === "hide_creator_map"
-              ? "지도 숨김"
-              : "지도 신고 처리 완료"}
+              ? t("admin.hideMap")
+              : t("admin.mapReportResolved")}
           </strong>{" "}
           · {a.reason}
           <br />
-          {a.created_at} · 지도 {a.map_id}
+          {a.created_at} {t("admin.map")} {a.map_id}
         </p>
       ))}
     </details>

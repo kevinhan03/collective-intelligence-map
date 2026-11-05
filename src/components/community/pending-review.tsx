@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import type { MapPlace, Viewer } from "@/domain/types";
 import { ApiError, post } from "./api";
 import { loginHref } from "@/domain/login-return";
+import { useI18n } from "@/i18n/client";
 export function PendingReview({
   places,
   viewer,
@@ -22,6 +23,7 @@ export function PendingReview({
   onVote?: (id: string, value: 1 | -1) => Promise<void>;
   isPending?: (id: string) => boolean;
 }) {
+  const { t } = useI18n();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const enabled = Boolean(viewer) && !demo;
@@ -62,12 +64,14 @@ export function PendingReview({
   return (
     <section
       className="border-b bg-secondary/20 px-5 py-4 md:px-9"
-      aria-label="승인 대기 장소"
+      aria-label={t("map.pendingPlace")}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm font-medium">승인 대기 {places.length}곳</p>
+        <p className="text-sm font-medium">
+          {t("map.awaitingApprovalCount", { count: places.length })}
+        </p>
         <p className="text-[11px] text-muted-foreground">
-          여기서 남긴 적합/부적합 의견은 운영자의 승인 판단에 참고됩니다.
+          {t("map.yourFitsDoesnTFit")}
         </p>
       </div>
       <div className="mt-3 flex gap-3 overflow-x-auto pb-1">
@@ -77,7 +81,7 @@ export function PendingReview({
             <article key={p.id} className="place-glass-card w-72 shrink-0 p-4">
               <p className="truncate text-sm font-semibold">{p.name}</p>
               <p className="mt-1 text-[11px] text-muted-foreground">
-                {p.category} · @{p.handle}
+                {t.data("placeCategory", p.category)} · @{p.handle}
               </p>
               <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground">
                 {p.rationale}
@@ -90,7 +94,7 @@ export function PendingReview({
                   onClick={() => vote(p, 1)}
                 >
                   <Check size={13} />
-                  적합해요 {p.positive}
+                  {t("map.fits")} {p.positive}
                 </Button>
                 <Button
                   size="sm"
@@ -99,7 +103,7 @@ export function PendingReview({
                   onClick={() => vote(p, -1)}
                 >
                   <ThumbsDown size={13} />
-                  아니에요 {p.negative}
+                  {t("map.doesnTFit")} {p.negative}
                 </Button>
               </div>
             </article>
@@ -109,8 +113,8 @@ export function PendingReview({
       {!enabled && (
         <p className="mt-2 text-[11px] text-muted-foreground">
           {demo
-            ? "가상 예시에서는 참여 기능을 사용할 수 없습니다."
-            : "로그인하면 적합/부적합 의견을 남길 수 있습니다."}
+            ? t("map.participationIsnTAvailableFor")
+            : t("map.signInToShareWhether")}
         </p>
       )}
       {error && (

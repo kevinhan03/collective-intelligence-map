@@ -21,7 +21,7 @@ export async function POST(request: Request) {
       })
       .parse(await body(request));
     const map = await getSearchMap(input.mapId);
-    if (!map) return json({ error: "맵을 찾을 수 없습니다." }, 404);
+    if (!map) return failure(new HttpError("맵을 찾을 수 없습니다.", 404));
     if (searchScope(map) === "world" && !input.countryCode)
       throw new HttpError("국가를 선택해 주세요.");
     const { data: allowed, error } = await serviceDb().rpc(

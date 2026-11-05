@@ -1,7 +1,7 @@
 "use client";
-import Link from "next/link";
+import Link from "@/i18n/link";
 import { useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/i18n/navigation";
 import { ArrowLeft, List, Map as MapIcon } from "lucide-react";
 import { MapCanvas } from "@/components/map/map-canvas";
 import { MobilePlaceList } from "@/components/community/mobile-place-list";
@@ -15,6 +15,7 @@ import { useMobile } from "@/hooks/use-mobile";
 import type { RecommendedPlace } from "@/domain/profile";
 import type { RendererConfig, Viewer, RailStation } from "@/domain/types";
 
+import { useI18n } from "@/i18n/client";
 export function RecommendationsExplorer({
   handle,
   displayName,
@@ -30,6 +31,7 @@ export function RecommendationsExplorer({
   viewer: Viewer | null;
   myState: { saves: string[]; votes: Record<string, number> };
 }) {
+  const { t } = useI18n();
   const router = useRouter();
   const mobile = useMobile();
   const path = `/u/${encodeURIComponent(handle)}/recommendations`;
@@ -104,7 +106,7 @@ export function RecommendationsExplorer({
       await post("/api/community", { action: "save", id, enabled });
       setSaveOverrides((values) => ({ ...values, [id]: enabled }));
     } catch (reason) {
-      setError((reason as Error).message);
+      setError(t.message((reason as Error).message));
     } finally {
       saving.current = false;
       setBusy(false);
@@ -122,22 +124,25 @@ export function RecommendationsExplorer({
             href={`/u/${encodeURIComponent(handle)}`}
             className="recommendations-back"
           >
-            <ArrowLeft size={15} /> 프로필로 돌아가기
+            <ArrowLeft size={15} /> {t("creator.backToProfile")}
           </Link>
-          <h1>내가 추천한 장소</h1>
+          <h1>{t("creator.placesIRecommended")}</h1>
           <p>
-            {displayName}님의 공개 추천 · {places.length}곳
+            {t("creator.publicRecommendations", {
+              name: displayName,
+              count: places.length,
+            })}
           </p>
         </div>
         <ShareButton
           path={path}
-          title={`${displayName}님의 내가 추천한 장소`}
+          title={t("creator.placesRecommended", { displayName })}
         />
       </header>
       <div className="recommendations-toolbar">
         <Input
-          aria-label="추천 장소 검색"
-          placeholder="장소·지역 검색"
+          aria-label={t("creator.searchRecommendedPlaces")}
+          placeholder={t("creator.searchPlacesOrAreas")}
           value={query}
           maxLength={100}
           onChange={(event) => {
@@ -149,7 +154,7 @@ export function RecommendationsExplorer({
         <div
           className="recommendations-view-switch"
           role="group"
-          aria-label="장소 보기 방식"
+          aria-label={t("creator.placeView")}
         >
           {(["list", "map"] as const).map((mode) => (
             <button
@@ -161,7 +166,7 @@ export function RecommendationsExplorer({
               onClick={() => changeView(mode)}
             >
               {mode === "list" ? <List size={15} /> : <MapIcon size={15} />}
-              {mode === "list" ? "목록" : "지도"}
+              {mode === "list" ? t("creator.list") : t("creator.map")}
             </button>
           ))}
         </div>
@@ -172,14 +177,14 @@ export function RecommendationsExplorer({
         </p>
       )}
       <p className="recommendations-count">
-        {filtered.length}곳 · 같은 장소의 중복 추천은 한 번만 표시합니다.
+        {t("creator.recommendationCount", { count: filtered.length })}
       </p>
       <div
         ref={list}
         id="recommendations-list"
         className="recommendations-list"
         hidden={view !== "list"}
-        aria-label="추천 장소 목록"
+        aria-label={t("creator.recommendedPlaces")}
       >
         <MobilePlaceList
           places={filtered.slice(0, limit)}
@@ -196,14 +201,17 @@ export function RecommendationsExplorer({
             className="recommendations-more"
             onClick={() => setLimit((value) => value + 20)}
           >
-            더 보기 ({Math.min(limit, filtered.length)}/{filtered.length})
+            {t("creator.showMoreCount", {
+              shown: Math.min(limit, filtered.length),
+              total: filtered.length,
+            })}
           </button>
         )}
         {!filtered.length && (
           <p className="recommendations-empty">
             {places.length
-              ? "검색에 맞는 장소가 없습니다."
-              : "아직 공개된 추천 장소가 없습니다."}
+              ? t("creator.noPlacesMatchYourSearch")
+              : t("creator.noPublicRecommendationsYet")}
           </p>
         )}
       </div>
@@ -211,7 +219,7 @@ export function RecommendationsExplorer({
         id="recommendations-map"
         className={`recommendations-map ${current ? "has-detail" : ""}`}
         hidden={view !== "map"}
-        aria-label="추천 장소 지도"
+        aria-label={t("creator.recommendedPlacesMap")}
       >
         <div className="recommendations-map-canvas">
           {filtered.length ? (
@@ -228,7 +236,7 @@ export function RecommendationsExplorer({
             />
           ) : (
             <p className="recommendations-empty">
-              표시할 추천 장소가 없습니다.
+              {t("creator.noRecommendedPlacesToShow")}
             </p>
           )}
         </div>

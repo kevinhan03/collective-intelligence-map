@@ -1,28 +1,30 @@
 "use client";
 import { Component, type ReactNode } from "react";
 
+import { useI18n } from "@/i18n/client";
 export function MapFailure({
-  message = "지도를 불러오지 못했습니다.",
+  message,
   onFallback,
 }: {
   message?: string;
   onFallback?: () => void;
 }) {
+  const { t } = useI18n();
   return (
     <div
       role="alert"
       className="map-failure rounded-xl border bg-card p-4 text-sm"
     >
-      <p>{message}</p>
+      <p>{message ?? t("map.couldnTLoadTheMap")}</p>
       {onFallback ? (
         <button
           className="mt-2 min-h-11 rounded-lg border px-4 font-semibold"
           onClick={onFallback}
         >
-          목록으로 보기
+          {t("map.viewAsList")}
         </button>
       ) : (
-        <p className="mt-2">장소 목록은 계속 이용할 수 있습니다.</p>
+        <p className="mt-2">{t("map.youCanStillUseThe")}</p>
       )}
     </div>
   );

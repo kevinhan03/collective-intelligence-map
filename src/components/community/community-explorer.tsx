@@ -13,7 +13,6 @@ import { useMapSearch } from "@/hooks/use-map-search";
 import {
   localMapSearch,
   compactSearch,
-  suggestionLabels,
   type SearchStation,
   type SearchSuggestion,
   type SearchPlace,
@@ -23,8 +22,9 @@ import { matchesTags, tagIdsSchema } from "@/domain/map-tags";
 import { MapTagBar } from "./map-tag-bar";
 import { MapTagSettings } from "./map-tag-settings";
 import { useViewerState } from "./viewer-state";
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import Link from "@/i18n/link";
+import { useSearchParams } from "next/navigation";
+import { useRouter } from "@/i18n/navigation";
 import { ApiError } from "./api";
 import {
   useCallback,
@@ -97,10 +97,12 @@ import type {
   ThemeMap,
   Viewer,
 } from "@/domain/types";
-const sortOptions: { value: Sort; label: string }[] = [
-  { value: "relevance", label: "추천순" },
-  { value: "distance", label: "가까운 순" },
-  { value: "newest", label: "최근 추가순" },
+import { useI18n } from "@/i18n/client";
+import type { MessageKey } from "@/i18n/translate";
+const sortOptions: { value: Sort; label: MessageKey }[] = [
+  { value: "relevance", label: "map.sortRecommended" },
+  { value: "distance", label: "map.sortNearest" },
+  { value: "newest", label: "map.sortRecentlyAdded" },
 ];
 type ExplorerProps = {
   map: ThemeMap;
@@ -136,6 +138,7 @@ function ExplorerContent({
   demo,
   readOnly = false,
 }: ExplorerProps) {
+  const { t } = useI18n();
   const mobile = useMobile();
   const prefetchPhotos = usePrefetchPlacePhotos();
   const [query, setQuery] = useState(""),
@@ -158,7 +161,7 @@ function ExplorerContent({
   const locationRequest = useRef(0);
   function locate(nextSort?: Sort) {
     if (!navigator.geolocation) {
-      setError("이 브라우저에서는 위치 확인을 지원하지 않아요.");
+      setError(t("map.thisBrowserDoesnTSupport"));
       return;
     }
     const request = ++locationRequest.current;
@@ -182,9 +185,7 @@ function ExplorerContent({
       () => {
         if (request !== locationRequest.current) return;
         setLocating(false);
-        setError(
-          "위치를 확인하지 못했어요. 위치 권한을 확인한 뒤 내 위치 버튼으로 다시 시도해 주세요.",
-        );
+        setError(t("map.couldnTGetYourLocation"));
       },
       { timeout: 10000, maximumAge: 60000, enableHighAccuracy: false },
     );
@@ -657,7 +658,7 @@ function ExplorerContent({
     try {
       await actions.follow(map.id);
     } catch (error) {
-      setError((error as Error).message);
+      setError(t.message((error as Error).message));
     }
   };
   const votePlace = async (id: string, value: 1 | -1) => {
@@ -684,7 +685,7 @@ function ExplorerContent({
         signIn();
         return;
       }
-      setError((error as Error).message);
+      setError(t.message((error as Error).message));
     }
   };
   const savePlace = async (id: string, undo = false) => {
@@ -708,12 +709,13 @@ function ExplorerContent({
           ? null
           : {
               id,
-              name: places.find((place) => place.id === id)?.name ?? "장소",
+              name:
+                places.find((place) => place.id === id)?.name ?? t("map.place"),
               enabled,
             },
       );
     } catch (error) {
-      setError((error as Error).message);
+      setError(t.message((error as Error).message));
       setFailedSaveId(id);
     }
   };
@@ -897,16 +899,16 @@ function ExplorerContent({
   const emptyState = (
     <>
       <h2 role="status" className="font-medium">
-        {emptyMap ? "아직 등록된 장소가 없어요." : "조건에 맞는 장소가 없어요."}
+        {emptyMap ? t("map.noPlacesYet") : t("map.noPlacesMatchYourFilters")}
       </h2>
       <p className="text-sm leading-6 text-muted-foreground">
         {emptyMap
           ? map.kind === "creator"
-            ? "크리에이터가 장소를 추가하면 이 지도에서 볼 수 있어요."
+            ? t("map.placesWillAppearOnThis")
             : canSuggestPlace
-              ? "이 주제에 어울리는 첫 장소를 제안해 주세요."
-              : "장소가 추가되면 이 지도에서 볼 수 있어요."
-          : "검색어나 지역, 태그를 바꿔서 다시 찾아보세요."}
+              ? t("map.suggestTheFirstPlaceThat")
+              : t("map.placesWillAppearOnThis2")
+          : t("map.tryADifferentSearchArea")}
       </p>
       {!emptyMap && hasSearchFilters && (
         <Button
@@ -917,20 +919,21 @@ function ExplorerContent({
             changeTags([]);
           }}
         >
-          검색 조건 초기화
+          {t("map.clearFilters")}
         </Button>
       )}
       {emptyMap && canSuggestPlace && (
         <Button asChild>
           <Link href={`/maps/${map.slug}/submit`} prefetch={false}>
-            <Plus size={15} aria-hidden="true" /> 첫 장소 제안하기
+            <Plus size={15} aria-hidden="true" />{" "}
+            {t("map.suggestTheFirstPlace")}
           </Link>
         </Button>
       )}
       {emptyMap && map.kind === "creator" && !readOnly && (
         <Button asChild variant="outline">
           <Link href={`/u/${map.creator_handle ?? ""}`} prefetch={false}>
-            크리에이터 프로필
+            {t("map.creatorProfile")}
           </Link>
         </Button>
       )}
@@ -941,7 +944,7 @@ function ExplorerContent({
       <div
         className="visit-view-switch"
         role="group"
-        aria-label="장소 보기 방식"
+        aria-label={t("map.placeView")}
         onPointerDown={(event) => {
           if (!event.isPrimary || event.button !== 0) return;
           viewSwipe.current = {
@@ -1013,7 +1016,7 @@ function ExplorerContent({
           <button
             key={view}
             type="button"
-            aria-label={view === "map" ? "지도 보기" : "목록 보기"}
+            aria-label={view === "map" ? t("map.mapView") : t("map.listView")}
             aria-pressed={mobileView === view}
             aria-controls={view === "map" ? "explorer-map" : "explorer-list"}
             onClick={() => {
@@ -1029,7 +1032,7 @@ function ExplorerContent({
             ) : (
               <List size={16} aria-hidden="true" />
             )}
-            <span>{view === "map" ? "지도" : "목록"}</span>
+            <span>{view === "map" ? t("map.map") : t("map.list")}</span>
           </button>
         ))}
       </div>
@@ -1128,9 +1131,11 @@ function ExplorerContent({
               }
             }}
             placeholder={
-              mobile ? "장소·지역·분류·역 검색" : "이 지도에서 장소 검색"
+              mobile
+                ? t("map.searchPlacesAreasCategoriesOr")
+                : t("map.searchPlacesOnThisMap")
             }
-            aria-label="이 맵의 장소 검색"
+            aria-label={t("map.searchPlacesOnThisMap2")}
           />
           {search.active && (
             <Button
@@ -1138,7 +1143,7 @@ function ExplorerContent({
               size="icon-sm"
               className="absolute right-1 top-1/2 -translate-y-1/2"
               onClick={clearSearch}
-              aria-label="검색·역 필터 초기화"
+              aria-label={t("map.clearSearchAndStationFilters")}
             >
               <X size={14} />
             </Button>
@@ -1148,7 +1153,7 @@ function ExplorerContent({
               className="absolute top-[calc(100%+6px)] right-0 left-0 z-30 overflow-hidden rounded-xl border bg-card p-1 shadow-lg"
               role="listbox"
               id="map-search-suggestions"
-              aria-label="관련 검색어"
+              aria-label={t("map.relatedSearches")}
             >
               {searchSuggestions.map((suggestion, index) => (
                 <button
@@ -1169,8 +1174,8 @@ function ExplorerContent({
                   <span>{suggestion.term}</span>
                   <span className="text-[10px] text-muted-foreground">
                     {suggestion.station
-                      ? `${suggestion.station.kind === "subway" ? "지하철" : "기차역"} · ${suggestion.station.region === "seoul" ? "서울" : suggestion.station.region === "tokyo" ? "도쿄" : suggestion.station.region}`
-                      : suggestionLabels[suggestion.kind]}
+                      ? `${suggestion.station.kind === "subway" ? t("map.subway") : t("map.trainStation")} · ${suggestion.station.region === "seoul" ? t("map.seoul") : suggestion.station.region === "tokyo" ? t("map.tokyo") : suggestion.station.region}`
+                      : t.data("suggestion", suggestion.kind)}
                   </span>
                 </button>
               ))}
@@ -1180,7 +1185,7 @@ function ExplorerContent({
         <div
           className="sort-chip-group hidden lg:flex shrink-0 items-center gap-1 overflow-x-auto"
           role="group"
-          aria-label="장소 정렬"
+          aria-label={t("map.sortPlaces")}
         >
           {sortOptions.map((option) => (
             <button
@@ -1197,10 +1202,10 @@ function ExplorerContent({
               }}
             >
               {map.kind === "creator" && option.value === "relevance"
-                ? "크리에이터 순"
+                ? t("map.creatorSOrder")
                 : search.active && option.value === "relevance"
-                  ? "검색 일치순"
-                  : option.label}
+                  ? t("map.bestMatch")
+                  : t(option.label)}
             </button>
           ))}
         </div>
@@ -1210,11 +1215,12 @@ function ExplorerContent({
         open={mobileView === "list" ? true : undefined}
       >
         <summary>
-          필터{region || sort !== "relevance" ? " · 적용 중" : ""}
+          {t("map.filters")}
+          {region || sort !== "relevance" ? t("map.on") : ""}
         </summary>
         <div className="mobile-explorer-filters">
           <select
-            aria-label="장소 지역"
+            aria-label={t("map.placeArea")}
             value={region}
             onChange={(event) => {
               setRegion(event.target.value);
@@ -1224,15 +1230,15 @@ function ExplorerContent({
               setSelected(null);
             }}
           >
-            <option value="">전체 지역</option>
+            <option value="">{t("map.allAreas")}</option>
             {regions.map((city) => (
               <option key={city} value={city}>
-                {city}
+                {t.data("region", city)}
               </option>
             ))}
           </select>
           <select
-            aria-label="장소 정렬"
+            aria-label={t("map.sortPlaces")}
             value={sort}
             onChange={(event) => {
               changeSort(event.target.value as Sort);
@@ -1247,12 +1253,12 @@ function ExplorerContent({
             {sortOptions.map((option) => (
               <option key={option.value} value={option.value}>
                 {map.kind === "creator" && option.value === "relevance"
-                  ? "크리에이터 순"
+                  ? t("map.creatorSOrder")
                   : option.value === "relevance"
                     ? search.active
-                      ? "검색 일치순"
-                      : option.label
-                    : option.label}
+                      ? t("map.bestMatch")
+                      : t(option.label)
+                    : t(option.label)}
               </option>
             ))}
           </select>
@@ -1260,7 +1266,7 @@ function ExplorerContent({
       </details>
       <button
         className="mobile-search-close lg:hidden"
-        aria-label="장소 검색 닫기"
+        aria-label={t("map.closePlaceSearch")}
         onClick={() => {
           setSearchOpen(false);
           searchToggle.current?.focus();
@@ -1276,7 +1282,7 @@ function ExplorerContent({
           onClick={() => setShowPending((v) => !v)}
         >
           <Clock size={12} />
-          승인대기 {pendingPlaces.length}
+          {t("map.pending")} {pendingPlaces.length}
         </Button>
       )}
     </div>
@@ -1302,35 +1308,36 @@ function ExplorerContent({
               variant="secondary"
               size="sm"
               onClick={() => setSearchStation(null)}
-              aria-label="역 필터 해제"
+              aria-label={t("map.clearStationFilter")}
             >
-              {searchStation.name} 주변 2km <X size={12} />
+              {t("map.nearStation", { station: searchStation.name })}{" "}
+              <X size={12} />
             </Button>
           )}
           <span>
             {search.error
-              ? "검색 실패 · 이전 결과 표시"
+              ? t("map.searchFailedShowingPreviousResults")
               : search.loading
-                ? "지도 전체 검색 중…"
+                ? t("map.searchingTheWholeMap")
                 : search.result?.mode === "local"
-                  ? "현재 불러온 장소 내 검색"
-                  : "지도 전체 공개 장소 검색"}
+                  ? t("map.searchingLoadedPlaces")
+                  : t("map.searchingAllPublicPlacesOn")}
           </span>
-          {searchStation && <span>역 반경은 직선거리 기준입니다.</span>}
+          {searchStation && <span>{t("map.stationDistanceIsMeasuredIn")}</span>}
           {search.result?.stationsStatus !== "ready" && !search.loading && (
             <span>
               {search.result?.stationsStatus === "unsupported"
-                ? "이 지역은 역 검색을 지원하지 않습니다."
-                : "역 검색 데이터 준비 중"}
+                ? t("map.stationSearchIsnTAvailable")
+                : t("map.stationDataIsBeingPrepared")}
             </span>
           )}
           {search.error && (
             <>
               <span role="alert" className="text-destructive">
-                {search.error}
+                {t.message(search.error)}
               </span>
               <Button variant="outline" size="sm" onClick={search.retry}>
-                검색 재시도
+                {t("map.retrySearch")}
               </Button>
             </>
           )}
@@ -1355,7 +1362,7 @@ function ExplorerContent({
               href="/"
               prefetch={false}
               className="map-home-back lg:hidden"
-              aria-label="홈으로 돌아가기"
+              aria-label={t("map.backToHome")}
             >
               <ArrowLeft size={20} aria-hidden="true" />
             </Link>
@@ -1365,7 +1372,7 @@ function ExplorerContent({
               className="mb-1 flex items-center gap-1.5 text-xs text-muted-foreground"
             >
               <ArrowLeft size={13} />
-              발견
+              {t("map.discover")}
             </Link>
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-xl font-semibold tracking-tight">
@@ -1373,7 +1380,7 @@ function ExplorerContent({
                   <button
                     ref={infoTrigger}
                     className="map-title-button"
-                    aria-label={`${map.title} 지도 정보 보기`}
+                    aria-label={t("map.aboutTheMap", { title: map.title })}
                     onClick={() => setInfoOpen(true)}
                   >
                     {map.title}
@@ -1382,7 +1389,7 @@ function ExplorerContent({
                   map.title
                 )}
               </h1>
-              <span className="kicker">{formatLocation(map)}</span>
+              <span className="kicker">{t.area(formatLocation(map))}</span>
             </div>
             <p className="map-hero-description mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">
               {map.description}
@@ -1393,7 +1400,7 @@ function ExplorerContent({
             className="map-info-trigger lg:hidden"
             variant="ghost"
             size="icon"
-            aria-label="장소 검색 열기"
+            aria-label={t("map.openPlaceSearch")}
             onClick={() => {
               setSearchOpen((open) => !open);
             }}
@@ -1403,10 +1410,10 @@ function ExplorerContent({
           <div className="map-hero-actions flex gap-2">
             <Button
               variant="outline"
-              aria-label={`${map.title} 지도 정보 보기`}
+              aria-label={t("map.aboutTheMap", { title: map.title })}
               onClick={() => setInfoOpen(true)}
             >
-              <Info size={14} /> 지도 정보
+              <Info size={14} /> {t("map.aboutThisMap")}
             </Button>
             <Button
               variant={actions.followed ? "secondary" : "outline"}
@@ -1418,7 +1425,7 @@ function ExplorerContent({
                 fill={actions.followed ? "currentColor" : "none"}
                 aria-hidden="true"
               />
-              {actions.followed ? "지도 저장됨" : "지도 저장"}
+              {actions.followed ? t("map.mapSaved") : t("map.saveMap")}
             </Button>
             <Button asChild>
               <Link
@@ -1430,7 +1437,9 @@ function ExplorerContent({
                 prefetch={false}
               >
                 <Plus size={15} />
-                {map.kind === "creator" ? "크리에이터 프로필" : "장소 제안"}
+                {map.kind === "creator"
+                  ? t("map.creatorProfile")
+                  : t("map.suggestAPlace")}
               </Link>
             </Button>
           </div>
@@ -1438,27 +1447,31 @@ function ExplorerContent({
         <div className="map-hero-meta mt-2 flex flex-wrap items-center gap-4 text-[11px] text-muted-foreground">
           <span className="flex gap-1.5">
             <MapPin size={13} />
-            {map.place_count} 장소
+            {t("map.placeCountLabel", { count: map.place_count })}
           </span>
           <span className="flex gap-1.5">
             <Users size={13} />
-            {followerCount} 저장
+            {t("map.saveCount", { count: followerCount })}
           </span>
-          <span>{map.contributor_count} 기여자</span>
+          <span>
+            {t("map.contributorCount", { count: map.contributor_count })}
+          </span>
           <a
             href={`/maps/${map.slug}/places`}
             className="text-primary hover:underline"
           >
-            공개 장소 목록
+            {t("map.publicPlaceList")}
           </a>
           <details className="ml-auto max-w-lg">
-            <summary className="cursor-pointer">커뮤니티 규칙 보기</summary>
+            <summary className="cursor-pointer">
+              {t("map.viewCommunityGuidelines")}
+            </summary>
             <p className="pt-3 leading-6">{map.rules}</p>
           </details>
         </div>
         {readOnly && (
           <p role="status" className="mt-3 text-sm text-primary">
-            초안 미리보기 · 저장과 참여 기능은 비활성화됩니다.
+            {t("map.draftPreviewSavingAndParticipation")}
           </p>
         )}
         {map.creator_handle && (
@@ -1466,13 +1479,13 @@ function ExplorerContent({
             className="mt-2 inline-block text-sm text-primary"
             href={`/u/${map.creator_handle}`}
           >
-            @{map.creator_handle}의 지도
+            {t("map.creatorMap", { handle: map.creator_handle })}
           </Link>
         )}
         {demo && (
           <p className="map-hero-demo mt-1.5 flex items-center gap-2 text-[11px] text-muted-foreground">
             <Info size={13} />
-            미리보기 · 가상 장소이며 실제 추천·검증 정보가 아닙니다.
+            {t("map.previewTheseAreSamplePlaces")}
           </p>
         )}
       </div>
@@ -1491,11 +1504,15 @@ function ExplorerContent({
               <div>
                 <DialogTitle className="text-xl">{map.title}</DialogTitle>
                 <DialogDescription className="mt-1 text-xs">
-                  {formatLocation(map)}
+                  {t.area(formatLocation(map))}
                 </DialogDescription>
               </div>
               <DialogClose asChild>
-                <Button variant="ghost" size="icon" aria-label="지도 정보 닫기">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label={t("map.closeMapInfo")}
+                >
                   <ArrowLeft className="rotate-180" size={18} />
                 </Button>
               </DialogClose>
@@ -1513,7 +1530,7 @@ function ExplorerContent({
               href={`/maps/${map.slug}/places`}
               className="text-sm text-primary underline"
             >
-              공개 장소 목록 보기
+              {t("map.viewPublicPlaceList")}
             </a>
             <DialogDescription className="text-sm leading-6">
               {map.description}
@@ -1522,17 +1539,19 @@ function ExplorerContent({
           <div className="flex flex-wrap gap-x-4 gap-y-2 px-5 pt-5 text-xs text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <MapPin size={14} />
-              {map.place_count} 장소
+              {t("map.placeCountLabel", { count: map.place_count })}
             </span>
             <span className="flex items-center gap-1.5">
               <Users size={14} />
-              {followerCount} 저장
+              {t("map.saveCount", { count: followerCount })}
             </span>
-            <span>{map.contributor_count} 기여자</span>
+            <span>
+              {t("map.contributorCount", { count: map.contributor_count })}
+            </span>
           </div>
           <details className="mx-5 mt-5 border-t py-4 text-sm">
             <summary className="cursor-pointer font-medium">
-              커뮤니티 규칙 보기
+              {t("map.viewCommunityGuidelines")}
             </summary>
             <p className="pt-3 leading-6 text-muted-foreground">{map.rules}</p>
           </details>
@@ -1555,7 +1574,7 @@ function ExplorerContent({
                 fill={actions.followed ? "currentColor" : "none"}
                 aria-hidden="true"
               />
-              {actions.followed ? "지도 저장됨" : "지도 저장"}
+              {actions.followed ? t("map.mapSaved") : t("map.saveMap")}
             </Button>
             <Button asChild>
               <Link
@@ -1567,7 +1586,9 @@ function ExplorerContent({
                 prefetch={false}
               >
                 <Plus size={15} />
-                {map.kind === "creator" ? "크리에이터 프로필" : "장소 제안"}
+                {map.kind === "creator"
+                  ? t("map.creatorProfile")
+                  : t("map.suggestAPlace")}
               </Link>
             </Button>
           </div>
@@ -1581,7 +1602,7 @@ function ExplorerContent({
         }
         prefetch={false}
         className={`mobile-propose-floating lg:hidden ${map.kind === "creator" || readOnly ? "!hidden" : ""}`}
-        aria-label="장소 제안"
+        aria-label={t("map.suggestAPlace")}
       >
         <Plus size={22} aria-hidden="true" />
       </Link>
@@ -1604,7 +1625,7 @@ function ExplorerContent({
               disabled={actions.isPending("save", failedSaveId)}
               onClick={() => void savePlace(failedSaveId)}
             >
-              저장 다시 시도
+              {t("map.retrySaving")}
             </button>
           )}
         </p>
@@ -1616,7 +1637,7 @@ function ExplorerContent({
         >
           <span>
             {saveNotice.name}{" "}
-            {saveNotice.enabled ? "저장했어요." : "저장 해제했어요."}
+            {saveNotice.enabled ? t("map.saved") : t("map.removedFromSaved")}
           </span>
           <button
             type="button"
@@ -1624,11 +1645,11 @@ function ExplorerContent({
             disabled={actions.isPending("save", saveNotice.id)}
             onClick={() => void savePlace(saveNotice.id, true)}
           >
-            실행 취소
+            {t("map.undo")}
           </button>
           <button
             type="button"
-            aria-label="알림 닫기"
+            aria-label={t("map.dismiss")}
             onClick={() => setSaveNotice(null)}
           >
             ×
@@ -1654,7 +1675,7 @@ function ExplorerContent({
           id="explorer-list"
           ref={setListElement}
           className="place-list lg:h-fit lg:max-h-[calc(100dvh-250px)] lg:min-h-[480px] lg:self-start lg:overflow-y-auto"
-          aria-label="장소 목록"
+          aria-label={t("map.placeList")}
         >
           <div className="discovery-header sticky top-0 z-20">
             {!mobile && searchToolbar}
@@ -1664,10 +1685,10 @@ function ExplorerContent({
                 aria-live="polite"
                 aria-atomic="true"
               >
-                {resultCount}개의 발견
+                {t("map.resultCount", { count: resultCount })}
                 {resultCount > visiblePlaces.length &&
-                  ` · 현재 ${visiblePlaces.length}곳 표시`}
-                {!search.active && truncated && " · 일부 결과"}
+                  t("map.showing", { length: visiblePlaces.length })}
+                {!search.active && truncated && t("map.partialResults")}
               </span>
               {!mobile && (
                 <details
@@ -1680,21 +1701,21 @@ function ExplorerContent({
                     }
                   }}
                 >
-                  <summary aria-label="발견 목록 필터">
+                  <summary aria-label={t("map.filterPlaces")}>
                     <SlidersHorizontal size={14} aria-hidden="true" />
-                    필터
+                    {t("map.filters")}
                     {(region || searchStation || selectedTags.length > 0) && (
                       <span
                         className="discovery-filter-indicator"
-                        aria-label="필터 적용 중"
+                        aria-label={t("map.filtersOn")}
                       />
                     )}
                   </summary>
                   <div className="discovery-filter-content">
                     <label>
-                      장소 지역
+                      {t("map.placeArea")}
                       <select
-                        aria-label="장소 지역"
+                        aria-label={t("map.placeArea")}
                         value={region}
                         onChange={(event) => {
                           setRegion(event.target.value);
@@ -1704,17 +1725,21 @@ function ExplorerContent({
                           setSelected(null);
                         }}
                       >
-                        <option value="">전체 지역</option>
+                        <option value="">{t("map.allAreas")}</option>
                         {regions.map((city) => (
                           <option key={city} value={city}>
-                            {city}
+                            {t.data("region", city)}
                           </option>
                         ))}
                       </select>
                     </label>
-                    {searchStation && <p>{searchStation.name} 주변 2km</p>}
+                    {searchStation && (
+                      <p>
+                        {t("map.nearStation", { station: searchStation.name })}
+                      </p>
+                    )}
                     {map.place_tags?.length ? (
-                      <p>아래 태그를 선택해 장소를 좁혀 보세요.</p>
+                      <p>{t("map.pickATagBelowTo")}</p>
                     ) : null}
                     <button
                       type="button"
@@ -1725,7 +1750,7 @@ function ExplorerContent({
                         setPage(1);
                       }}
                     >
-                      필터 초기화
+                      {t("map.resetFilters")}
                     </button>
                   </div>
                 </details>
@@ -1779,18 +1804,21 @@ function ExplorerContent({
                         )}
                         {!demo && isControversial(p) && (
                           <span className="place-badge place-badge-controversial">
-                            논쟁 중
+                            {t("map.disputed")}
                           </span>
                         )}
                         {!demo && isVerified(p) && (
                           <span className="place-badge place-badge-verified">
-                            검증됨
+                            {t("map.verified")}
                           </span>
                         )}
                       </div>
-                      {(demo || placeArea(p.address)) && (
+                      {(demo || t.area(placeArea(p.address))) && (
                         <p className="mt-1 text-xs text-muted-foreground">
-                          {[demo ? "가상 예시" : null, placeArea(p.address)]
+                          {[
+                            demo ? t("map.sample") : null,
+                            t.area(placeArea(p.address)),
+                          ]
                             .filter(Boolean)
                             .join(" · ")}
                         </p>
@@ -1804,15 +1832,17 @@ function ExplorerContent({
                         search.result?.station?.id === searchStation.id &&
                         (p as SearchPlace).station_distance_m != null && (
                           <p className="mt-1 text-xs text-muted-foreground">
-                            {searchStation.name} · 직선거리{" "}
-                            {formatDistance(
-                              (p as SearchPlace).station_distance_m!,
-                            )}
+                            {t("map.stationDistance", {
+                              station: searchStation.name,
+                              distance: formatDistance(
+                                (p as SearchPlace).station_distance_m!,
+                              ),
+                            })}
                           </p>
                         )}
                     </div>
                     <button
-                      aria-label={`${p.name} 상세 보기`}
+                      aria-label={t("map.viewDetails", { name: p.name })}
                       onClick={(event) => {
                         event.stopPropagation();
                         focusPlace(p.id);
@@ -1826,12 +1856,15 @@ function ExplorerContent({
                     <div
                       className={`place-card-votes vote-capsule hidden ${map.kind !== "creator" ? "lg:flex" : ""} items-center`}
                       role="group"
-                      aria-label={`${p.name} 주제 적합성 투표`}
+                      aria-label={t("map.themeFitVoteFor", { name: p.name })}
                     >
                       <button
                         type="button"
                         className="vote-control"
-                        aria-label={`${p.name} 테마에 잘 맞아요 ${p.positive}`}
+                        aria-label={t("map.fitsTheTheme", {
+                          name: p.name,
+                          positive: p.positive,
+                        })}
                         aria-pressed={actions.votes[p.id] === 1}
                         disabled={
                           demo || readOnly || actions.isPending("vote", p.id)
@@ -1847,7 +1880,10 @@ function ExplorerContent({
                       <button
                         type="button"
                         className="vote-control"
-                        aria-label={`${p.name} 테마와 달라요 ${p.negative}`}
+                        aria-label={t("map.doesnTFitTheTheme", {
+                          name: p.name,
+                          negative: p.negative,
+                        })}
                         aria-pressed={actions.votes[p.id] === -1}
                         disabled={
                           demo || readOnly || actions.isPending("vote", p.id)
@@ -1863,7 +1899,7 @@ function ExplorerContent({
                     </div>
                     <button
                       type="button"
-                      aria-label={`${p.name} ${isSaved(p.id) ? "저장 해제" : "저장"}`}
+                      aria-label={`${p.name} ${isSaved(p.id) ? t("map.unsave") : t("map.save")}`}
                       aria-pressed={isSaved(p.id)}
                       disabled={
                         demo || readOnly || actions.isPending("save", p.id)
@@ -1905,20 +1941,20 @@ function ExplorerContent({
                 search.active ? void search.more() : setPage((p) => p + 1)
               }
             >
-              더 보기
+              {t("map.showMore")}
             </Button>
           )}
           {!mobile && hasMorePlacesBelow && (
             <div className="place-list-scroll-hint" aria-hidden="true">
               <span>
-                아래로 스크롤해 더 보기 <ChevronDown size={14} />
+                {t("map.scrollDownForMore")} <ChevronDown size={14} />
               </span>
             </div>
           )}
         </section>
         <section
           id="explorer-map"
-          aria-label="장소 지도"
+          aria-label={t("map.placeMap")}
           className="explorer-map relative min-w-0 min-h-[420px] lg:h-[calc(100dvh-250px)]"
         >
           <MapCanvas
@@ -1940,9 +1976,9 @@ function ExplorerContent({
             variant="outline"
             className="location-button absolute top-28 right-3 z-20 shadow-lg"
             disabled={locating}
-            aria-label="내 위치"
+            aria-label={t("map.myLocation")}
             aria-busy={locating}
-            title="내 위치"
+            title={t("map.myLocation")}
             onClick={() => locate()}
           >
             {locating ? (
@@ -1962,7 +1998,7 @@ function ExplorerContent({
             )}
             {locating && (
               <span className="sr-only" role="status">
-                위치 확인 중…
+                {t("map.findingYourLocation")}
               </span>
             )}
           </Button>
@@ -1971,10 +2007,10 @@ function ExplorerContent({
             places.length > 1 &&
             pinHintOpen && (
               <div className="absolute bottom-20 left-4 z-10 rounded-full bg-card/90 px-4 py-3 text-xs text-foreground shadow-lg lg:bottom-4">
-                핀을 누르면 장소 정보와 추천 수를 볼 수 있어요.
+                {t("map.tapAPinToSee")}
                 <button
                   type="button"
-                  aria-label="핀 안내 닫기"
+                  aria-label={t("map.closePinTip")}
                   onClick={() => setPinHintOpen(false)}
                   className="absolute -right-2 -top-2 grid size-7 place-items-center rounded-full border bg-card text-foreground shadow-sm hover:bg-secondary focus-visible:outline-2 focus-visible:outline-primary"
                 >
@@ -1989,8 +2025,8 @@ function ExplorerContent({
                   <MobilePlacePeek
                     subject={
                       filtered.some((p) => p.id === previewId)
-                        ? "장소 카드"
-                        : "장소 목록"
+                        ? t("map.placeCard")
+                        : t("map.placeList")
                     }
                     onExpand={() => {
                       changeSheetStage("summary");
@@ -2102,7 +2138,9 @@ function ExplorerContent({
                 className="absolute right-4 bottom-16 z-10 hidden min-h-11 items-center gap-1.5 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-lg max-lg:inline-flex"
               >
                 <Plus size={16} aria-hidden="true" />
-                {map.kind === "creator" ? "크리에이터 프로필" : "장소 제안"}
+                {map.kind === "creator"
+                  ? t("map.creatorProfile")
+                  : t("map.suggestAPlace")}
               </Link>
             </>
           )}
@@ -2111,19 +2149,19 @@ function ExplorerContent({
           <Suspense
             fallback={
               <PlacePanel
-                title="장소 정보 불러오는 중"
+                title={t("map.loadingPlaceDetails")}
                 onClose={mobile ? collapseDetail : () => setDetailId(null)}
               >
                 <aside
                   className="place-detail-panel"
-                  aria-label="장소 정보 불러오는 중"
+                  aria-label={t("map.loadingPlaceDetails")}
                 >
                   <div className="place-detail-heading flex items-center justify-between">
                     <h2>{selectedPlace.name}</h2>
                     <button
                       type="button"
                       className="detail-icon-action"
-                      aria-label="장소 상세 닫기"
+                      aria-label={t("map.closePlaceDetails")}
                       onClick={mobile ? closeSheet : () => setDetailId(null)}
                     >
                       <X size={21} />
@@ -2133,7 +2171,7 @@ function ExplorerContent({
                     role="status"
                     className="p-5 text-sm text-muted-foreground"
                   >
-                    장소를 불러오는 중…
+                    {t("map.loadingPlaces")}
                   </p>
                 </aside>
               </PlacePanel>

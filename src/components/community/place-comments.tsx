@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import Link from "@/i18n/link";
 import { ArrowUp, Heart, MessageCircle, MoreHorizontal } from "lucide-react";
 import { DropdownMenu } from "radix-ui";
 import type { Viewer } from "@/domain/types";
@@ -9,6 +9,7 @@ import { CommentAvatar } from "./comment-avatar";
 import { post } from "./api";
 import type { usePlaceComments } from "./use-place-comments";
 
+import { useI18n } from "@/i18n/client";
 type Thread = ReturnType<typeof usePlaceComments>;
 export function PlaceComments({
   thread,
@@ -29,6 +30,7 @@ export function PlaceComments({
   placeName: string;
   onReport: (id: string) => void;
 }) {
+  const { t } = useI18n();
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -68,7 +70,7 @@ export function PlaceComments({
       await thread.reload();
       input.current?.focus();
     } catch (error) {
-      setError((error as Error).message);
+      setError(t.message((error as Error).message));
     } finally {
       writing.current = false;
       setBusy(false);
@@ -79,16 +81,19 @@ export function PlaceComments({
       <div
         className="place-comments-list place-detail-scroll"
         tabIndex={0}
-        aria-label="전체 댓글"
+        aria-label={t("place.allComments")}
         data-empty={
           thread.comments.length === 0 && !thread.loading && !thread.error
         }
       >
         {thread.comments.length === 0 && !thread.loading && !thread.error && (
-          <section className="comments-empty" aria-label="댓글 없음">
+          <section
+            className="comments-empty"
+            aria-label={t("place.noComments")}
+          >
             <MessageCircle size={28} strokeWidth={1.5} aria-hidden="true" />
-            <h3>아직 댓글이 없어요</h3>
-            <p>{placeName}에서 어떤 경험을 하셨나요?</p>
+            <h3>{t("place.noCommentsYet")}</h3>
+            <p>{t("place.howWasYourVisit", { name: placeName })}</p>
           </section>
         )}
         {thread.comments.map((comment) => (
@@ -99,7 +104,7 @@ export function PlaceComments({
                 {comment.author_id ? (
                   <Link href={`/u/${comment.handle}`}>@{comment.handle}</Link>
                 ) : (
-                  <span>{comment.handle}</span>
+                  <span>{t.message(comment.handle)}</span>
                 )}
                 <time dateTime={comment.created_at}>
                   {new Date(comment.created_at).toLocaleDateString("ko-KR", {
@@ -113,7 +118,9 @@ export function PlaceComments({
                       <button
                         type="button"
                         className="comment-menu-trigger"
-                        aria-label={`@${comment.handle} 댓글 메뉴`}
+                        aria-label={t("place.commentMenuFor", {
+                          handle: comment.handle,
+                        })}
                         disabled={busy}
                       >
                         <MoreHorizontal size={16} aria-hidden="true" />
@@ -141,21 +148,21 @@ export function PlaceComments({
                                 });
                                 await thread.reload();
                               } catch (error) {
-                                setError((error as Error).message);
+                                setError(t.message((error as Error).message));
                               } finally {
                                 writing.current = false;
                                 setBusy(false);
                               }
                             }}
                           >
-                            삭제
+                            {t("place.delete")}
                           </DropdownMenu.Item>
                         )}
                         <DropdownMenu.Item
                           className="place-context-menu-item"
                           onSelect={() => onReport(comment.id)}
                         >
-                          신고
+                          {t("place.report")}
                         </DropdownMenu.Item>
                       </DropdownMenu.Content>
                     </DropdownMenu.Portal>
@@ -167,7 +174,10 @@ export function PlaceComments({
             <button
               type="button"
               className="comment-like"
-              aria-label={`@${comment.handle} 댓글 좋아요 ${comment.likes ?? 0}`}
+              aria-label={t("place.likeComment", {
+                handle: comment.handle,
+                count: comment.likes ?? 0,
+              })}
               aria-pressed={comment.liked ?? false}
               disabled={
                 demo ||
@@ -195,7 +205,7 @@ export function PlaceComments({
                     ),
                   }));
                 } catch (error) {
-                  setError((error as Error).message);
+                  setError(t.message((error as Error).message));
                 } finally {
                   liking.current.delete(comment.id);
                   setPendingLikes(new Set(liking.current));
@@ -213,14 +223,14 @@ export function PlaceComments({
         ))}
         {thread.loading && (
           <p role="status" className="comments-feedback">
-            댓글을 불러오는 중…
+            {t("place.loadingComments")}
           </p>
         )}
         {thread.error && (
           <p role="alert" className="comments-feedback">
-            {thread.error}{" "}
+            {t.message(thread.error)}{" "}
             <button onClick={() => thread.reload()} className="underline">
-              다시 시도
+              {t("place.tryAgain")}
             </button>
           </p>
         )}
@@ -229,7 +239,7 @@ export function PlaceComments({
             className="comments-load-more"
             onClick={() => thread.reload(thread.comments.length)}
           >
-            댓글 더 불러오기
+            {t("place.loadMoreComments")}
           </button>
         )}
         <div ref={end} />
@@ -243,9 +253,9 @@ export function PlaceComments({
         {!enabled ? (
           <p className="comments-feedback">
             {!viewer && !demo ? (
-              <Link href={loginHref}>로그인하고 댓글 남기기</Link>
+              <Link href={loginHref}>{t("place.signInToComment")}</Link>
             ) : (
-              "현재 댓글을 작성할 수 없어요."
+              t("place.commentsAreUnavailableRightNow")
             )}
           </p>
         ) : (
@@ -253,8 +263,8 @@ export function PlaceComments({
             <CommentAvatar path={viewer?.avatar_path} handle={viewer?.handle} />
             <Textarea
               ref={input}
-              aria-label="댓글"
-              placeholder="댓글을 남겨 주세요"
+              aria-label={t("place.comment")}
+              placeholder={t("place.leaveAComment")}
               value={body}
               onChange={(event) => setBody(event.target.value)}
               minLength={2}
@@ -266,7 +276,7 @@ export function PlaceComments({
             <button
               type="submit"
               className="comment-send"
-              aria-label="댓글 등록"
+              aria-label={t("place.postComment")}
               disabled={busy || body.trim().length < 2}
             >
               <ArrowUp size={22} />

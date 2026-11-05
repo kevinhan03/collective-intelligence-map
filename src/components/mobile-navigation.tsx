@@ -1,7 +1,9 @@
 "use client";
 import { useEffect } from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import Link from "@/i18n/link";
+import { usePathname } from "@/i18n/navigation";
+import { useI18n } from "@/i18n/client";
+import { LanguageSwitch } from "./language-switch";
 import { Bookmark, Compass, UserRound, Menu } from "lucide-react";
 import {
   Dialog,
@@ -13,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 export function MobileNavigation() {
   const pathname = usePathname();
+  const { t } = useI18n();
   useEffect(() => {
     const viewport = window.visualViewport;
     if (!viewport) return;
@@ -31,13 +34,13 @@ export function MobileNavigation() {
   const links = [
     {
       href: "/studio",
-      label: "내 지도 만들기",
+      label: t("nav.createMap"),
       icon: Compass,
       active: pathname.startsWith("/studio"),
     },
     {
       href: "/",
-      label: "발견",
+      label: t("nav.discover"),
       icon: Compass,
       active:
         pathname === "/" ||
@@ -46,13 +49,13 @@ export function MobileNavigation() {
     },
     {
       href: "/saved",
-      label: "저장",
+      label: t("nav.saved"),
       icon: Bookmark,
       active: pathname === "/saved",
     },
     {
       href: "/settings/profile",
-      label: "내 정보",
+      label: t("nav.account"),
       icon: UserRound,
       active:
         pathname.startsWith("/settings/") ||
@@ -65,16 +68,14 @@ export function MobileNavigation() {
     <Dialog>
       <DialogTrigger
         className="mobile-menu-trigger lg:hidden"
-        aria-label="메뉴 열기"
+        aria-label={t("nav.openMenu")}
       >
         <Menu size={22} />
       </DialogTrigger>
       <DialogContent className="mobile-menu-panel">
-        <DialogTitle>메뉴</DialogTitle>
-        <DialogDescription>
-          지도를 탐색하고 저장한 장소를 확인하세요.
-        </DialogDescription>
-        <nav className="grid gap-2" aria-label="모바일 주요 메뉴">
+        <DialogTitle>{t("nav.menu")}</DialogTitle>
+        <DialogDescription>{t("nav.menuDescription")}</DialogDescription>
+        <nav className="grid gap-2" aria-label={t("nav.mobileMain")}>
           {links.map(({ href, label, icon: Icon, active }) => (
             <DialogClose asChild key={href}>
               <Link
@@ -88,6 +89,7 @@ export function MobileNavigation() {
               </Link>
             </DialogClose>
           ))}
+          <LanguageSwitch className="flex min-h-12 items-center gap-3 rounded-xl px-3" />
         </nav>
       </DialogContent>
     </Dialog>

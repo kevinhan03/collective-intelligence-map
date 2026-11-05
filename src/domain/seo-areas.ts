@@ -109,7 +109,6 @@ export function seoAreas(places: LocatedPlace[]): SeoArea[] {
 export function areaPath(slug: string, key: string, page = 1) {
   return `/maps/${encodeURIComponent(slug)}/areas/${encodeURIComponent(key)}${page > 1 ? `/page/${page}` : ""}`;
 }
-export function areaTitle(map: ThemeMap, area: SeoArea) {
-  const theme = map.tags.find((tag) => tag && tag !== "전체") ?? map.title;
-  return `${area.label} ${theme} 추천 장소`;
+export function areaTheme(map: ThemeMap) {
+  return map.tags.find((tag) => tag && tag !== "전체") ?? map.title;
 }

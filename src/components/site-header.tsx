@@ -1,14 +1,16 @@
 import { CatalogSessionGuard } from "./admin/catalog-session-guard";
-import Link from "next/link";
+import Link from "@/i18n/link";
 import { connection } from "next/server";
 import { ArrowUpRight, Bookmark, Map as MapIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getViewer } from "@/server/queries";
 import { ScrollHeader } from "./scroll-header";
+import { LanguageSwitch } from "./language-switch";
+import { getTranslator } from "@/i18n/server";
 export async function SiteHeader() {
   // Auth SDK session expiry checks belong to request-time rendering.
   await connection();
-  const viewer = await getViewer();
+  const [viewer, t] = await Promise.all([getViewer(), getTranslator()]);
   return (
     <ScrollHeader>
       <CatalogSessionGuard userId={viewer?.id ?? null} />
@@ -17,7 +19,7 @@ export async function SiteHeader() {
           href="/"
           prefetch={false}
           className="flex items-center gap-2.5"
-          aria-label="Ting map 홈"
+          aria-label={t("nav.home")}
         >
           <span className="grid size-9 place-items-center rounded-xl bg-primary text-primary-foreground">
             <MapIcon size={20} />
@@ -28,15 +30,16 @@ export async function SiteHeader() {
         </Link>
         <nav
           className="hidden items-center gap-2 lg:flex lg:gap-6"
-          aria-label="주요 메뉴"
+          aria-label={t("nav.main")}
         >
+          <LanguageSwitch className="flex items-center gap-1.5 text-sm text-muted-foreground" />
           <Link
             href="/saved"
             prefetch={false}
             className="flex items-center gap-2 text-sm text-muted-foreground"
           >
             <Bookmark size={16} />
-            <span className="hidden sm:inline">저장</span>
+            <span className="hidden sm:inline">{t("nav.saved")}</span>
           </Link>
           {viewer ? (
             <>
@@ -45,14 +48,14 @@ export async function SiteHeader() {
                 prefetch={false}
                 className="text-sm text-muted-foreground"
               >
-                내 지도
+                {t("nav.myMaps")}
               </Link>
               <Link
                 href="/my-proposals"
                 prefetch={false}
                 className="text-sm text-muted-foreground"
               >
-                내 제안
+                {t("nav.myProposals")}
               </Link>
               <Link
                 href="/settings/profile"
@@ -68,14 +71,14 @@ export async function SiteHeader() {
                     prefetch={false}
                     className="text-xs"
                   >
-                    홈 콘텐츠
+                    {t("nav.homeContent")}
                   </Link>
                   <Link
                     href="/admin/moderation"
                     prefetch={false}
                     className="text-xs"
                   >
-                    관리
+                    {t("nav.admin")}
                   </Link>
                 </span>
               )}
@@ -83,7 +86,7 @@ export async function SiteHeader() {
           ) : (
             <Button asChild size="sm">
               <Link href="/login" prefetch={false}>
-                로그인
+                {t("nav.login")}
                 <ArrowUpRight size={14} />
               </Link>
             </Button>

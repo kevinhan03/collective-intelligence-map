@@ -5,6 +5,7 @@ import type { MapTag } from "@/domain/map-tags";
 import { Button } from "@/components/ui/button";
 import { post } from "./api";
 import styles from "./place-tags.module.css";
+import { useI18n } from "@/i18n/client";
 type State = { tags: MapTag[]; tagIds: string[]; canManage: boolean };
 type Props = { id: string; onChange: () => void };
 
@@ -13,6 +14,7 @@ export function PlaceTags(props: Props) {
   return <PlaceTagContent key={props.id} {...props} />;
 }
 function PlaceTagContent({ id, onChange }: Props) {
+  const { t } = useI18n();
   const [state, setState] = useState<State | null>(null);
   const [draft, setDraft] = useState<string[]>([]);
   const [editing, setEditing] = useState(false);
@@ -29,14 +31,14 @@ function PlaceTagContent({ id, onChange }: Props) {
     request.current = controller;
     fetch(`/api/map-places/${id}/tags`, { signal: controller.signal })
       .then(async (response) => {
-        if (!response.ok) throw new Error("태그를 불러오지 못했습니다.");
+        if (!response.ok) throw new Error(t("place.couldnTLoadTags"));
         const value = (await response.json()) as Partial<State> | null;
         if (
           !Array.isArray(value?.tags) ||
           !Array.isArray(value.tagIds) ||
           typeof value.canManage !== "boolean"
         )
-          throw new Error("태그를 불러오지 못했습니다.");
+          throw new Error(t("place.couldnTLoadTags"));
         return value as State;
       })
       .then((value) => {
@@ -47,10 +49,10 @@ function PlaceTagContent({ id, onChange }: Props) {
       })
       .catch(() => {
         if (!controller.signal.aborted)
-          setError("장소 태그를 불러오지 못했습니다.");
+          setError(t("place.couldnTLoadPlaceTags"));
       });
     return () => controller.abort();
-  }, [id, attempt]);
+  }, [id, attempt, t]);
   useEffect(() => {
     if (editing) {
       wasEditing.current = true;
@@ -63,7 +65,7 @@ function PlaceTagContent({ id, onChange }: Props) {
   if (!state && !error)
     return (
       <p role="status" className={styles.hint}>
-        태그 불러오는 중…
+        {t("place.loadingTags")}
       </p>
     );
   if (state && !state.tags.length && !state.canManage) return null;
@@ -98,10 +100,10 @@ function PlaceTagContent({ id, onChange }: Props) {
       setState(next);
       setDraft(next.tagIds);
       setEditing(false);
-      setNotice("태그를 저장했습니다.");
+      setNotice(t("place.tagSaved"));
       onChange();
     } catch (e) {
-      if (!signal?.aborted) setError((e as Error).message);
+      if (!signal?.aborted) setError(t.message((e as Error).message));
     } finally {
       if (!signal?.aborted) setSaving(false);
     }
@@ -109,13 +111,13 @@ function PlaceTagContent({ id, onChange }: Props) {
   return (
     <section
       className={styles.section}
-      aria-label="이 지도의 태그"
+      aria-label={t("place.tagsOnThisMap")}
       data-place-tags
     >
       <div className={styles.header}>
-        <h3 className={styles.heading}>분류 태그</h3>
+        <h3 className={styles.heading}>{t("place.tagsHeading")}</h3>
         {editing ? (
-          <span className={styles.hint}>편집 중</span>
+          <span className={styles.hint}>{t("place.editing")}</span>
         ) : (
           state?.canManage &&
           state.tags.length > 0 && (
@@ -123,7 +125,7 @@ function PlaceTagContent({ id, onChange }: Props) {
               ref={editButton}
               type="button"
               className={styles.edit}
-              aria-label="분류 태그 수정"
+              aria-label={t("place.editTags")}
               onClick={() => {
                 setDraft(state.tagIds);
                 setNotice("");
@@ -132,7 +134,7 @@ function PlaceTagContent({ id, onChange }: Props) {
               }}
             >
               <Pencil size={14} aria-hidden="true" />
-              수정
+              {t("place.edit")}
             </button>
           )
         )}
@@ -140,7 +142,7 @@ function PlaceTagContent({ id, onChange }: Props) {
       {editing && state?.canManage ? (
         <form
           className={styles.editor}
-          aria-label="분류 태그 편집"
+          aria-label={t("place.editTagsForm")}
           onSubmit={(event) => {
             event.preventDefault();
             void save();
@@ -153,9 +155,7 @@ function PlaceTagContent({ id, onChange }: Props) {
             }
           }}
         >
-          <p className={styles.hint}>
-            이 지도 안에서 이 장소를 분류할 태그를 선택하세요.
-          </p>
+          <p className={styles.hint}>{t("place.chooseTagsHint")}</p>
           <div className={styles.choices}>
             {state.tags.map((tag, index) => (
               <button
@@ -193,19 +193,19 @@ function PlaceTagContent({ id, onChange }: Props) {
                 type="button"
                 className={styles.cancel}
                 disabled={saving}
-                aria-label="태그 수정 취소"
+                aria-label={t("place.cancelTagEdit")}
                 onClick={cancel}
               >
-                취소
+                {t("place.cancel")}
               </button>
               <Button
                 type="submit"
                 size="sm"
                 className={styles.save}
-                aria-label="태그 저장"
+                aria-label={t("place.saveTags")}
                 disabled={saving || !dirty}
               >
-                {saving ? "저장 중…" : "저장"}
+                {saving ? t("place.saving") : t("place.save2")}
               </Button>
             </div>
           </div>
@@ -214,7 +214,10 @@ function PlaceTagContent({ id, onChange }: Props) {
         state && (
           <>
             {assigned.length ? (
-              <ul className={styles.assigned} aria-label="지정된 분류 태그">
+              <ul
+                className={styles.assigned}
+                aria-label={t("place.assignedTags")}
+              >
                 {assigned.map((tag) => (
                   <li key={tag.id} className={styles.tag}>
                     {tag.name}
@@ -224,8 +227,8 @@ function PlaceTagContent({ id, onChange }: Props) {
             ) : (
               <p className={styles.hint}>
                 {!state.tags.length && state.canManage
-                  ? "지도 정보에서 분류 태그를 먼저 만들어 주세요."
-                  : "아직 지정된 태그가 없습니다."}
+                  ? t("place.createPlaceTagsInMap")
+                  : t("place.noTagsAssignedYet")}
               </p>
             )}
           </>
@@ -243,7 +246,7 @@ function PlaceTagContent({ id, onChange }: Props) {
                 setAttempt((value) => value + 1);
               }}
             >
-              다시 시도
+              {t("place.tryAgain")}
             </button>
           )}
         </div>

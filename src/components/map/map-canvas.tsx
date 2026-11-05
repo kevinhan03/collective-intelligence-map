@@ -5,6 +5,7 @@ import { MapLoading } from "./map-loading";
 import { memo, useEffect, useRef, useState } from "react";
 import type { RendererConfig } from "@/domain/types";
 import type { MapProps } from "./types";
+import { useI18n } from "@/i18n/client";
 const Kakao = dynamic(() => import("./renderers/kakao"), {
   ssr: false,
   loading: MapLoading,
@@ -23,6 +24,7 @@ export const MapCanvas = memo(function MapCanvas({
   compact,
   ...props
 }: Omit<MapProps, "apiKey"> & { config: RendererConfig }) {
+  const { t } = useI18n();
   const container = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(compact);
   useEffect(() => {
@@ -60,7 +62,7 @@ export const MapCanvas = memo(function MapCanvas({
     return (
       <div className="map-grid flex h-full min-h-[420px] flex-col items-center justify-center gap-4 p-8 text-center">
         <MapFailure
-          message="지도 연결을 준비하고 있어요."
+          message={t("map.connectingToTheMap")}
           onFallback={props.onFallback}
         />
       </div>

@@ -1,11 +1,11 @@
 "use client";
-import Link from "next/link";
+import Link from "@/i18n/link";
 import { Bookmark, Flame } from "lucide-react";
 import type { CatalogMap } from "@/domain/map-catalog";
-import { catalogLocation } from "@/domain/map-catalog";
 import { MapCardBackdrop } from "./map-card-backdrop";
 import type { useMapEngagement } from "./use-map-engagement";
 import styles from "./map-catalog.module.css";
+import { useI18n } from "@/i18n/client";
 type Engagement = ReturnType<typeof useMapEngagement>;
 function Reaction({
   map,
@@ -16,19 +16,26 @@ function Reaction({
   engagement: Engagement;
   action: "hype" | "save_map";
 }) {
+  const { t } = useI18n();
   const active =
     action === "hype" ? engagement.isHyped(map.id) : engagement.isSaved(map.id);
   const pending = engagement.isPending(action, map.id);
-  const label =
+  const label = t(
     action === "hype"
-      ? `Hype ${active ? "취소" : "추천"}`
-      : `지도 저장${active ? " 취소" : ""}`;
+      ? active
+        ? "home.unhypeMapLabel"
+        : "home.hypeMapLabel"
+      : active
+        ? "home.unsaveMapLabel"
+        : "home.saveMapLabel",
+    { title: map.displayTitle },
+  );
   return (
     <button
       type="button"
       className={action === "hype" ? styles.hype : styles.bookmark}
-      aria-label={`${map.displayTitle} ${label}`}
-      title={action === "hype" ? "이 지도 추천하기 · 숫자는 누적 Hype" : label}
+      aria-label={label}
+      title={action === "hype" ? t("home.hypeThisMapTheNumber") : label}
       aria-pressed={active}
       aria-busy={pending}
       disabled={!engagement.interactive || !engagement.ready || pending}
@@ -68,9 +75,17 @@ export function CatalogCard({
   onSelect?: () => void;
   selected?: boolean;
 }) {
-  const location = catalogLocation(map, region);
+  const { t } = useI18n();
   const inclusive = Boolean(region && map.regions[0] !== region);
-  const count = `${inclusive ? "전체 " : ""}${map.place_count.toLocaleString("ko-KR")}곳`;
+  const location = inclusive
+    ? `${t.data("region", map.regionLabel)} ${t("home.includes", { region: t.data("region", region) })}`
+    : t.data("region", map.regionLabel);
+  const count = t(
+    inclusive ? "home.placeCountAllPlain" : "home.placeCountPlain",
+    {
+      count: map.place_count,
+    },
+  );
   return (
     <article
       className={`${styles.card} ${featured ? styles.featured : ""}`}
@@ -88,7 +103,9 @@ export function CatalogCard({
           } else onNavigate?.();
         }}
         className={styles.cardLink}
-        aria-label={`${map.displayTitle} ${onSelect ? "편집" : "지도 열기"}`}
+        aria-label={t(onSelect ? "home.editMapLabel" : "home.openMapLabel", {
+          title: map.displayTitle,
+        })}
       >
         <div className={styles.photo}>
           <MapCardBackdrop
@@ -103,7 +120,9 @@ export function CatalogCard({
           {featured && <p className={styles.reason}>{map.featureReason}</p>}
           <p className={styles.meta}>
             {location}
-            {!featured && map.categoryLabel ? ` · ${map.categoryLabel}` : ""}
+            {!featured && map.categoryLabel
+              ? ` · ${t.data("categoryLabel", map.categoryLabel)}`
+              : ""}
           </p>
           {featured && <span className={styles.featureCount}>{count}</span>}
         </div>

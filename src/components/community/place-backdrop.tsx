@@ -4,6 +4,7 @@ import Image from "next/image";
 import { photoImageUrl, type PhotoPage } from "@/domain/place-photo";
 import { usePlaceResource } from "./place-resources";
 
+import { useI18n } from "@/i18n/client";
 /** Blurred first photo behind a place card's top; renders nothing without a photo. */
 export function PlaceBackdrop({
   placeId,
@@ -12,16 +13,17 @@ export function PlaceBackdrop({
   placeId: string;
   demo: boolean;
 }) {
+  const { t } = useI18n();
   // Same key and request as PlacePhotos, so the shared cache serves both.
   const fetchPage = useCallback(
     async (signal: AbortSignal): Promise<PhotoPage> => {
       const response = await fetch(`/api/places/${placeId}/photos`, {
         signal,
       });
-      if (!response.ok) throw new Error("사진을 불러오지 못했습니다.");
+      if (!response.ok) throw new Error(t("map.couldnTLoadPhotos"));
       return response.json();
     },
-    [placeId],
+    [placeId, t],
   );
   const { data } = usePlaceResource(
     `photos:${placeId}`,

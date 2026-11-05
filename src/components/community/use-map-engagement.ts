@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/i18n/navigation";
 import { useMobile } from "@/hooks/use-mobile";
 import { loginHref } from "@/domain/login-return";
 import type { ThemeMap } from "@/domain/types";
@@ -72,7 +72,10 @@ export function useMapEngagement(
       controller.current?.abort();
     };
   }, [demo, mobile, surface, load]);
-  const withCounts = <T extends ThemeMap>(map: T) => ({ ...map, ...counts[map.id] });
+  const withCounts = <T extends ThemeMap>(map: T) => ({
+    ...map,
+    ...counts[map.id],
+  });
   const isSaved = (id: string) => personal.saved.includes(id);
   const isHyped = (id: string) => personal.hyped.includes(id);
   async function toggle(action: "hype" | "save_map", id: string) {

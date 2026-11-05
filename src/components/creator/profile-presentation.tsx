@@ -1,5 +1,5 @@
 "use client";
-import Link from "next/link";
+import Link from "@/i18n/link";
 import { Camera, ChevronRight, Pencil, Plus } from "lucide-react";
 import { ShareButton } from "@/components/community/share-button";
 import { ProfileCardImage } from "./profile-card-image";
@@ -7,6 +7,7 @@ import { profileCardTheme } from "@/domain/profile-image";
 import { RecommendationCollectionCard } from "./profile-contributions";
 import type { CreatorMap } from "@/domain/creator";
 
+import { useI18n } from "@/i18n/client";
 export type ProfilePresentationProps = {
   handle: string;
   displayName?: string;
@@ -37,6 +38,7 @@ export function ProfilePresentation({
   manageMapsHref,
   editProfileHref,
 }: ProfilePresentationProps) {
+  const { t } = useI18n();
   const ordered = [...maps].sort(
     (a, b) => Number(b.id === featuredId) - Number(a.id === featuredId),
   );
@@ -49,7 +51,7 @@ export function ProfilePresentation({
             {displayName || handle}
           </NameHeading>
           <p className="profile-handle">@{handle}</p>
-          <p className="profile-bio">{bio || "아직 소개가 없습니다."}</p>
+          <p className="profile-bio">{bio || t("creator.noBioYet")}</p>
         </div>
         <div
           className={`profile-socials${editProfileHref ? " has-owner-actions" : ""}`}
@@ -74,7 +76,8 @@ export function ProfilePresentation({
               />
               <Link href={editProfileHref} className="profile-action">
                 <span>
-                  <Pencil size={15} aria-hidden="true" /> 프로필 편집
+                  <Pencil size={15} aria-hidden="true" />{" "}
+                  {t("creator.editProfile")}
                 </span>
               </Link>
             </div>
@@ -84,14 +87,17 @@ export function ProfilePresentation({
         </div>
       </header>
       {
-        <section className="profile-collection" aria-label="공개 장소 지도">
+        <section
+          className="profile-collection"
+          aria-label={t("creator.publicPlacesMap")}
+        >
           <div className="profile-section-heading">
             <h2>
-              내가 만든 지도 <span>{ordered.length}</span>
+              {t("creator.mapsIMade")} <span>{ordered.length}</span>
             </h2>
             {manageMapsHref && (
               <Link href={manageMapsHref} className="profile-maps-link">
-                전체 보기 <ChevronRight size={14} />
+                {t("creator.seeAll")} <ChevronRight size={14} />
               </Link>
             )}
           </div>
@@ -105,14 +111,14 @@ export function ProfilePresentation({
               <Link
                 href="/studio"
                 className="profile-map profile-map-featured profile-map-empty"
-                aria-label="첫 지도 만들기"
+                aria-label={t("creator.createYourFirstMap")}
               >
                 <ProfileCardImage theme="travel" />
                 <div className="profile-map-copy">
-                  <h3>지도를 만들어보세요</h3>
-                  <p>좋아하는 장소를 모아 나만의 지도로 공유하세요.</p>
+                  <h3>{t("creator.createAMap")}</h3>
+                  <p>{t("creator.collectYourFavoritePlacesAnd")}</p>
                   <span className="profile-create-label">
-                    <Plus size={14} /> 첫 지도 만들기
+                    <Plus size={14} /> {t("creator.createYourFirstMap")}
                   </span>
                 </div>
               </Link>
@@ -137,18 +143,20 @@ export function ProfilePresentation({
                   )}
                 />
                 {map.id === featuredId && (
-                  <span className="profile-featured-label">대표 지도</span>
+                  <span className="profile-featured-label">
+                    {t("creator.featuredMap")}
+                  </span>
                 )}
                 <div className="profile-map-copy">
                   <h3>{map.title}</h3>
                   <p>
                     {map.city ||
                       (map.country === "KR"
-                        ? "한국"
+                        ? t("creator.korea")
                         : map.country === "JP"
-                          ? "일본"
-                          : "세계")}{" "}
-                    · {map.place_count}곳
+                          ? t("creator.japan")
+                          : t("creator.worldwide"))}{" "}
+                    · {t("creator.placeCount", { count: map.place_count })}
                   </p>
                 </div>
               </Link>
@@ -159,7 +167,7 @@ export function ProfilePresentation({
             className="profile-manage-link"
             hidden={!(preview || editProfileHref) || !ordered.length}
           >
-            카드에서 지도·커버 편집 <ChevronRight size={14} />
+            {t("creator.editMapsAndCoversFrom")} <ChevronRight size={14} />
           </Link>
         </section>
       }

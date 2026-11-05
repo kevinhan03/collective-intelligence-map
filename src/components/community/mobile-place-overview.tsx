@@ -6,6 +6,7 @@ import { MobilePlaceList } from "./mobile-place-list";
 import { usePlaceSheetDrag } from "@/hooks/use-place-sheet-drag";
 import { useSheetStageMotion } from "@/hooks/use-sheet-stage-motion";
 
+import { useI18n } from "@/i18n/client";
 type ListProps = ComponentProps<typeof MobilePlaceList>;
 
 /** Bottom sheet shown before a place is picked: every place on the map. */
@@ -31,6 +32,7 @@ export function MobilePlaceOverview({
   onClose: () => void;
   controls: ReactNode;
 }) {
+  const { t } = useI18n();
   const card = useRef<HTMLElement>(null);
   useSheetStageMotion(card, stage);
   const expand = () => onStageChange("summary");
@@ -44,28 +46,30 @@ export function MobilePlaceOverview({
       ref={card}
       className="mobile-place-overview"
       data-sheet-stage={stage}
-      aria-label="장소 목록"
+      aria-label={t("map.placeList")}
     >
       <div className="place-sheet-drag-zone" {...drag}>
         <PlaceSheetHandle
           stage={stage}
-          subject="장소 목록"
+          subject={t("map.placeList")}
           onActivate={stage === "collapsed" ? expand : collapse}
           onExpand={expand}
           onCollapse={collapse}
         />
         <div className="place-sheet-title-row">
-          <h2 className="place-sheet-title">{list.places.length}곳</h2>
+          <h2 className="place-sheet-title">
+            {t("map.placeCount", { count: list.places.length })}
+          </h2>
           <button
             className="place-sheet-close"
-            aria-label="장소 목록 닫기"
+            aria-label={t("map.closePlaceList")}
             onClick={onClose}
           >
             <X size={18} />
           </button>
         </div>
         {stage === "collapsed" && (
-          <p className="place-sheet-intro">위로 올려 전체 장소 보기</p>
+          <p className="place-sheet-intro">{t("map.swipeUpToSeeAll")}</p>
         )}
       </div>
       {stage === "summary" && (

@@ -1,5 +1,5 @@
 "use client";
-import Link from "next/link";
+import Link from "@/i18n/link";
 import { useEffect, useRef, useState } from "react";
 import { ArrowUpRight, Search } from "lucide-react";
 import type { ThemeMap } from "@/domain/types";

@@ -1,6 +1,6 @@
 "use client";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import Link from "@/i18n/link";
+import { useRouter } from "@/i18n/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
@@ -39,6 +39,7 @@ import {
 } from "@/domain/proposal-search-cache";
 import { countryOptions } from "@/domain/countries";
 import { browserDb } from "@/lib/supabase/client";
+import { useI18n } from "@/i18n/client";
 type Selection = {
   placeId?: string;
   token?: string;
@@ -62,6 +63,7 @@ export function ProposalForm({
   autoApprove: boolean;
   config: RendererConfig;
 }) {
+  const { t } = useI18n();
   const router = useRouter();
   const [authChanged, setAuthChanged] = useState(false);
   const [manualCountry, setManualCountry] = useState("");
@@ -254,7 +256,7 @@ export function ProposalForm({
       setSearched(true);
     } catch (e) {
       if (requestId.current === id && !controller.signal.aborted) {
-        setSearchError((e as Error).message);
+        setSearchError(t.message((e as Error).message));
         setSearched(true);
       }
     } finally {
@@ -322,18 +324,18 @@ export function ProposalForm({
       });
     } catch (e) {
       if (requestId.current === id && !controller.signal.aborted)
-        setSearchError((e as Error).message);
+        setSearchError(t.message((e as Error).message));
     } finally {
       if (requestId.current === id) setBusy(false);
     }
   }
   async function locateAddress() {
     if (manualAddress.trim().length < 5) {
-      setLocationError("주소를 더 자세히 입력해 주세요.");
+      setLocationError(t("propose.pleaseEnterAMoreDetailed"));
       return;
     }
     if (searchScope(map) === "world" && !manualCountry) {
-      setLocationError("장소가 있는 국가를 먼저 선택해 주세요.");
+      setLocationError(t("propose.pleaseChooseThePlaceS"));
       return;
     }
     setLocating(true);
@@ -356,16 +358,23 @@ export function ProposalForm({
     } catch (error) {
       if (controller.signal.aborted) return;
       setManualLocation(null);
-      setLocationError((error as Error).message);
+      setLocationError(t.message((error as Error).message));
     } finally {
       if (!controller.signal.aborted) setLocating(false);
     }
   }
   return (
     <div className="proposal-form">
-      <nav aria-label="장소 제안 진행 단계" className="proposal-progress">
+      <nav
+        aria-label={t("propose.suggestionSteps")}
+        className="proposal-progress"
+      >
         <ol>
-          {["장소 선택", "추천 이유", "제출"].map((label, index) => (
+          {[
+            t("propose.choosePlace"),
+            t("propose.whyYouRecommendIt"),
+            t("propose.submit"),
+          ].map((label, index) => (
             <li
               key={label}
               aria-current={step === index + 1 ? "step" : undefined}
@@ -386,36 +395,36 @@ export function ProposalForm({
       <div className="proposal-question">
         <h2 ref={stepHeading} tabIndex={-1}>
           {step === 1
-            ? "어떤 장소를 추천하고 싶나요?"
+            ? t("propose.whichPlaceWouldYouLike")
             : step === 2
-              ? "어떤 점을 추천하나요?"
-              : "제안 내용을 확인해 주세요"}
+              ? t("propose.whatDoYouRecommendAbout")
+              : t("propose.reviewYourSuggestion")}
         </h2>
         <p>
           {step === 1
-            ? `${map.title} 지도에 추가할 장소를 검색해 주세요.`
+            ? t("propose.searchForAPlaceTo", { title: map.title })
             : step === 2
-              ? "직접 경험한 장점이나 방문할 이유를 남겨주세요."
-              : "장소와 추천 이유가 맞는지 확인하고 제출해 주세요."}
+              ? t("propose.shareWhatYouLikedOr")
+              : t("propose.checkThatThePlaceAnd")}
         </p>
       </div>
       {authChanged && (
         <p role="alert" className="text-sm text-muted-foreground">
-          로그인 상태가 변경됐습니다. 페이지를 새로고침해 주세요.
+          {t("propose.yourSignInStatusChanged")}
         </p>
       )}
       {!enabled && (
         <p className="proposal-login-note rounded-lg border text-sm">
-          로그인하면 누구나 장소를 제안할 수 있어요.{" "}
+          {t("propose.anyoneWhoSignsInCan")}{" "}
           <Link
             href={loginHref(`/maps/${map.slug}/submit`)}
             className="underline"
           >
-            로그인하기
+            {t("propose.signIn")}
           </Link>
         </p>
       )}
-      <section className="space-y-4" aria-label="장소 선택">
+      <section className="space-y-4" aria-label={t("propose.choosePlace")}>
         <div hidden={step !== 1} className="space-y-4">
           <form
             className="proposal-search"
@@ -432,8 +441,8 @@ export function ProposalForm({
               aria-hidden="true"
             />
             <Input
-              aria-label="제안할 장소 검색"
-              placeholder="장소 이름이나 주소 검색"
+              aria-label={t("propose.searchForAPlaceTo2")}
+              placeholder={t("propose.searchByPlaceNameOr")}
               value={query}
               maxLength={100}
               disabled={!enabled || authChanged || sending}
@@ -512,19 +521,19 @@ export function ProposalForm({
               ) : (
                 <Search size={15} aria-hidden="true" />
               )}
-              {searching ? "검색 중…" : "검색"}
+              {searching ? t("propose.searching") : t("propose.search")}
             </Button>
           </form>
           {searching && (
             <p role="status" className="text-xs text-muted-foreground">
-              관련 장소를 찾고 있어요…
+              {t("propose.lookingForMatchingPlaces")}
             </p>
           )}
           {!searching &&
             !resultStale &&
             (internal.length > 0 || candidates.length > 0) && (
               <p className="text-xs text-muted-foreground">
-                관련 장소 · 이름과 주소를 확인하고 선택해 주세요.
+                {t("propose.matchingPlacesCheckTheName")}
               </p>
             )}
           {internal.map((p) => (
@@ -549,26 +558,32 @@ export function ProposalForm({
             >
               <span className="text-sm font-medium">{p.name}</span>
               <span className="mt-1 block text-xs text-muted-foreground">
-                {p.locality} · {p.category} · {p.address} · 커뮤니티 장소
+                {t("propose.communityPlaceMeta", {
+                  locality: p.locality,
+                  category: p.category,
+                  address: p.address,
+                })}
               </span>
               <span className="mt-1 block text-xs text-primary">
                 {creator && p.currentMapStatus
-                  ? "이 지도에 추가됨"
+                  ? t("propose.alreadyOnThisMap")
                   : !p.currentMapStatus
-                    ? "이 지도에 추천 가능"
+                    ? t("propose.canBeAddedToThis")
                     : p.currentMapStatus === "pending"
-                      ? "검토 대기"
+                      ? t("propose.pendingReview")
                       : ["rejected", "archived", "reviewed"].includes(
                             p.currentMapStatus,
                           )
-                        ? "이미 검토됨"
-                        : "이 지도에 공개됨"}
+                        ? t("propose.alreadyReviewed")
+                        : t("propose.liveOnThisMap")}
               </span>
             </button>
           ))}
           {candidates.length > 0 && (
             <p className="text-xs text-muted-foreground">
-              검색 결과 제공: {candidates[0].attribution}
+              {t("propose.resultsBy", {
+                attribution: candidates[0].attribution,
+              })}
             </p>
           )}
           {candidates.slice(0, showRelated ? 10 : 5).map((c, index) => (
@@ -582,12 +597,13 @@ export function ProposalForm({
                 {c.label}
                 {index === 0 && c.matchType === "exact" && (
                   <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                    검색어와 일치
+                    {t("propose.matchesYourSearch")}
                   </span>
                 )}
               </span>
               <span className="mt-1 block text-xs text-muted-foreground">
-                {c.locality ?? map.city} · {placeCategoryLabel(c.category)}
+                {c.locality ?? map.city} ·{" "}
+                {t.data("placeCategory", placeCategoryLabel(c.category))}
                 {c.address ? ` · ${c.address}` : ""}
               </span>
             </button>
@@ -600,12 +616,12 @@ export function ProposalForm({
               className="w-full"
               onClick={() => setShowRelated(true)}
             >
-              관련 결과 {candidates.length - 5}개 더 보기
+              {t("propose.showMoreResults", { count: candidates.length - 5 })}
             </Button>
           )}
           {searchScope(map) === "world" && (
             <p className="text-xs text-muted-foreground">
-              현재 확보된 지역 데이터에서 검색합니다.
+              {t("propose.searchingTheAreaDataWe")}
             </p>
           )}
           {!searching && !resultStale && translationAvailable && (
@@ -614,7 +630,7 @@ export function ProposalForm({
               variant="outline"
               onClick={() => void search(true, true)}
             >
-              일본어 이름으로 찾아보기
+              {t("propose.searchByJapaneseName")}
             </Button>
           )}
           {searchError && (
@@ -625,7 +641,7 @@ export function ProposalForm({
                 className="underline"
                 onClick={() => void search()}
               >
-                다시 검색
+                {t("propose.searchAgain")}
               </button>
             </p>
           )}
@@ -637,8 +653,7 @@ export function ProposalForm({
             !internal.length &&
             !candidates.length && (
               <p className="text-sm text-muted-foreground">
-                검색 결과가 없습니다. 아직 지원하지 않는 지역이거나 새 장소일 수
-                있습니다.
+                {t("propose.noResultsThisAreaMay")}
               </p>
             )}
           {externalLimit && !searching && !resultStale && (
@@ -646,7 +661,7 @@ export function ProposalForm({
               role="status"
               className="rounded-xl border px-4 py-3 text-sm text-muted-foreground"
             >
-              {externalSearchLimitMessage(externalLimit)}{" "}
+              {t.message(externalSearchLimitMessage(externalLimit))}{" "}
               <button
                 type="button"
                 className="inline min-h-0 p-0 font-medium text-foreground underline"
@@ -657,7 +672,7 @@ export function ProposalForm({
                   toggle.scrollIntoView({ block: "nearest" });
                 }}
               >
-                직접 등록하기
+                {t("propose.addItManually")}
               </button>
             </div>
           )}
@@ -696,18 +711,18 @@ export function ProposalForm({
             }}
           >
             <summary className="cursor-pointer text-sm font-medium">
-              <span>찾는 장소가 없나요? 직접 등록</span>
+              <span>{t("propose.canTFindItAdd")}</span>
               <ChevronRight size={16} aria-hidden="true" />
             </summary>
             <p className="mt-2 text-xs leading-5 text-muted-foreground">
-              이름과 정확한 주소를 입력하면 위치를 찾아드려요.
+              {t("propose.enterTheNameAndExact")}
             </p>
           </details>
         </div>
         {selection && step === 2 && (
           <div className="overflow-hidden rounded-lg border">
             <p className="bg-secondary p-3 text-sm">
-              선택한 장소: {selection.label}
+              {t("propose.selectedPlace")} {selection.label}
               <span className="mt-1 block text-xs text-muted-foreground">
                 {selection.address}
               </span>
@@ -722,7 +737,7 @@ export function ProposalForm({
                 setError("");
               }}
             >
-              다른 장소 선택
+              {t("propose.chooseADifferentPlace")}
             </Button>
             {selection.lat !== undefined && selection.lng !== undefined && (
               <div className="h-[300px]">
@@ -776,23 +791,23 @@ export function ProposalForm({
             const f = new FormData(form);
             const errors: Record<string, string> = {};
             if (step !== 1 && rationale.trim().length > 1000)
-              errors.rationale = "소개는 1,000자 이내로 입력해 주세요.";
+              errors.rationale = t("propose.pleaseKeepYourNoteUnder");
             if (manual && !String(f.get("name") ?? "").trim())
-              errors.name = "장소 이름을 입력해 주세요.";
+              errors.name = t("propose.pleaseEnterThePlaceName");
             if (manual && String(f.get("name") ?? "").trim().length > 120)
-              errors.name = "장소 이름은 120자 이내로 입력해 주세요.";
+              errors.name = t("propose.pleaseKeepThePlaceName");
             if (manual && !manualAddress.trim())
-              errors.address = "정확한 주소를 입력해 주세요.";
+              errors.address = t("propose.pleaseEnterTheExactAddress");
             if (manual && manualAddress.trim().length > 250)
-              errors.address = "주소는 250자 이내로 입력해 주세요.";
+              errors.address = t("propose.pleaseKeepTheAddressUnder");
             if (manual && !manualLocation)
-              errors.location = "주소에서 위치를 찾고 지도에서 확인해 주세요.";
+              errors.location = t("propose.findTheLocationFromThe");
             if (
               manual &&
               searchScope(map) === "world" &&
               !/^[A-Z]{2}$/.test(manualCountry)
             )
-              errors.countryCode = "장소가 있는 국가를 선택해 주세요.";
+              errors.countryCode = t("propose.pleaseChooseTheCountryThe");
             setFieldErrors(errors);
             if (Object.keys(errors).length) {
               if (
@@ -840,8 +855,7 @@ export function ProposalForm({
                         category: f.get("category"),
                         lat: manualLocation?.lat,
                         lng: manualLocation?.lng,
-                        sourceNote:
-                          "사용자가 직접 알고 있는 장소 이름과 위치를 등록했습니다.",
+                        sourceNote: t("propose.aUserAddedThisPlace"),
                       }
                     : {}),
                 },
@@ -855,7 +869,7 @@ export function ProposalForm({
               );
               router.refresh();
             } catch (e) {
-              setError((e as Error).message);
+              setError(t.message((e as Error).message));
             } finally {
               submitting.current = false;
               setSending(false);
@@ -865,14 +879,15 @@ export function ProposalForm({
         >
           {manual && (
             <section hidden={step !== 1} className="proposal-fields space-y-4">
-              <h3 className="text-sm font-semibold">새 장소 정보</h3>
+              <h3 className="text-sm font-semibold">
+                {t("propose.newPlaceDetails")}
+              </h3>
               <p className="text-xs text-muted-foreground">
-                이름과 정확한 주소를 입력하면 위치를 찾습니다. 좌표를 직접
-                입력할 필요는 없어요.
+                {t("propose.enterTheNameAndExact2")}
               </p>
               {searchScope(map) === "world" && (
                 <div className="space-y-2">
-                  <Label htmlFor="countryCode">국가</Label>
+                  <Label htmlFor="countryCode">{t("propose.country")}</Label>
                   <select
                     id="countryCode"
                     name="countryCode"
@@ -885,7 +900,7 @@ export function ProposalForm({
                       geocodeController.current?.abort();
                     }}
                   >
-                    <option value="">국가 선택</option>
+                    <option value="">{t("propose.chooseCountry")}</option>
                     {countryOptions.map((country) => (
                       <option key={country.code} value={country.code}>
                         {country.label}
@@ -899,7 +914,7 @@ export function ProposalForm({
                   )}
                 </div>
               )}
-              <Label htmlFor="name">장소 이름</Label>
+              <Label htmlFor="name">{t("propose.placeName")}</Label>
               <Input
                 id="name"
                 name="name"
@@ -919,7 +934,7 @@ export function ProposalForm({
                   {fieldErrors.name}
                 </p>
               )}
-              <Label htmlFor="address">주소</Label>
+              <Label htmlFor="address">{t("propose.address")}</Label>
               <Input
                 id="address"
                 name="address"
@@ -927,8 +942,8 @@ export function ProposalForm({
                 maxLength={250}
                 placeholder={
                   map.country === "KR"
-                    ? "예: 서울 용산구 신흥로 20길 38"
-                    : "예: 東京都港区南青山6-1-3"
+                    ? t("propose.eG38SinheungRo")
+                    : t("propose.eG613")
                 }
                 className="min-h-11"
                 value={manualAddress}
@@ -960,7 +975,9 @@ export function ProposalForm({
                 onClick={() => void locateAddress()}
               >
                 <Search size={14} />
-                {locating ? "위치 찾는 중…" : "주소에서 위치 찾기"}
+                {locating
+                  ? t("propose.findingLocation")
+                  : t("propose.findLocationFromAddress")}
               </Button>
               {fieldErrors.location && (
                 <p role="alert" className="text-sm text-destructive">
@@ -975,8 +992,7 @@ export function ProposalForm({
               {manualLocation && (
                 <div className="overflow-hidden rounded-lg border">
                   <p className="bg-secondary p-3 text-sm">
-                    위치를 찾았습니다. 핀이 맞는지 확인하고, 다르면 지도에서
-                    원하는 위치를 눌러 조정하세요.
+                    {t("propose.locationFoundCheckThePin")}
                   </p>
                   <div className="h-[300px]">
                     <MapCanvas
@@ -987,7 +1003,7 @@ export function ProposalForm({
                           id: "manual-location",
                           place_id: "manual-location",
                           map_id: map.id,
-                          name: "등록할 장소",
+                          name: t("propose.placeToAdd"),
                           address: manualAddress,
                           category: "",
                           lat: manualLocation.lat,
@@ -1009,7 +1025,7 @@ export function ProposalForm({
                         setManualLocation({
                           lat,
                           lng,
-                          label: "지도에서 조정한 위치",
+                          label: t("propose.locationAdjustedOnMap"),
                         })
                       }
                       bounds={{
@@ -1023,31 +1039,30 @@ export function ProposalForm({
                   </div>
                 </div>
               )}
-              <Label htmlFor="category">분류 (선택)</Label>
+              <Label htmlFor="category">{t("propose.categoryOptional")}</Label>
               <Input
                 id="category"
                 name="category"
                 maxLength={40}
-                placeholder="예: 빈티지 숍"
+                placeholder={t("propose.eGVintageShop")}
               />
             </section>
           )}
           <section hidden={step !== 2} className="proposal-fields space-y-4">
-            <Label htmlFor="rationale">한줄 소개 (선택)</Label>
+            <Label htmlFor="rationale">{t("propose.shortNoteOptional")}</Label>
             <Textarea
               className="min-h-40 resize-y rounded-2xl p-4 text-sm leading-7"
               id="rationale"
               name="rationale"
               maxLength={1000}
-              placeholder="어떤 점이 좋았나요? 짧게 남겨주시면 다른 사람에게 도움이 돼요."
+              placeholder={t("propose.whatDidYouLikeA")}
               value={rationale}
               onChange={(event) => setRationale(event.target.value)}
               aria-invalid={Boolean(fieldErrors.rationale)}
               aria-describedby="rationale-help rationale-error"
             />
             <p id="rationale-help" className="text-xs text-muted-foreground">
-              비워두고 등록해도 괜찮아요. 나중에 소개를 추가할 수 있어요.{" "}
-              {rationale.length.toLocaleString()} / 1,000자
+              {t("propose.noteOptional", { count: rationale.length })}
             </p>
             <p
               id="rationale-error"
@@ -1058,7 +1073,10 @@ export function ProposalForm({
             </p>
           </section>
           {step === 3 && (
-            <section className="proposal-review" aria-label="제출할 제안 내용">
+            <section
+              className="proposal-review"
+              aria-label={t("propose.suggestionToSubmit")}
+            >
               <p className="kicker">{map.title}</p>
               <h3>{selection?.label ?? manualName}</h3>
               <p className="text-sm text-muted-foreground">
@@ -1067,7 +1085,7 @@ export function ProposalForm({
               {rationale.trim() && (
                 <div className="mt-6 border-t pt-5">
                   <p className="mb-2 text-xs text-muted-foreground">
-                    한줄 소개
+                    {t("propose.shortNote")}
                   </p>
                   <p className="whitespace-pre-wrap break-words text-sm leading-7">
                     {rationale}
@@ -1097,19 +1115,21 @@ export function ProposalForm({
               }}
             >
               <ArrowLeft size={15} />{" "}
-              {step === 1 ? "검색으로 돌아가기" : "이전 단계"}
+              {step === 1
+                ? t("propose.backToSearch")
+                : t("propose.previousStep")}
             </Button>
             <Button
               type="submit"
               disabled={!enabled || authChanged || busy || sending || locating}
             >
               {sending
-                ? "보내는 중…"
+                ? t("propose.sending")
                 : step === 3
-                  ? "장소 제안하기"
+                  ? t("propose.suggestThisPlace")
                   : step === 1
-                    ? "이 장소로 계속"
-                    : "제안 내용 확인"}
+                    ? t("propose.continueWithThisPlace")
+                    : t("propose.reviewSuggestion")}
               {!sending && step !== 3 && <ChevronRight size={16} />}
             </Button>
           </div>
@@ -1132,7 +1152,7 @@ export function ProposalForm({
               size="icon-sm"
               className="absolute top-3 right-3 rounded-full"
               onClick={() => setExistingPlace(null)}
-              aria-label="닫기"
+              aria-label={t("propose.close")}
             >
               <X size={16} />
             </Button>
@@ -1145,25 +1165,25 @@ export function ProposalForm({
             <DialogHeader className="mt-2 gap-2">
               <DialogTitle className="text-2xl leading-tight font-semibold tracking-tight">
                 {creator
-                  ? "이미 이 지도에 추가한 장소입니다"
+                  ? t("propose.youVeAlreadyAddedThis")
                   : ["rejected", "archived", "reviewed"].includes(
                         existingPlace?.currentMapStatus ?? "",
                       )
-                    ? "이미 검토된 장소입니다"
+                    ? t("propose.thisPlaceHasAlreadyBeen")
                     : existingPlace?.currentMapStatus === "pending"
-                      ? "이미 검토 대기 중인 장소입니다"
-                      : "이미 공개된 장소입니다"}
+                      ? t("propose.thisPlaceIsAlreadyPending")
+                      : t("propose.thisPlaceIsAlreadyLive")}
               </DialogTitle>
               <DialogDescription className="max-w-sm leading-6">
                 {creator
-                  ? "관리 화면에서 추천 이유와 순서를 수정할 수 있어요."
+                  ? t("propose.youCanEditTheReason")
                   : existingPlace?.currentMapStatus === "rejected" ||
                       existingPlace?.currentMapStatus === "archived" ||
                       existingPlace?.currentMapStatus === "reviewed"
-                    ? "이 지도에서 이미 검토된 장소입니다. 다른 장소를 선택해 주세요."
+                    ? t("propose.thisPlaceHasAlreadyBeen2")
                     : existingPlace?.currentMapStatus === "pending"
-                      ? "이미 접수된 제안입니다. 지도에서 위치와 추천 근거를 확인해 보세요."
-                      : "이 지도에 이미 공개된 장소입니다. 지도에서 위치와 추천 근거를 확인해 보세요."}
+                      ? t("propose.thisSuggestionWasAlreadyReceived")
+                      : t("propose.thisPlaceIsAlreadyLive2")}
               </DialogDescription>
             </DialogHeader>
           </div>
@@ -1171,11 +1191,12 @@ export function ProposalForm({
             <div className="rounded-xl border bg-secondary/40 p-4">
               <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                 <MapPin size={14} />
-                등록된 장소
+                {t("propose.addedPlace")}
               </p>
               <p className="text-base font-semibold">{existingPlace?.name}</p>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                {existingPlace?.locality} · {existingPlace?.category}
+                {existingPlace?.locality} ·{" "}
+                {t.data("placeCategory", existingPlace?.category ?? "")}
               </p>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
@@ -1184,7 +1205,7 @@ export function ProposalForm({
                 variant="ghost"
                 onClick={() => setExistingPlace(null)}
               >
-                계속 검색
+                {t("propose.keepSearching")}
               </Button>
               {existingPlace?.currentMapPlaceId && (
                 <Button
@@ -1199,7 +1220,7 @@ export function ProposalForm({
                     setExistingPlace(null);
                   }}
                 >
-                  지도에서 보기
+                  {t("propose.viewOnMap")}
                   <ArrowUpRight size={15} />
                 </Button>
               )}
@@ -1210,17 +1231,17 @@ export function ProposalForm({
       <p className="proposal-policy">
         <Info size={15} aria-hidden="true" />
         {creator
-          ? "초안의 장소는 지도 공개 후 표시되며, 공개 지도에 추가하면 즉시 표시됩니다."
+          ? t("propose.placesInADraftAppear")
           : autoApprove
-            ? "운영자 제안은 제출 즉시 일반 목록에 공개됩니다."
-            : "제안은 검토 대기 핀으로 표시되며, 승인 후 일반 목록에 공개됩니다."}
+            ? t("propose.moderatorSuggestionsGoLiveIn")
+            : t("propose.suggestionsAppearAsPendingPins")}
       </p>
       <Link
         href={`/maps/${map.slug}`}
         className="proposal-return flex items-center justify-center gap-2 text-xs text-muted-foreground"
       >
         <ArrowLeft size={13} />
-        맵으로 돌아가기
+        {t("propose.backToMap")}
       </Link>
     </div>
   );

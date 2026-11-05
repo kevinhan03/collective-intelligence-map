@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/i18n/link";
 import { ArrowUpRight, Users } from "lucide-react";
 import type { ThemeMap } from "@/domain/types";
 import { formatLocation } from "@/domain/location";

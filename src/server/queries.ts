@@ -82,22 +82,27 @@ export const getMaps = cache(async (): Promise<ThemeMap[]> => {
   } else {
     cacheLife({ stale: 300, revalidate: 300, expire: 3600 });
   }
-  cacheTag("public-community");
+  cacheTag("public-community", "map-engagement");
   if (!configured())
     return [
       { ...demoMap, editorial: resolveEditorial([demoMap], [])[demoMap.slug] },
     ];
   const client = publicDb();
-  const [{ data, error }, { data: statsRows, error: statsError }, engagement] =
-    await Promise.all([
-      client
-        .from("theme_maps")
-        .select("*")
-        .eq("status", "published")
-        .order("created_at"),
-      client.rpc("map_stats_all"),
-      client.rpc("map_engagement_stats"),
-    ]);
+  const [
+    { data, error },
+    { data: statsRows, error: statsError },
+    engagement,
+    settings,
+  ] = await Promise.all([
+    client
+      .from("theme_maps")
+      .select("*")
+      .eq("status", "published")
+      .order("created_at"),
+    client.rpc("map_stats_all"),
+    client.rpc("map_engagement_stats"),
+    readCatalogSettings(),
+  ]);
   if (error) throw new Error("커뮤니티 목록을 불러올 수 없습니다.");
   // Statistics are an enhancement to the public map shell. A deployment must
   // still be able to prerender the map list while an RPC migration is rolling
@@ -118,7 +123,7 @@ export const getMaps = cache(async (): Promise<ThemeMap[]> => {
   );
   const editorial = resolveEditorial(
     (data ?? []) as unknown as ThemeMap[],
-    await readCatalogSettings(),
+    settings,
   );
   return (data ?? [])
     .filter((row) => row.kind !== "creator")
@@ -158,9 +163,21 @@ export const getMap = cache(async (slug: string): Promise<ThemeMap | null> => {
     .maybeSingle();
   if (error) throw new Error("커뮤니티를 불러올 수 없습니다.");
   if (!row) return null;
-  const { data: stats, error: statsError } = await client.rpc("map_stats", {
-    m: row.id,
-  });
+  // Only the map row is a dependency. Start the remaining public reads together
+  // so an uncached detail page pays for one round trip rather than four.
+  const [statsResult, creatorResult, settings, tagCatalog] = await Promise.all([
+    client.rpc("map_stats", { m: row.id }),
+    row.kind === "creator" && row.owner_id
+      ? client
+          .from("profiles")
+          .select("handle")
+          .eq("id", row.owner_id)
+          .maybeSingle()
+      : null,
+    readCatalogSettings(),
+    getMapTagCatalog(row.id),
+  ]);
+  const { data: stats, error: statsError } = statsResult;
   if (statsError) console.error("map_stats_unavailable");
   const counts = z
     .object({
@@ -174,28 +191,17 @@ export const getMap = cache(async (slug: string): Promise<ThemeMap | null> => {
       contributor_count: 0,
     })
     .parse(stats);
-  const creator =
-    row.kind === "creator" && row.owner_id
-      ? (
-          await client
-            .from("profiles")
-            .select("handle")
-            .eq("id", row.owner_id)
-            .maybeSingle()
-        ).data
-      : null;
-  const editorial = resolveEditorial(
-    [row as unknown as ThemeMap],
-    await readCatalogSettings(),
-  )[row.slug];
+  const editorial = resolveEditorial([row as unknown as ThemeMap], settings)[
+    row.slug
+  ];
   return {
     ...row,
     // Public detail, info dialogs and share metadata use the same title as the catalog.
     // Keep the stored title intact, and creator-authored titles remain authoritative.
     title: row.kind === "creator" ? row.title : (editorial?.title ?? row.title),
     editorial,
-    creator_handle: creator?.handle,
-    place_tags: (await getMapTagCatalog(row.id))?.tags ?? [],
+    creator_handle: creatorResult?.data?.handle,
+    place_tags: tagCatalog?.tags ?? [],
     ...counts,
     bounds: row.bounds as unknown as Bounds,
   } as ThemeMap;
@@ -223,23 +229,28 @@ async function cachedInitialPlaces(map: ThemeMap): Promise<MapPlace[]> {
 export { cachedInitialPlaces as getInitialPlaces };
 
 export async function getCatalogRegions(maps: ThemeMap[]) {
+  // Counts and editorial data do not affect regions. Keep them out of the key.
+  return readCatalogRegions([...new Set(maps.map((map) => map.id))].sort());
+}
+
+async function readCatalogRegions(mapIds: string[]) {
   "use cache";
   if (process.env.NODE_ENV === "development") cacheLife("seconds");
   else cacheLife({ stale: 300, revalidate: 300, expire: 3600 });
   cacheTag("public-community");
-  if (!maps.length) return {};
+  if (!mapIds.length) return {};
   if (!configured()) {
     const terms = [
       ...new Set(
         demoPlaces.map((place) => placeArea(place.address)).filter(Boolean),
       ),
     ];
-    return Object.fromEntries(maps.map((map) => [map.id, terms]));
+    return Object.fromEntries(mapIds.map((id) => [id, terms]));
   }
 
   const client = publicDb();
   const terms: Record<string, Set<string>> = Object.fromEntries(
-    maps.map((map) => [map.id, new Set<string>()]),
+    mapIds.map((id) => [id, new Set<string>()]),
   );
   // PostgREST caps response size. Read only map ID and address, in pages, so
   // search keeps covering every public place as a map grows.
@@ -247,10 +258,7 @@ export async function getCatalogRegions(maps: ThemeMap[]) {
     const { data, error } = await client
       .from("map_places")
       .select("map_id,places!inner(address)")
-      .in(
-        "map_id",
-        maps.map((map) => map.id),
-      )
+      .in("map_id", mapIds)
       .in("status", ["approved", "disputed"])
       .eq("places.status", "active")
       .order("id")

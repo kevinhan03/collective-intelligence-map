@@ -1,9 +1,10 @@
 "use client";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/i18n/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { post } from "./api";
+import { useI18n } from "@/i18n/client";
 type Settings = {
   provider: "google" | "kakao";
   enabled: boolean;
@@ -25,6 +26,7 @@ export type UsageSnapshot = {
   totals: { provider: string; requests: number; estimated_micros: number }[];
 };
 export function UsageConsole({ data }: { data: UsageSnapshot }) {
+  const { t } = useI18n();
   const [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false);
   const router = useRouter();
@@ -37,9 +39,7 @@ export function UsageConsole({ data }: { data: UsageSnapshot }) {
   return (
     <div className="space-y-8">
       <p className="rounded-lg bg-secondary p-4 text-sm leading-6">
-        호출 한도는 요청 전에 DB에서 검사합니다. 아래 금액은 보수적인 예약
-        추정치이며 실제 청구액이 아닙니다. 제공자 콘솔의 쿼터도 함께 제한해
-        주세요.
+        {t("admin.callLimitsAreCheckedIn")}
       </p>
       <div className="grid gap-5 md:grid-cols-2">
         {googleSettings.map((s) => (
@@ -62,7 +62,7 @@ export function UsageConsole({ data }: { data: UsageSnapshot }) {
                     Number(f.get("budget")) * 1000000,
                   ),
                 });
-                setMessage("설정을 저장했습니다.");
+                setMessage(t("admin.settingsSaved"));
                 router.refresh();
               } catch (e) {
                 setMessage((e as Error).message);
@@ -73,13 +73,15 @@ export function UsageConsole({ data }: { data: UsageSnapshot }) {
           >
             <h2 className="text-xl font-semibold">Google Places API</h2>
             <p className="text-xs text-muted-foreground">
-              이번 달{" "}
-              {data.totals.find((t) => t.provider === "google")?.requests ?? 0}
-              회 · 추정 $
-              {(
-                (data.totals.find((t) => t.provider === "google")
-                  ?.estimated_micros ?? 0) / 1000000
-              ).toFixed(3)}
+              {t("admin.monthlyUsage", {
+                count:
+                  data.totals.find((total) => total.provider === "google")
+                    ?.requests ?? 0,
+                cost: (
+                  (data.totals.find((total) => total.provider === "google")
+                    ?.estimated_micros ?? 0) / 1000000
+                ).toFixed(3),
+              })}
             </p>
             <label className="flex items-center gap-2 text-sm">
               <input
@@ -87,10 +89,10 @@ export function UsageConsole({ data }: { data: UsageSnapshot }) {
                 name="enabled"
                 defaultChecked={s.enabled}
               />
-              외부 검색 활성화
+              {t("admin.enableExternalSearch")}
             </label>
             <label className="block text-sm">
-              일일 요청 한도
+              {t("admin.dailyRequestLimit")}
               <Input
                 className="mt-2"
                 name="daily"
@@ -102,7 +104,7 @@ export function UsageConsole({ data }: { data: UsageSnapshot }) {
               />
             </label>
             <label className="block text-sm">
-              월간 요청 한도
+              {t("admin.monthlyRequestLimit")}
               <Input
                 className="mt-2"
                 name="monthly"
@@ -114,7 +116,7 @@ export function UsageConsole({ data }: { data: UsageSnapshot }) {
               />
             </label>
             <label className="block text-sm">
-              월간 예약 예산 (USD)
+              {t("admin.monthlyReservedBudgetUsd")}
               <Input
                 className="mt-2"
                 name="budget"
@@ -127,7 +129,7 @@ export function UsageConsole({ data }: { data: UsageSnapshot }) {
               />
             </label>
             <Button disabled={busy} size="sm">
-              설정 저장
+              {t("admin.saveSettings")}
             </Button>
           </form>
         ))}
@@ -138,16 +140,18 @@ export function UsageConsole({ data }: { data: UsageSnapshot }) {
         </p>
       )}
       <section>
-        <h2 className="mb-4 text-lg font-semibold">최근 외부 API 요청</h2>
+        <h2 className="mb-4 text-lg font-semibold">
+          {t("admin.recentExternalApiRequests")}
+        </h2>
         <div className="overflow-x-auto rounded-lg border bg-card">
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="border-b text-muted-foreground">
-                <th className="p-3">공급자 / 작업</th>
-                <th>상태</th>
-                <th>지연</th>
-                <th>예약 추정</th>
-                <th>시각</th>
+                <th className="p-3">{t("admin.providerAction")}</th>
+                <th>{t("admin.status")}</th>
+                <th>{t("admin.latency")}</th>
+                <th>{t("admin.estReservation")}</th>
+                <th>{t("admin.time")}</th>
               </tr>
             </thead>
             <tbody>
@@ -168,7 +172,7 @@ export function UsageConsole({ data }: { data: UsageSnapshot }) {
           </table>
           {!googleEvents.length && (
             <p className="p-6 text-sm text-muted-foreground">
-              아직 외부 API 호출이 없습니다.
+              {t("admin.noExternalApiCallsYet")}
             </p>
           )}
         </div>

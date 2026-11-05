@@ -1,6 +1,8 @@
-import Link from "next/link";
+"use client";
+import Link from "@/i18n/link";
 import { MapPin } from "lucide-react";
 import { ProfileCardImage } from "./profile-card-image";
+import { useI18n } from "@/i18n/client";
 export function RecommendationCollectionCard({
   handle,
   count,
@@ -10,20 +12,21 @@ export function RecommendationCollectionCard({
   count: number;
   error?: string;
 }) {
+  const { t } = useI18n();
   return (
     <Link
       href={`/u/${encodeURIComponent(handle)}/recommendations`}
       className="profile-map profile-map-featured profile-recommendations-card"
-      aria-label="내가 추천한 장소"
+      aria-label={t("creator.placesIRecommended")}
     >
       <ProfileCardImage theme="food" />
       <div className="profile-map-copy">
-        <h3>내가 추천한 장소</h3>
+        <h3>{t("creator.placesIRecommended")}</h3>
         <p>
           <MapPin size={12} aria-hidden="true" />
           {error
-            ? "다시 열어 확인해 주세요"
-            : `공개 장소 ${count}곳 · 목록과 지도로 보기`}
+            ? t("creator.pleaseReopen")
+            : t("creator.publicPlacesListAndMap", { count })}
         </p>
       </div>
     </Link>

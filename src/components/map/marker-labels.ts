@@ -48,8 +48,8 @@ class OccupiedAreas {
         .get(key)
         ?.some(
           (other) =>
-          other !== ownPin &&
-          rect.left < other.right &&
+            other !== ownPin &&
+            rect.left < other.right &&
             rect.right > other.left &&
             rect.top < other.bottom &&
             rect.bottom > other.top,

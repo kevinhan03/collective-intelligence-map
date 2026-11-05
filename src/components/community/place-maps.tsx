@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import Link from "@/i18n/link";
 import { ArrowUpRight } from "lucide-react";
 import type { PlaceMap } from "@/domain/types";
 import { formatLocation } from "@/domain/location";
 import styles from "./place-maps.module.css";
 
+import { useI18n } from "@/i18n/client";
 export function PlaceMaps({
   placeId,
   currentMapId,
@@ -14,6 +15,7 @@ export function PlaceMaps({
   placeId: string;
   currentMapId: string;
 }) {
+  const { t } = useI18n();
   const [maps, setMaps] = useState<PlaceMap[] | null>(null);
   const [error, setError] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -41,14 +43,17 @@ export function PlaceMaps({
   );
 
   return (
-    <section className={styles.section} aria-label="이 장소가 포함된 지도">
+    <section
+      className={styles.section}
+      aria-label={t("place.mapsWithThisPlace")}
+    >
       <h3 className={styles.heading}>
-        이 장소가 포함된 지도
+        {t("place.mapsWithThisPlace")}
         {maps && <span>{maps.length}</span>}
       </h3>
       {error ? (
         <div className={styles.status} role="status">
-          <p>지도를 불러오지 못했어요.</p>
+          <p>{t("place.couldnTLoadMaps")}</p>
           <button
             type="button"
             className="mt-1 min-h-11 text-primary underline"
@@ -57,15 +62,15 @@ export function PlaceMaps({
               setAttempt((value) => value + 1);
             }}
           >
-            다시 시도
+            {t("place.tryAgain")}
           </button>
         </div>
       ) : !sorted ? (
         <p className={styles.status} role="status">
-          지도를 불러오는 중…
+          {t("place.loadingMaps")}
         </p>
       ) : !sorted.length ? (
-        <p className={styles.status}>아직 공개된 지도에 포함되지 않았어요.</p>
+        <p className={styles.status}>{t("place.notOnAnyPublicMap")}</p>
       ) : (
         <ul className={styles.list}>
           {sorted.map((map) => (
@@ -78,9 +83,11 @@ export function PlaceMaps({
               >
                 <div className={styles.body}>
                   <p className={styles.meta}>
-                    <span>{formatLocation(map)}</span>
+                    <span>{t.area(formatLocation(map))}</span>
                     {map.id === currentMapId && (
-                      <span className={styles.currentBadge}>현재 지도</span>
+                      <span className={styles.currentBadge}>
+                        {t("place.currentMap")}
+                      </span>
                     )}
                   </p>
                   <h4>{map.title}</h4>

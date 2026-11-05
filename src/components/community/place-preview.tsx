@@ -1,12 +1,13 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/i18n/link";
 import { Bookmark, ChevronUp, ThumbsDown, ThumbsUp, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NearbyStationInfo } from "./nearby-stations";
 import type { MapPlace, RailStation } from "@/domain/types";
 import { placeArea } from "@/domain/place-location";
 
+import { useI18n } from "@/i18n/client";
 export function PlacePreview({
   place,
   saved,
@@ -40,18 +41,22 @@ export function PlacePreview({
   onSave: () => void;
   onStationSelect: (station: RailStation) => void;
 }) {
+  const { t } = useI18n();
   const total = place.positive + place.negative;
   return (
-    <aside className="place-preview-card" aria-label={`${place.name} 미리보기`}>
+    <aside
+      className="place-preview-card"
+      aria-label={t("map.preview", { name: place.name })}
+    >
       <div className="flex items-start justify-between gap-3">
         <button
           className="min-w-0 text-left"
           onClick={onOpenDetail}
-          aria-label={`${place.name} 자세히 보기`}
+          aria-label={t("map.viewDetails2", { name: place.name })}
         >
-          {placeArea(place.address) && (
+          {t.area(placeArea(place.address)) && (
             <span className="text-xs text-primary">
-              {placeArea(place.address)}
+              {t.area(placeArea(place.address))}
             </span>
           )}
           <h2 className="mt-1 truncate text-lg font-semibold">{place.name}</h2>
@@ -59,7 +64,7 @@ export function PlacePreview({
         <Button
           variant="ghost"
           size="icon"
-          aria-label="장소 미리보기 닫기"
+          aria-label={t("map.closePlacePreview")}
           onClick={onClose}
         >
           <X size={18} />
@@ -80,19 +85,22 @@ export function PlacePreview({
       {!creator && (
         <p className="mt-3 text-xs text-muted-foreground">
           {total
-            ? `${total}명 중 ${place.positive}명이 이 주제에 추천했어요.`
-            : "아직 검증 전인 장소예요."}
+            ? t("map.ofPeopleSayItFits", { total, positive: place.positive })
+            : t("map.thisPlaceHasnTBeen")}
         </p>
       )}
       {!creator && (
         <div
           className="place-card-votes mt-3 flex items-center gap-2"
-          aria-label={`${place.name} 주제 적합성 투표`}
+          aria-label={t("map.themeFitVoteFor", { name: place.name })}
         >
           <button
             type="button"
             className="vote-control"
-            aria-label={`${place.name} 테마에 잘 맞아요 ${place.positive}`}
+            aria-label={t("map.fitsTheTheme", {
+              name: place.name,
+              positive: place.positive,
+            })}
             aria-pressed={vote === 1}
             disabled={demo || busy || votePending}
             onClick={() => onVote(1)}
@@ -103,7 +111,10 @@ export function PlacePreview({
           <button
             type="button"
             className="vote-control"
-            aria-label={`${place.name} 테마와 달라요 ${place.negative}`}
+            aria-label={t("map.doesnTFitTheTheme", {
+              name: place.name,
+              negative: place.negative,
+            })}
             aria-pressed={vote === -1}
             disabled={demo || busy || votePending}
             onClick={() => onVote(-1)}
@@ -115,7 +126,7 @@ export function PlacePreview({
       )}
       <div className="mt-4 grid grid-cols-[1fr_auto] gap-2">
         <Button className="h-11" onClick={onOpenDetail}>
-          자세히 보기
+          {t("map.viewDetails3")}
           <ChevronUp size={17} />
         </Button>
         {demo ? (
@@ -123,7 +134,7 @@ export function PlacePreview({
             className="h-11"
             variant="outline"
             disabled
-            aria-label="미리보기에서는 저장할 수 없어요"
+            aria-label={t("map.youCanTSaveIn")}
           >
             <Bookmark size={17} />
           </Button>
@@ -134,16 +145,20 @@ export function PlacePreview({
             disabled={busy || savePending}
             aria-pressed={saved}
             aria-label={
-              saved ? `${place.name} 저장 해제` : `${place.name} 저장`
+              saved
+                ? t("map.unsave2", { name: place.name })
+                : t("map.save2", { name: place.name })
             }
             onClick={onSave}
           >
             <Bookmark size={17} fill={saved ? "currentColor" : "none"} />
-            <span className="sr-only">{saved ? "저장 해제" : "저장"}</span>
+            <span className="sr-only">
+              {saved ? t("map.unsave") : t("map.save")}
+            </span>
           </Button>
         ) : (
           <Button asChild className="h-11" variant="outline">
-            <Link href={loginHref} aria-label="로그인하고 장소 저장">
+            <Link href={loginHref} aria-label={t("map.signInToSavePlaces")}>
               <Bookmark size={17} />
             </Link>
           </Button>

@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/i18n/link";
 import { SavedMaps } from "./saved-maps";
 import { useMemo, useState } from "react";
 import {
@@ -21,6 +21,7 @@ import type { MapPlace, RendererConfig, ThemeMap } from "@/domain/types";
 import { placeArea } from "@/domain/place-location";
 import { post } from "./api";
 
+import { useI18n } from "@/i18n/client";
 export type SavedPlace = MapPlace & {
   map_slug: string;
   map_title: string;
@@ -38,6 +39,7 @@ export function SavedPlaces({
   maps: ThemeMap[];
   config: RendererConfig;
 }) {
+  const { t } = useI18n();
   const [cards, setCards] = useState(initialCards);
   const [query, setQuery] = useState("");
   const [mapId, setMapId] = useState("all");
@@ -89,7 +91,7 @@ export function SavedPlaces({
         setMapSelection(false);
       }
     } catch (cause) {
-      setError((cause as Error).message);
+      setError(t.message((cause as Error).message));
     } finally {
       setBusy(null);
     }
@@ -107,15 +109,15 @@ export function SavedPlaces({
           <div>
             <p className="kicker hidden lg:block">Personal collection</p>
             <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
-              저장한 장소
+              {t("saved.savedPlaces")}
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              주제 지도에서 다시 찾고 싶은 {cards.length}곳을 모아두었어요.
+              {t("saved.collectionSummary", { count: cards.length })}
             </p>
           </div>
           <Button asChild variant="outline">
             <Link href="/">
-              발견 <ArrowUpRight />
+              {t("saved.discover")} <ArrowUpRight />
             </Link>
           </Button>
         </div>
@@ -125,7 +127,7 @@ export function SavedPlaces({
       <section className="mt-4 grid gap-4 lg:min-h-[calc(100dvh-270px)] lg:grid-cols-[minmax(270px,0.8fr)_minmax(0,1.5fr)_minmax(300px,0.9fr)]">
         <aside className="glass-panel order-0 rounded-3xl p-4 lg:order-none lg:overflow-y-auto lg:p-5">
           <div className="flex items-center gap-2 text-sm font-medium">
-            <SlidersHorizontal size={16} /> 내 컬렉션
+            <SlidersHorizontal size={16} /> {t("saved.myCollection")}
           </div>
           <label className="relative mt-5 block">
             <Search
@@ -133,10 +135,10 @@ export function SavedPlaces({
               size={15}
             />
             <Input
-              aria-label="저장한 장소 검색"
+              aria-label={t("saved.searchSavedPlaces")}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="장소, 지역 또는 테마 검색"
+              placeholder={t("saved.searchPlacesAreasOrThemes")}
               className="h-10 pl-9"
             />
           </label>
@@ -145,7 +147,7 @@ export function SavedPlaces({
               className={`flex min-h-11 shrink-0 items-center justify-between gap-2 rounded-2xl px-3 py-2.5 text-left text-sm transition lg:w-full ${mapId === "all" ? "bg-primary text-primary-foreground" : "hover:bg-white/10"}`}
               onClick={() => setMapId("all")}
             >
-              전체 장소{" "}
+              {t("saved.allPlaces")}{" "}
               <span className="text-xs opacity-70">{cards.length}</span>
             </button>
             {mapOptions.map((map) => {
@@ -172,14 +174,13 @@ export function SavedPlaces({
             })}
           </div>
           <p className="mt-6 hidden border-t pt-4 text-xs leading-5 text-muted-foreground lg:block">
-            저장은 개인 컬렉션입니다. 추천 근거와 검증은 각 주제 지도에서 공개로
-            관리됩니다.
+            {t("saved.savesAreYourPrivateCollection")}
           </p>
         </aside>
 
         <section
           id="saved-places-map"
-          aria-label="저장한 장소 지도"
+          aria-label={t("saved.savedPlacesMap")}
           className={`glass-map-shell relative order-3 m-0 min-h-[320px] lg:order-none lg:min-h-0 ${showMobileMap ? "" : "hidden lg:block"}`}
         >
           {activeMap ? (
@@ -201,7 +202,7 @@ export function SavedPlaces({
             <div className="absolute top-4 left-4 rounded-2xl border border-white/15 bg-black/45 px-3 py-2 text-xs backdrop-blur-xl">
               <p className="font-medium">{activeMap.title}</p>
               <p className="mt-0.5 text-muted-foreground">
-                저장한 {mapPlaces.length}곳
+                {t("saved.savedCount", { count: mapPlaces.length })}
               </p>
             </div>
           )}
@@ -209,7 +210,7 @@ export function SavedPlaces({
             <div className="absolute right-3 bottom-3 left-3 rounded-2xl border border-white/15 bg-card/95 p-4 shadow-xl backdrop-blur-xl sm:right-auto sm:left-4 sm:w-72">
               <button
                 type="button"
-                aria-label="선택한 장소 정보 닫기"
+                aria-label={t("saved.closeSelectedPlaceInfo")}
                 className="absolute top-3 right-3 grid size-8 place-items-center rounded-lg text-muted-foreground hover:bg-secondary"
                 onClick={() => setMapSelection(false)}
               >
@@ -226,7 +227,7 @@ export function SavedPlaces({
                   href={`/maps/${selectedPlace.map_slug}?place=${selectedPlace.place_id}`}
                   className="inline-flex min-h-10 flex-1 items-center justify-center rounded-xl bg-primary px-3 text-xs font-semibold text-primary-foreground"
                 >
-                  상세 보기
+                  {t("saved.viewDetails")}
                 </Link>
                 <a
                   href={`/go/${selectedPlace.id}`}
@@ -234,7 +235,8 @@ export function SavedPlaces({
                   rel="noreferrer"
                   className="inline-flex min-h-10 flex-1 items-center justify-center rounded-xl border px-3 text-xs font-semibold"
                 >
-                  길찾기 <ExternalLink size={13} className="ml-1" />
+                  {t("saved.directions")}{" "}
+                  <ExternalLink size={13} className="ml-1" />
                 </a>
               </div>
             </div>
@@ -244,17 +246,17 @@ export function SavedPlaces({
               className="absolute right-4 bottom-4 rounded-full bg-primary px-4 py-2 text-xs font-medium text-primary-foreground shadow-lg"
               onClick={() => setMapId(selectedPlace.map_id)}
             >
-              선택한 장소 지도에서 보기
+              {t("saved.viewSelectedPlaceOnMap")}
             </button>
           )}
         </section>
 
         <section className="glass-panel order-1 flex min-h-0 flex-col rounded-3xl p-3 lg:order-none lg:min-h-[420px] lg:overflow-hidden">
           <div className="flex items-center justify-between px-2 py-2">
-            <p className="text-sm font-medium">발견한 장소</p>
+            <p className="text-sm font-medium">{t("saved.placesFound")}</p>
             <div className="flex items-center gap-3">
               <span className="text-xs text-muted-foreground">
-                {filtered.length}곳
+                {t("saved.placeCount", { count: filtered.length })}
               </span>
               <button
                 type="button"
@@ -263,7 +265,7 @@ export function SavedPlaces({
                 aria-controls="saved-places-map"
                 onClick={() => setShowMobileMap((current) => !current)}
               >
-                {showMobileMap ? "지도 닫기" : "지도 보기"}
+                {showMobileMap ? t("saved.closeMap") : t("saved.mapView")}
               </button>
             </div>
           </div>
@@ -298,7 +300,7 @@ export function SavedPlaces({
                     </Badge>
                   </div>
                   <Button
-                    aria-label={`${place.name} 저장 해제`}
+                    aria-label={t("saved.unsave", { name: place.name })}
                     variant="ghost"
                     size="icon-sm"
                     disabled={busy === place.id}
@@ -318,7 +320,10 @@ export function SavedPlaces({
                 <div className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground">
                   <span className="flex min-w-0 items-center gap-1 truncate">
                     <MapPin size={12} />{" "}
-                    {[place.category, placeArea(place.address)]
+                    {[
+                      t.data("placeCategory", place.category),
+                      placeArea(place.address),
+                    ]
                       .filter(Boolean)
                       .join(" · ")}
                   </span>
@@ -327,7 +332,7 @@ export function SavedPlaces({
                     href={`/maps/${place.map_slug}?place=${place.place_id}`}
                     onClick={(event) => event.stopPropagation()}
                   >
-                    원본 지도
+                    {t("saved.originalMap")}
                   </Link>
                 </div>
                 <a
@@ -337,13 +342,13 @@ export function SavedPlaces({
                   onClick={(event) => event.stopPropagation()}
                   className="mt-3 inline-flex min-h-11 items-center gap-1.5 text-xs font-medium text-primary hover:underline"
                 >
-                  <ExternalLink size={14} /> Google Maps에서 길찾기
+                  <ExternalLink size={14} /> {t("saved.directionsInGoogleMaps")}
                 </a>
               </article>
             ))}
             {!filtered.length && (
               <div className="px-4 py-16 text-center text-sm text-muted-foreground">
-                <p>조건에 맞는 저장 장소가 없어요.</p>
+                <p>{t("saved.noSavedPlacesMatch")}</p>
                 <Button
                   className="mt-4"
                   variant="outline"
@@ -352,7 +357,7 @@ export function SavedPlaces({
                     setMapId("all");
                   }}
                 >
-                  검색 조건 초기화
+                  {t("saved.clearFilters")}
                 </Button>
               </div>
             )}
@@ -369,6 +374,7 @@ export function SavedPlaces({
 }
 
 function SavedEmpty({ savedMaps }: { savedMaps: ThemeMap[] }) {
+  const { t } = useI18n();
   return (
     <main
       id="main"
@@ -381,15 +387,14 @@ function SavedEmpty({ savedMaps }: { savedMaps: ThemeMap[] }) {
         </span>
         <p className="kicker mt-7">Your collection starts here</p>
         <h1 className="mt-3 text-2xl font-semibold">
-          다시 가고 싶은 곳을 모아보세요.
+          {t("saved.collectPlacesYouWantTo")}
         </h1>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">
-          주제 지도에서 마음에 드는 장소를 저장하면 이곳에서 한눈에 다시 찾을 수
-          있어요.
+          {t("saved.savePlacesYouLikeFrom")}
         </p>
         <Button asChild className="mt-7">
           <Link href="/">
-            <Check /> 발견
+            <Check /> {t("saved.discover")}
           </Link>
         </Button>
       </section>

@@ -1,7 +1,7 @@
 "use client";
 import { useRef } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import Link from "@/i18n/link";
+import { useRouter } from "@/i18n/navigation";
 import { ArrowUpRight, Bookmark, ChevronUp, Flame } from "lucide-react";
 import type { ThemeMap } from "@/domain/types";
 import { mapTheme } from "@/domain/map-order";

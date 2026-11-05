@@ -3,6 +3,7 @@ import { useState } from "react";
 import { post } from "@/components/community/api";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { useI18n } from "@/i18n/client";
 export function CreatorMapReport({
   mapId,
   admin = false,
@@ -10,13 +11,14 @@ export function CreatorMapReport({
   mapId: string;
   admin?: boolean;
 }) {
+  const { t } = useI18n();
   const [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [done, setDone] = useState(false);
   return (
     <details className="mt-6 border-t pt-4">
       <summary className="cursor-pointer text-xs text-muted-foreground">
-        이 지도 신고하기
+        {t("creator.reportThisMap")}
       </summary>
       <form
         className="mt-3 space-y-3"
@@ -30,9 +32,7 @@ export function CreatorMapReport({
               : "report";
           if (
             action === "hide" &&
-            !window.confirm(
-              "이 지도를 숨길까요? 공개 링크와 커버 접근을 차단합니다.",
-            )
+            !window.confirm(t("creator.hideThisMapThisBlocks"))
           )
             return;
           setBusy(true);
@@ -45,7 +45,7 @@ export function CreatorMapReport({
             });
             setDone(true);
           } catch (e) {
-            setError((e as Error).message);
+            setError(t.message((e as Error).message));
           } finally {
             setBusy(false);
           }
@@ -56,11 +56,11 @@ export function CreatorMapReport({
           minLength={5}
           maxLength={1000}
           required
-          placeholder="신고 사유 (5~1,000자)"
-          aria-label="지도 신고 사유"
+          placeholder={t("creator.reasonForReport51")}
+          aria-label={t("creator.reasonForReportingThisMap")}
         />
         <Button size="sm" value="report" disabled={busy || done}>
-          신고 보내기
+          {t("creator.sendReport")}
         </Button>
         {admin && (
           <Button
@@ -69,7 +69,7 @@ export function CreatorMapReport({
             value="hide"
             disabled={busy || done}
           >
-            관리자 지도 숨김
+            {t("creator.hiddenByAdmin")}
           </Button>
         )}
         {error && (
@@ -79,7 +79,7 @@ export function CreatorMapReport({
         )}
         {done && (
           <p role="status" className="text-xs text-primary">
-            신고를 접수했어요.
+            {t("creator.reportReceived")}
           </p>
         )}
       </form>

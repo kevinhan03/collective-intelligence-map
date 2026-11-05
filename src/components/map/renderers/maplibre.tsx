@@ -15,6 +15,7 @@ import {
   CITY_SOURCE_ID,
 } from "../basemap-labels";
 
+import { useI18n } from "@/i18n/client";
 function boundsMatch(a: MapProps["bounds"], b: MapProps["bounds"]) {
   const tolerance = 0.000001;
   return (
@@ -59,6 +60,7 @@ function placeFocusOffset(
 }
 
 export default function MapLibreMap(props: MapProps) {
+  const { t } = useI18n();
   const mobile = useMobile();
   const { places, selected, apiKey } = props;
   const container = useRef<HTMLDivElement>(null);
@@ -101,7 +103,9 @@ export default function MapLibreMap(props: MapProps) {
         ],
         fitBoundsOptions: { padding: 35 },
         attributionControl: false,
-        locale: { "AttributionControl.ToggleAttribution": "지도 출처 보기" },
+        locale: {
+          "AttributionControl.ToggleAttribution": t("map.viewMapAttribution"),
+        },
       });
     } catch {
       queueMicrotask(() => setError(true));
@@ -122,7 +126,10 @@ export default function MapLibreMap(props: MapProps) {
         .querySelector<HTMLDetailsElement>(".maplibregl-ctrl-attrib");
       attribution?.classList.remove("maplibregl-compact-show");
       attribution?.removeAttribute("open");
-      disposeLabels = configureBasemapLabels(map);
+      disposeLabels = configureBasemapLabels(map, {
+        label: (name) => t.data("region", name),
+        attribution: t("map.neighborhoodAttribution"),
+      });
       setLoadedStyle(apiKey);
     });
     map.on("error", (event) => {
@@ -172,7 +179,7 @@ export default function MapLibreMap(props: MapProps) {
       map.remove();
       instance.current = null;
     };
-  }, [apiKey]);
+  }, [apiKey, t]);
   useEffect(() => {
     const map = instance.current;
     if (!map) return;
@@ -219,7 +226,11 @@ export default function MapLibreMap(props: MapProps) {
       button.title = p.name;
       button.setAttribute(
         "aria-label",
-        `${p.name} · 주제 추천 ${p.positive}${p.status === "pending" ? " · 검토 대기" : ""}`,
+        t("map.markerTitle", {
+          name: p.name,
+          count: p.positive,
+          pending: p.status === "pending" ? t("map.pendingSuffix") : "",
+        }),
       );
       button.dataset.selected = String(isSelected);
       button.dataset.status = p.status;
@@ -295,7 +306,7 @@ export default function MapLibreMap(props: MapProps) {
       disposed = true;
       cancelAnimationFrame(frame);
     };
-  }, [places, selected, apiKey, loadedStyle, viewRevision]);
+  }, [places, selected, apiKey, loadedStyle, viewRevision, t]);
   useEffect(() => {
     if (!props.focusRequest || props.stationFocus) return;
     const { places, selected, onFocusComplete, detailOpen } = latest.current;
@@ -412,7 +423,7 @@ export default function MapLibreMap(props: MapProps) {
     const element = document.createElement("span");
     element.className = "current-location-marker";
     element.setAttribute("role", "img");
-    element.setAttribute("aria-label", "현재 위치");
+    element.setAttribute("aria-label", t("map.currentLocation"));
     const marker = new maplibregl.Marker({ element })
       .setLngLat([point.lng, point.lat])
       .addTo(map);
@@ -420,7 +431,7 @@ export default function MapLibreMap(props: MapProps) {
     return () => {
       marker.remove();
     };
-  }, [props.userLocation, loadedStyle, apiKey]);
+  }, [props.userLocation, loadedStyle, apiKey, t]);
   useEffect(() => {
     const map = instance.current;
     const focus = props.stationFocus;
@@ -429,7 +440,10 @@ export default function MapLibreMap(props: MapProps) {
     element.className = "selected-station-marker";
     element.textContent = `🚉 ${focus.station.name}`;
     element.setAttribute("role", "img");
-    element.setAttribute("aria-label", `선택 역 ${focus.station.name}`);
+    element.setAttribute(
+      "aria-label",
+      t("map.selectedStation", { name: focus.station.name }),
+    );
     const marker = new maplibregl.Marker({ element })
       .setLngLat([focus.station.lng, focus.station.lat])
       .addTo(map);
@@ -445,7 +459,7 @@ export default function MapLibreMap(props: MapProps) {
     return () => {
       marker.remove();
     };
-  }, [props.stationFocus, loadedStyle, apiKey]);
+  }, [props.stationFocus, loadedStyle, apiKey, t]);
   return (
     <div className="maplibre-map relative h-full min-h-[420px]">
       <div ref={container} style={{ position: "absolute", inset: 0 }} />

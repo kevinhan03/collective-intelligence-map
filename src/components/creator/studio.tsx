@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import Link from "@/i18n/link";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { ArrowDown, ArrowUp, Plus } from "lucide-react";
@@ -15,7 +15,12 @@ import type {
   CreatorSnapshot,
 } from "@/domain/creator";
 import type { Viewer } from "@/domain/types";
-const statusLabel = { draft: "초안", published: "공개", archived: "보관" };
+import { useI18n } from "@/i18n/client";
+const statusLabel = {
+  draft: "creator.statusDraft",
+  published: "creator.statusPublished",
+  archived: "creator.statusArchived",
+} as const;
 export function CreatorStudio({
   initial,
   viewer,
@@ -23,6 +28,7 @@ export function CreatorStudio({
   initial: CreatorSnapshot;
   viewer: Viewer;
 }) {
+  const { t } = useI18n();
   const [snapshot, setSnapshot] = useState(initial);
   const params = useSearchParams();
   const [selected, setSelected] = useState<string | null>(
@@ -39,7 +45,7 @@ export function CreatorStudio({
     const r = await fetch("/api/creator/maps", { cache: "no-store" });
     const result = await r.json();
     if (!r.ok || !result.snapshot)
-      throw new Error(result.error ?? "목록을 갱신하지 못했습니다.");
+      throw new Error(result.error ?? t("creator.couldnTRefreshTheList"));
     setSnapshot(result.snapshot);
     setVersion((v) => v + 1);
   }
@@ -56,7 +62,7 @@ export function CreatorStudio({
         });
         const current = await response.json();
         if (!response.ok)
-          throw new Error(current.error ?? "프로필을 확인하지 못했습니다.");
+          throw new Error(current.error ?? t("creator.couldnTCheckTheProfile"));
         command = {
           ...(payload as object),
           displayName: current.snapshot?.profile?.display_name ?? "",
@@ -67,10 +73,10 @@ export function CreatorStudio({
       const result = await post<{ id?: string }>("/api/creator/maps", command);
       await refresh();
       if (result.id) setSelected(result.id);
-      setMessage("변경 내용을 저장했어요.");
+      setMessage(t("creator.changesSaved"));
       return true;
     } catch (e) {
-      setError((e as Error).message);
+      setError(t.message((e as Error).message));
       return false;
     } finally {
       setBusy(false);
@@ -81,10 +87,12 @@ export function CreatorStudio({
     <div className="creator-studio space-y-8">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="kicker">나의 장소 링크</p>
-          <h1 className="mt-2 text-3xl font-semibold">크리에이터 스튜디오</h1>
+          <p className="kicker">{t("creator.myPlaceLink")}</p>
+          <h1 className="mt-2 text-3xl font-semibold">
+            {t("creator.creatorStudio")}
+          </h1>
           <p className="mt-3 text-sm text-muted-foreground">
-            내가 고른 장소를 지도에 담고, 프로필 링크 하나로 공유하세요.
+            {t("creator.putThePlacesYouVe")}
           </p>
         </div>
         <ShareButton
@@ -106,12 +114,14 @@ export function CreatorStudio({
         </p>
       )}
       <details className="rounded-2xl border p-5">
-        <summary className="cursor-pointer font-semibold">대표 지도</summary>
+        <summary className="cursor-pointer font-semibold">
+          {t("creator.featuredMap")}
+        </summary>
         <Link
           href="/settings/profile"
           className="mt-4 inline-block text-sm text-primary"
         >
-          이름·소개·Instagram 편집 →
+          {t("creator.editNameBioAndInstagram")}
         </Link>
         <form
           className="mt-5 grid gap-4"
@@ -128,13 +138,13 @@ export function CreatorStudio({
           }}
         >
           <label className="grid gap-2 text-sm">
-            대표 지도
+            {t("creator.featuredMap")}
             <select
               className="rounded-xl border bg-background p-3"
               name="featuredMapId"
               defaultValue={p?.featured_map_id ?? ""}
             >
-              <option value="">지정하지 않음</option>
+              <option value="">{t("creator.none")}</option>
               {snapshot.maps
                 .filter((m) => m.status === "published" && !m.hidden_at)
                 .map((m) => (
@@ -145,9 +155,9 @@ export function CreatorStudio({
             </select>
           </label>
           <div className="flex flex-wrap items-center gap-3">
-            <Button disabled={busy}>대표 지도 저장</Button>
+            <Button disabled={busy}>{t("creator.saveFeaturedMap")}</Button>
             <Link href={`/u/${viewer.handle}`} className="text-sm text-primary">
-              공개 프로필 보기
+              {t("creator.viewPublicProfile")}
             </Link>
           </div>
         </form>
@@ -155,13 +165,13 @@ export function CreatorStudio({
       <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
         <aside className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="font-semibold">내 지도</h2>
+            <h2 className="font-semibold">{t("creator.myMaps")}</h2>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setSelected(null)}
             >
-              <Plus size={16} /> 새 지도
+              <Plus size={16} /> {t("creator.newMap")}
             </Button>
           </div>
           {snapshot.maps.map((m, i) => (
@@ -175,7 +185,9 @@ export function CreatorStudio({
               >
                 <span className="block font-semibold">{m.title}</span>
                 <span className="text-xs text-muted-foreground">
-                  {m.hidden_at ? "운영자 숨김" : statusLabel[m.status]}
+                  {m.hidden_at
+                    ? t("creator.hiddenByModerator")
+                    : t(statusLabel[m.status])}
                 </span>
               </button>
               <div className="mt-2 flex gap-2">
@@ -184,7 +196,7 @@ export function CreatorStudio({
                     key={d}
                     size="icon"
                     variant="ghost"
-                    aria-label={`${m.title} ${d < 0 ? "위로" : "아래로"}`}
+                    aria-label={`${m.title} ${d < 0 ? t("creator.moveUp") : t("creator.moveDown")}`}
                     disabled={
                       busy || i + d < 0 || i + d >= snapshot.maps.length
                     }
@@ -212,17 +224,23 @@ export function CreatorStudio({
             <>
               <div className="flex flex-wrap gap-3">
                 <Button asChild variant="outline">
-                  <Link href={`/studio/${map.id}/preview`}>미리보기</Link>
+                  <Link href={`/studio/${map.id}/preview`}>
+                    {t("creator.preview")}
+                  </Link>
                 </Button>
                 {map.status !== "archived" && !map.hidden_at && (
                   <Button asChild>
-                    <Link href={`/studio/${map.id}/add`}>장소 추가</Link>
+                    <Link href={`/studio/${map.id}/add`}>
+                      {t("creator.addPlace")}
+                    </Link>
                   </Button>
                 )}
                 {map.status === "published" && !map.hidden_at && (
                   <>
                     <Button asChild variant="outline">
-                      <Link href={`/maps/${map.slug}`}>공개 지도 보기</Link>
+                      <Link href={`/maps/${map.slug}`}>
+                        {t("creator.viewPublicMap")}
+                      </Link>
                     </Button>
                     <ShareButton path={`/maps/${map.slug}`} title={map.title} />
                   </>
@@ -258,10 +276,11 @@ function MapEditor({
   busy: boolean;
   action: (p: unknown) => Promise<boolean>;
 }) {
+  const { t } = useI18n();
   return (
     <div className="rounded-2xl border bg-card p-5 sm:p-6">
       <h2 className="mb-5 text-lg font-semibold">
-        {map ? "지도 설정" : "새 지도 만들기"}
+        {map ? t("creator.mapSettings") : t("creator.createANewMap")}
       </h2>
       <form
         className="grid gap-4"
@@ -278,7 +297,7 @@ function MapEditor({
         }}
       >
         <label className="grid gap-2 text-sm">
-          지도 제목
+          {t("creator.mapTitle")}
           <Input
             name="title"
             required
@@ -287,7 +306,7 @@ function MapEditor({
           />
         </label>
         <label className="grid gap-2 text-sm">
-          소개
+          {t("creator.bio")}
           <Textarea
             name="description"
             maxLength={500}
@@ -295,24 +314,27 @@ function MapEditor({
           />
         </label>
         <label className="grid gap-2 text-sm">
-          장소 검색 범위
+          {t("creator.placeSearchArea")}
           <select
             className="rounded-xl border bg-background p-3"
             name="country"
             defaultValue={map?.country ?? "world"}
           >
-            <option value="KR">한국</option>
-            <option value="JP">일본</option>
-            <option value="world">세계 — 확보된 검색 원천</option>
+            <option value="KR">{t("creator.korea")}</option>
+            <option value="JP">{t("creator.japan")}</option>
+            <option value="world">
+              {t("creator.worldwideAvailableSearchSources")}
+            </option>
           </select>
         </label>
-        <Button disabled={busy}>{map ? "설정 저장" : "초안 만들기"}</Button>
+        <Button disabled={busy}>
+          {map ? t("creator.saveSettings") : t("creator.createDraft")}
+        </Button>
       </form>
       {map && (
         <div className="mt-6 border-t pt-4">
           <p className="mb-3 text-xs text-muted-foreground">
-            공개하면 장소가 즉시 공개됩니다. 보관하면 공유 링크와 커버가 비공개
-            처리됩니다.
+            {t("creator.publishingMakesItsPlacesPublic")}
           </p>
           <div className="flex flex-wrap gap-2">
             {(["draft", "published", "archived"] as const).map((status) => (
@@ -326,7 +348,7 @@ function MapEditor({
                   void action({ action: "status", mapId: map.id, status })
                 }
               >
-                {statusLabel[status]}로 전환
+                {t("creator.switchTo", { status: t(statusLabel[status]) })}
               </Button>
             ))}
           </div>
@@ -346,17 +368,18 @@ function CoverEditor({
   refresh: () => Promise<void>;
   action: (p: unknown) => Promise<boolean>;
 }) {
+  const { t } = useI18n();
   const [uploading, setUploading] = useState(false),
     [error, setError] = useState("");
   return (
     <div className="rounded-2xl border p-5">
-      <h2 className="font-semibold">지도 커버 · 공유 미리보기</h2>
+      <h2 className="font-semibold">{t("creator.mapCoverSharePreview")}</h2>
       {map.cover_path ? (
         <Image
           unoptimized
           width={1200}
           height={630}
-          alt={`${map.title} 커버`}
+          alt={t("creator.cover", { title: map.title })}
           src={`/api/creator/maps/${map.id}/cover?v=${encodeURIComponent(map.cover_path)}`}
           className="mt-4 aspect-[1.91/1] w-full rounded-xl object-cover"
         />
@@ -368,7 +391,7 @@ function CoverEditor({
       <h3 className="mt-3 font-semibold">{map.title}</h3>
       <p className="mt-1 text-sm text-muted-foreground">{map.description}</p>
       <label className="mt-5 grid gap-2 text-sm">
-        커버 선택 (JPG·PNG·WebP, 5MB 이하)
+        {t("creator.chooseCoverJpgPngOr")}
         <Input
           type="file"
           accept="image/jpeg,image/png,image/webp"
@@ -380,7 +403,7 @@ function CoverEditor({
             setError("");
             try {
               if (file.size > 5 * 1024 * 1024)
-                throw new Error("5MB 이하 사진을 선택해 주세요.");
+                throw new Error(t("creator.pleaseChooseAPhotoOf"));
               const r = await fetch(`/api/creator/maps/${map.id}/cover`, {
                 method: "POST",
                 headers: { "Content-Type": file.type },
@@ -389,7 +412,7 @@ function CoverEditor({
               if (!r.ok) throw new Error((await r.json()).error);
               await refresh();
             } catch (e) {
-              setError((e as Error).message);
+              setError(t.message((e as Error).message));
             } finally {
               setUploading(false);
             }
@@ -398,7 +421,7 @@ function CoverEditor({
       </label>
       {uploading && (
         <p role="status" className="mt-2 text-sm">
-          커버를 처리하고 있어요.
+          {t("creator.processingTheCover")}
         </p>
       )}
       {error && (
@@ -414,7 +437,7 @@ function CoverEditor({
             void action({ action: "cover", mapId: map.id, path: "" })
           }
         >
-          커버 제거
+          {t("creator.removeCover")}
         </Button>
       )}
     </div>
@@ -431,6 +454,7 @@ function PlaceEditor({
   busy: boolean;
   action: (p: unknown) => Promise<boolean>;
 }) {
+  const { t } = useI18n();
   const [places, setPlaces] = useState<CreatorPlace[]>([]),
     [error, setError] = useState("");
   useEffect(() => {
@@ -446,17 +470,19 @@ function PlaceEditor({
       })
       .then(setPlaces)
       .catch((e) => {
-        if (e.name !== "AbortError") setError(e.message);
+        if (e.name !== "AbortError") setError(t.message(e.message));
       });
     return () => controller.abort();
-  }, [id, version]);
+  }, [id, version, t]);
   return (
     <section>
-      <h2 className="mb-4 font-semibold">장소 {places.length} / 200</h2>
+      <h2 className="mb-4 font-semibold">
+        {t("creator.placesLimit", { count: places.length })}
+      </h2>
       {error && <p role="alert">{error}</p>}
       {!places.length && !error && (
         <p className="text-sm text-muted-foreground">
-          첫 장소를 추가해 지도를 채워보세요.
+          {t("creator.addYourFirstPlaceTo")}
         </p>
       )}
       {places.map((p, i) => (
@@ -478,7 +504,7 @@ function PlaceEditor({
             }}
           >
             <label className="grid gap-2 text-sm">
-              한줄 소개 (선택)
+              {t("creator.shortNoteOptional")}
               <Textarea
                 key={p.rationale}
                 name="rationale"
@@ -488,7 +514,7 @@ function PlaceEditor({
             </label>
             <div className="flex flex-wrap gap-2">
               <Button size="sm" disabled={busy}>
-                소개 저장
+                {t("creator.saveNote")}
               </Button>
               <Button
                 size="sm"
@@ -497,7 +523,7 @@ function PlaceEditor({
                 onClick={() => {
                   if (
                     window.confirm(
-                      `${p.name}을 이 지도에서 제거할까요? 실제 장소와 다른 지도는 유지됩니다.`,
+                      t("creator.removeFromThisMapThe", { name: p.name }),
                     )
                   )
                     void action({
@@ -508,7 +534,7 @@ function PlaceEditor({
                 }}
                 type="button"
               >
-                지도에서 제거
+                {t("creator.removeFromMap")}
               </Button>
               {[-1, 1].map((d) => (
                 <Button
@@ -516,7 +542,7 @@ function PlaceEditor({
                   type="button"
                   size="icon"
                   variant="ghost"
-                  aria-label={`${p.name} ${d < 0 ? "위로" : "아래로"}`}
+                  aria-label={`${p.name} ${d < 0 ? t("creator.moveUp") : t("creator.moveDown")}`}
                   disabled={busy || i + d < 0 || i + d >= places.length}
                   onClick={() => {
                     const ids = places.map((x) => x.id);

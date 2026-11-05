@@ -7,11 +7,14 @@ import { publicCreatorIdentity } from "@/server/creator";
 import { getViewer, getMyState, rendererFor } from "@/server/queries";
 import { RecommendationsExplorer } from "@/components/creator/recommendations-explorer";
 
+import { getLocale, getTranslator } from "@/i18n/server";
+import { localeAlternates } from "@/i18n/metadata";
 export default async function RecommendationsPage({
   params,
 }: {
   params: Promise<{ handle: string }>;
 }) {
+  const t = await getTranslator();
   if (!configured()) notFound();
   await connection();
   const { handle } = await params;
@@ -20,7 +23,7 @@ export default async function RecommendationsPage({
     .select("id,handle")
     .eq("handle", handle)
     .maybeSingle();
-  if (error) throw new Error("프로필을 불러오지 못했습니다.");
+  if (error) throw new Error(t("pages.couldnTLoadThisProfile"));
   if (!profile) notFound();
   const [places, identity, viewer] = await Promise.all([
     recommendedPlaces(profile.id),
@@ -48,12 +51,17 @@ export async function generateMetadata({
 }: {
   params: Promise<{ handle: string }>;
 }) {
-  const { handle } = await params;
+  const [{ handle }, t, lang] = await Promise.all([
+    params,
+    getTranslator(),
+    getLocale(),
+  ]);
   return {
-    title: `${handle}님의 내가 추천한 장소`,
-    description: "추천한 공개 장소를 목록과 하나의 지도에서 확인하세요.",
-    alternates: {
-      canonical: `/u/${encodeURIComponent(handle)}/recommendations`,
-    },
+    title: t("meta.recommendations", { handle }),
+    description: t("meta.recommendationsDescription"),
+    alternates: localeAlternates(
+      `/u/${encodeURIComponent(handle)}/recommendations`,
+      lang,
+    ),
   };
 }

@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
+import Link from "@/i18n/link";
 import { Dialog } from "radix-ui";
 import { Camera, ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import {
 import type { Viewer } from "@/domain/types";
 import { usePlaceResource } from "./place-resources";
 import { post } from "./api";
+import { useI18n } from "@/i18n/client";
 type PendingPhoto = {
   id: string;
   file: File;
@@ -40,6 +41,7 @@ export function PlacePhotos({
   preview?: boolean;
   onOpenDetail?: () => void;
 }) {
+  const { t } = useI18n();
   const resourceKey = `photos:${placeId}`;
   const fetchPage = useCallback(
     async (signal: AbortSignal, next?: string): Promise<PhotoPage> => {
@@ -47,10 +49,10 @@ export function PlacePhotos({
         `/api/places/${placeId}/photos${next ? `?cursor=${encodeURIComponent(next)}` : ""}`,
         { signal },
       );
-      if (!response.ok) throw new Error("사진을 불러오지 못했습니다.");
+      if (!response.ok) throw new Error(t("place.couldnTLoadPhotos"));
       return response.json();
     },
-    [placeId],
+    [placeId, t],
   );
   const resource = usePlaceResource(
     resourceKey,
@@ -116,14 +118,14 @@ export function PlacePhotos({
   function selectFiles(files: FileList | null) {
     if (!files) return;
     if (files.length + pending.length > 5) {
-      setError("한 번에 최대 5장을 선택할 수 있습니다.");
+      setError(t("place.youCanChooseUpTo"));
       return;
     }
     const invalid = Array.from(files).find(
       (f) => !PHOTO_TYPES.includes(f.type) || f.size > PHOTO_SOURCE_LIMIT,
     );
     if (invalid) {
-      setError("5MB 이하 JPG, PNG, WebP 파일을 선택해 주세요.");
+      setError(t("place.pleaseChooseAJpgPng"));
       return;
     }
     setError("");
@@ -172,7 +174,7 @@ export function PlacePhotos({
           });
           const result = await response.json();
           if (!response.ok)
-            throw new Error(result.error ?? "사진을 등록하지 못했습니다.");
+            throw new Error(result.error ?? t("place.couldnTUploadPhotos"));
           setPending((old) =>
             old.map((p) => (p.id === item.id ? { ...p, state: "done" } : p)),
           );
@@ -182,7 +184,11 @@ export function PlacePhotos({
             setPending((old) =>
               old.map((p) =>
                 p.id === item.id
-                  ? { ...p, state: "failed", error: (e as Error).message }
+                  ? {
+                      ...p,
+                      state: "failed",
+                      error: t.message((e as Error).message),
+                    }
                   : p,
               ),
             );
@@ -192,9 +198,7 @@ export function PlacePhotos({
         try {
           await reload();
         } catch {
-          setError(
-            "등록 결과를 불러오지 못했습니다. 사진 목록을 새로고침해 주세요.",
-          );
+          setError(t("place.couldnTLoadTheUpload"));
         }
         if (!failed) {
           setMode(null);
@@ -212,19 +216,22 @@ export function PlacePhotos({
   if (preview && !loading && !error && !photos.length) return null;
   if (preview)
     return (
-      <section aria-label="방문자 사진 미리보기" className="space-y-2">
-        <h3 className="text-xs font-medium">방문자 사진</h3>
+      <section
+        aria-label={t("place.visitorPhotoPreview")}
+        className="space-y-2"
+      >
+        <h3 className="text-xs font-medium">{t("place.visitorPhotos")}</h3>
         {loading && !photos.length ? (
           <p role="status" className="text-xs text-muted-foreground">
-            사진을 불러오는 중…
+            {t("place.loadingPhotos")}
           </p>
         ) : error ? (
           <p className="text-xs text-muted-foreground">
-            사진은 상세에서 다시 확인할 수 있어요.
+            {t("place.youCanSeeThePhotos")}
           </p>
         ) : !photos.length ? (
           <p className="text-xs text-muted-foreground">
-            아직 방문자 사진이 없어요.
+            {t("place.noVisitorPhotosYet")}
           </p>
         ) : (
           <div className="place-sheet-photo-preview">
@@ -233,12 +240,12 @@ export function PlacePhotos({
                 key={item.id}
                 type="button"
                 onClick={onOpenDetail}
-                aria-label={`사진 ${index + 1} 장소 상세에서 보기`}
+                aria-label={t("place.viewPhotoInDetails", { index: index + 1 })}
               >
                 <Image
                   unoptimized
                   src={photoImageUrl(item.id, true)}
-                  alt={item.caption || "방문자 사진"}
+                  alt={item.caption || t("place.visitorPhotos")}
                   fill
                   sizes="160px"
                   className="object-cover"
@@ -251,7 +258,7 @@ export function PlacePhotos({
     );
   return (
     <section
-      aria-label="방문자 사진"
+      aria-label={t("place.visitorPhotos")}
       className="place-photos-section space-y-3"
       data-loading={loading}
       data-error={Boolean(error)}
@@ -260,7 +267,7 @@ export function PlacePhotos({
       <div className="place-photos-heading flex items-center justify-between gap-2">
         <h3 className="flex items-center gap-2 text-sm font-semibold">
           <Camera size={16} />
-          방문자 사진
+          {t("place.visitorPhotos")}
         </h3>
         {!viewer && !demo && !readOnly ? (
           <Button
@@ -269,9 +276,11 @@ export function PlacePhotos({
             variant="outline"
             className="place-photo-add"
           >
-            <Link href={loginHref} aria-label="사진 추가">
+            <Link href={loginHref} aria-label={t("place.addPhoto")}>
               <Plus size={16} aria-hidden="true" />
-              <span className="place-photo-add-label">사진 추가</span>
+              <span className="place-photo-add-label">
+                {t("place.addPhoto")}
+              </span>
             </Link>
           </Button>
         ) : (
@@ -279,25 +288,25 @@ export function PlacePhotos({
             size="sm"
             variant="outline"
             className="place-photo-add"
-            aria-label="사진 추가"
+            aria-label={t("place.addPhoto")}
             disabled={readOnly || demo}
             onClick={(e) => open("upload", e.currentTarget)}
           >
             <Plus size={16} aria-hidden="true" />
-            <span className="place-photo-add-label">사진 추가</span>
+            <span className="place-photo-add-label">{t("place.addPhoto")}</span>
           </Button>
         )}
       </div>
       {loading && !photos.length ? (
         <p role="status" className="text-sm text-muted-foreground">
-          사진을 불러오는 중…
+          {t("place.loadingPhotos")}
         </p>
       ) : (
         !photos.length && (
           <p className="place-photos-empty rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
             {demo
-              ? "가상 예시에서는 사진을 등록할 수 없습니다."
-              : "이 장소의 첫 사진을 올려 주세요."}
+              ? t("place.photosCanTBeAdded")
+              : t("place.uploadTheFirstPhotoOf")}
           </p>
         )
       )}
@@ -307,14 +316,17 @@ export function PlacePhotos({
             key={p.id}
             data-photo-thumbnail
             className="relative h-28 w-36 shrink-0 overflow-hidden rounded-lg border focus-visible:outline-2"
-            aria-label={`사진 ${index + 1} 확대: ${p.caption || "방문자 사진"}`}
+            aria-label={t("place.enlargePhoto", {
+              index: index + 1,
+              caption: p.caption || t("place.visitorPhoto"),
+            })}
             onClick={(e) => open("view", e.currentTarget, index)}
           >
             <Image
               unoptimized
               src={photoImageUrl(p.id, true)}
               loading={index === 0 ? "eager" : "lazy"}
-              alt={p.caption || "방문자 사진"}
+              alt={p.caption || t("place.visitorPhotos")}
               fill
               sizes="144px"
               className="object-cover"
@@ -329,10 +341,10 @@ export function PlacePhotos({
           disabled={loading}
           onClick={() => {
             setError("");
-            reload(cursor).catch((e) => setError(e.message));
+            reload(cursor).catch((e) => setError(t.message(e.message)));
           }}
         >
-          사진 더 보기
+          {t("place.morePhotos")}
         </Button>
       )}
       {error && !mode && (
@@ -343,10 +355,10 @@ export function PlacePhotos({
             variant="ghost"
             onClick={() => {
               setError("");
-              reload().catch((e) => setError(e.message));
+              reload().catch((e) => setError(t.message(e.message)));
             }}
           >
-            다시 불러오기
+            {t("place.reload")}
           </Button>
         </div>
       )}
@@ -395,12 +407,14 @@ export function PlacePhotos({
           >
             <div className="mb-4 flex items-center justify-between">
               <Dialog.Title className="font-semibold">
-                {mode === "upload" ? "장소 사진 등록" : "방문자 사진"}
+                {mode === "upload"
+                  ? t("place.uploadPlacePhotos")
+                  : t("place.visitorPhotos")}
               </Dialog.Title>
               <Button
                 variant="ghost"
                 size="icon"
-                aria-label="사진 창 닫기"
+                aria-label={t("place.closePhotoWindow")}
                 disabled={busy}
                 onClick={() => setMode(null)}
               >
@@ -410,11 +424,10 @@ export function PlacePhotos({
             {mode === "upload" && (
               <div className="space-y-4">
                 <p className="text-xs text-muted-foreground">
-                  직접 촬영한 장소 사진을 올려 주세요. JPG·PNG·WebP, 장당 5MB
-                  이하, 최대 5장.
+                  {t("place.uploadPhotosYouTookYourself")}
                 </p>
                 <label className="inline-flex min-h-11 cursor-pointer items-center rounded-lg border px-4 text-sm font-medium">
-                  사진 선택
+                  {t("place.choosePhotos")}
                   <input
                     type="file"
                     accept={PHOTO_TYPES.join(",")}
@@ -446,10 +459,10 @@ export function PlacePhotos({
                         <p role="status" className="mt-2 text-xs">
                           {
                             {
-                              waiting: "등록 대기",
-                              uploading: "등록 중…",
-                              done: "등록 완료",
-                              failed: "등록 실패",
+                              waiting: t("place.waiting"),
+                              uploading: t("place.uploading"),
+                              done: t("place.uploaded"),
+                              failed: t("place.uploadFailed"),
                             }[item.state]
                           }
                         </p>
@@ -466,12 +479,14 @@ export function PlacePhotos({
                           );
                         }}
                       >
-                        제외
+                        {t("place.remove")}
                       </Button>
                     </div>
                     <Textarea
-                      aria-label={`${item.file.name} 사진 설명`}
-                      placeholder="사진 설명 (선택)"
+                      aria-label={t("place.captionFor", {
+                        name: item.file.name,
+                      })}
+                      placeholder={t("place.captionOptional")}
                       maxLength={300}
                       value={item.caption}
                       disabled={busy || item.state === "done"}
@@ -487,7 +502,7 @@ export function PlacePhotos({
                     />
                     {item.error && (
                       <p role="alert" className="text-xs text-destructive">
-                        {item.error}
+                        {t.message(item.error)}
                       </p>
                     )}
                   </article>
@@ -497,10 +512,10 @@ export function PlacePhotos({
                   onClick={upload}
                 >
                   {busy
-                    ? "사진 등록 중…"
+                    ? t("place.uploadingPhotos")
                     : pending.some((p) => p.state === "failed")
-                      ? "실패한 사진 다시 등록"
-                      : "사진 등록"}
+                      ? t("place.retryFailedPhotos")
+                      : t("place.uploadPhotos")}
                 </Button>
               </div>
             )}
@@ -509,7 +524,7 @@ export function PlacePhotos({
                 <Image
                   unoptimized
                   src={photoImageUrl(photo.id)}
-                  alt={photo.caption || "방문자가 등록한 장소 사진"}
+                  alt={photo.caption || t("place.placePhotosFromVisitors")}
                   width={photo.width}
                   height={photo.height}
                   className="max-h-[55dvh] w-full rounded-lg object-contain"
@@ -519,7 +534,7 @@ export function PlacePhotos({
                     variant="outline"
                     size="icon"
                     disabled={selected === 0}
-                    aria-label="이전 사진"
+                    aria-label={t("place.previousPhoto")}
                     onClick={() => {
                       setReporting(false);
                       setSelected((i) => i - 1);
@@ -534,7 +549,7 @@ export function PlacePhotos({
                     variant="outline"
                     size="icon"
                     disabled={selected >= photos.length - 1}
-                    aria-label="다음 사진"
+                    aria-label={t("place.nextPhoto")}
                     onClick={() => {
                       setReporting(false);
                       setSelected((i) => i + 1);
@@ -548,7 +563,7 @@ export function PlacePhotos({
                   {photo.author_id ? (
                     <Link href={`/u/${photo.handle}`}>@{photo.handle}</Link>
                   ) : (
-                    photo.handle
+                    t.message(photo.handle)
                   )}{" "}
                   ·{" "}
                   {new Date(photo.created_at).toLocaleDateString("ko-KR", {
@@ -581,13 +596,13 @@ export function PlacePhotos({
                             );
                             setMode(null);
                           } catch (e) {
-                            setError((e as Error).message);
+                            setError(t.message((e as Error).message));
                           } finally {
                             setBusy(false);
                           }
                         }}
                       >
-                        삭제
+                        {t("place.delete")}
                       </Button>
                     )}
                     <Button
@@ -599,7 +614,7 @@ export function PlacePhotos({
                         setReason("");
                       }}
                     >
-                      신고
+                      {t("place.report")}
                     </Button>
                   </div>
                 )}
@@ -620,15 +635,15 @@ export function PlacePhotos({
                         setReporting(false);
                         setReason("");
                       } catch (e) {
-                        setError((e as Error).message);
+                        setError(t.message((e as Error).message));
                       } finally {
                         setBusy(false);
                       }
                     }}
                   >
                     <Textarea
-                      aria-label="사진 신고 사유"
-                      placeholder="신고 사유를 구체적으로 알려 주세요."
+                      aria-label={t("place.reasonForReportingThisPhoto")}
+                      placeholder={t("place.tellUsExactlyWhyYou")}
                       minLength={5}
                       maxLength={1000}
                       required
@@ -636,7 +651,7 @@ export function PlacePhotos({
                       onChange={(e) => setReason(e.target.value)}
                     />
                     <Button size="sm" disabled={busy}>
-                      신고 접수
+                      {t("place.submitReport")}
                     </Button>
                   </form>
                 )}

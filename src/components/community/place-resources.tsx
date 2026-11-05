@@ -13,6 +13,7 @@ import {
   PlaceResourceCache,
   emptyResourceSnapshot,
 } from "./place-resource-cache";
+import { useI18n } from "@/i18n/client";
 const Context = createContext<PlaceResourceCache | null>(null);
 export function PlaceResources({
   identity,
@@ -57,6 +58,7 @@ export function usePlaceResource<T>(
 
 /** Start only the selected place's two useful thumbnails while the map moves. */
 export function usePrefetchPlacePhotos() {
+  const { t } = useI18n();
   const cache = useContext(Context);
   return useCallback(
     (placeId: string) => {
@@ -66,7 +68,7 @@ export function usePrefetchPlacePhotos() {
           const response = await fetch(`/api/places/${placeId}/photos`, {
             signal,
           });
-          if (!response.ok) throw new Error("사진을 불러오지 못했습니다.");
+          if (!response.ok) throw new Error(t("map.couldnTLoadPhotos"));
           const page: PhotoPage = await response.json();
           if (!signal.aborted) {
             const ids = new Set([page.backdropPhotoId, page.photos[0]?.id]);
@@ -82,6 +84,6 @@ export function usePrefetchPlacePhotos() {
         })
         .catch(() => {});
     },
-    [cache],
+    [cache, t],
   );
 }

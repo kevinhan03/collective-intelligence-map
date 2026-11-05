@@ -1,7 +1,8 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import Link from "@/i18n/link";
+import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "@/i18n/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
@@ -23,12 +24,10 @@ import { MapCardBackdrop } from "./map-card-backdrop";
 import { useMapEngagement } from "./use-map-engagement";
 import styles from "./unified-desktop-home.module.css";
 
+import { useI18n } from "@/i18n/client";
+import { rich } from "@/i18n/rich";
 type SavedPosition = { limit: number; scroll: number };
-const sorts = [
-  { id: "popular", label: "인기순" },
-  { id: "saved", label: "저장순" },
-  { id: "newest", label: "최근 생성순" },
-] as const;
+const sorts = ["popular", "saved", "newest"] as const;
 
 export function UnifiedDesktopHome({
   maps,
@@ -45,6 +44,7 @@ export function UnifiedDesktopHome({
     onSelect: (id: string) => void;
   };
 }) {
+  const { t } = useI18n();
   const editorMode = Boolean(editor);
   const params = useSearchParams();
   const pathname = usePathname();
@@ -158,8 +158,8 @@ export function UnifiedDesktopHome({
   );
   const conditionName = (key: (typeof conditions)[number]) =>
     key === "category"
-      ? catalogCategories.find((c) => c.id === filters.category)?.label
-      : filters[key];
+      ? t.data("category", filters.category)
+      : t.data("region", filters[key]);
 
   return (
     <div
@@ -168,16 +168,16 @@ export function UnifiedDesktopHome({
       data-editor-mode={editorMode || undefined}
       data-map-catalog="unified"
     >
-      <section className={styles.intro} aria-label="취향으로 지도 찾기">
+      <section className={styles.intro} aria-label={t("home.findMapsByTaste")}>
         <h1>
-          같은 <span>취향</span>이 모이는 지도
+          {rich(t("home.headline"), { hl: (chunk) => <span>{chunk}</span> })}
         </h1>
-        <p>취향 있는 사람들의 추천으로, 다음 장소를 발견하세요.</p>
+        <p>{t("home.discoverYourNextPlaceThrough")}</p>
         <form
           key={filters.q}
           className={styles.search}
           role="search"
-          aria-label="테마 지도 찾기"
+          aria-label={t("home.findThemeMaps")}
           onSubmit={(event) => {
             event.preventDefault();
             const q = String(
@@ -193,15 +193,15 @@ export function UnifiedDesktopHome({
             type="search"
             name="q"
             maxLength={100}
-            aria-label="지도 검색"
+            aria-label={t("home.searchMaps")}
             defaultValue={filters.q}
-            placeholder="지역이나 관심 있는 테마 검색"
+            placeholder={t("home.searchByAreaOrTheme")}
           />
           {filters.q && (
             <button
               type="button"
               className={styles.clear}
-              aria-label="검색어 지우기"
+              aria-label={t("home.clearSearch")}
               onClick={() => {
                 update({ q: "" });
                 search.current?.focus();
@@ -213,13 +213,13 @@ export function UnifiedDesktopHome({
           <button
             type="submit"
             className={styles.submit}
-            aria-label="지도 검색 결과 보기"
+            aria-label={t("home.showMapResults")}
           >
             <ArrowRight size={22} />
           </button>
         </form>
-        <nav className={styles.categories} aria-label="지도 카테고리">
-          {[{ id: "", label: "전체" }, ...catalogCategories].map((c) => (
+        <nav className={styles.categories} aria-label={t("home.mapCategories")}>
+          {[{ id: "", label: t("home.all") }, ...catalogCategories].map((c) => (
             <Link
               key={c.id}
               href={unifiedCatalogHref(
@@ -240,7 +240,7 @@ export function UnifiedDesktopHome({
                 skipRestore.current = true;
               }}
             >
-              {c.label}
+              {c.id ? t.data("category", c.id) : c.label}
             </Link>
           ))}
         </nav>
@@ -252,50 +252,59 @@ export function UnifiedDesktopHome({
           ref={heading}
           className={styles.srOnly}
         >
-          지도 검색 결과
+          {t("home.mapSearchResults")}
         </h2>
         <div className={styles.toolbar}>
-          <div className={styles.sorts} role="group" aria-label="지도 정렬">
+          <div
+            className={styles.sorts}
+            role="group"
+            aria-label={t("home.sortMaps")}
+          >
             {sorts.map((sort) => (
               <button
                 type="button"
-                key={sort.id}
-                aria-pressed={filters.sort === sort.id}
-                onClick={() => update({ sort: sort.id })}
+                key={sort}
+                aria-pressed={filters.sort === sort}
+                onClick={() => update({ sort })}
               >
-                {sort.label}
+                {t.data("sort", sort === "popular" ? "popularShort" : sort)}
               </button>
             ))}
           </div>
           <div className={styles.summary}>
             <label className={styles.region}>
-              <span className={styles.srOnly}>지역</span>
+              <span className={styles.srOnly}>{t("home.area")}</span>
               <select
-                aria-label="지역"
+                aria-label={t("home.area")}
                 value={filters.region}
                 onChange={(e) => update({ region: e.target.value })}
               >
-                <option value="">지역 전체</option>
+                <option value="">{t("home.allAreasOption")}</option>
                 {regions.map((region) => (
                   <option key={region} value={region}>
-                    {region}
+                    {t.data("region", region)}
                   </option>
                 ))}
               </select>
               <ChevronDown size={14} aria-hidden="true" />
             </label>
             <p role="status" aria-live="polite">
-              지도 {results.length.toLocaleString("ko-KR")}개
+              {t("home.mapCount", { count: results.length })}
             </p>
           </div>
         </div>
         {conditions.length > 0 && (
-          <div className={styles.conditions} aria-label="선택한 검색 조건">
+          <div
+            className={styles.conditions}
+            aria-label={t("home.selectedFilters")}
+          >
             {conditions.map((key) => (
               <button
                 type="button"
                 key={key}
-                aria-label={`${conditionName(key)} 조건 해제`}
+                aria-label={t("home.removeFilter", {
+                  value: conditionName(key) ?? "",
+                })}
                 onClick={() => update({ [key]: "" })}
               >
                 {conditionName(key)}
@@ -307,21 +316,21 @@ export function UnifiedDesktopHome({
                 type="button"
                 onClick={() => update({ q: "", category: "", region: "" })}
               >
-                모두 해제
+                {t("home.clearAll")}
               </button>
             )}
           </div>
         )}
         {demo && !editor && (
           <p className={styles.note}>
-            미리보기 · 장소와 추천은 가상 예시입니다.
+            {t("home.previewPlacesAndRecommendationsAre")}
           </p>
         )}
         {engagement.error && (
           <p className={styles.error} role="alert">
-            {engagement.error}{" "}
+            {t.message(engagement.error)}{" "}
             <button type="button" onClick={() => void engagement.reload()}>
-              다시 시도
+              {t("home.tryAgain")}
             </button>
           </p>
         )}
@@ -329,9 +338,9 @@ export function UnifiedDesktopHome({
           {results.slice(0, limit).map((map) => {
             const country =
               map.country === "KR"
-                ? "한국"
+                ? t("home.korea")
                 : map.country === "JP"
-                  ? "일본"
+                  ? t("home.japan")
                   : map.country;
             const inclusive = Boolean(
               filters.region &&
@@ -361,7 +370,12 @@ export function UnifiedDesktopHome({
                     } else remember();
                   }}
                   className={styles.cover}
-                  aria-label={`${map.displayTitle} ${editor ? "편집" : "지도 열기"}`}
+                  aria-label={t(
+                    editor ? "home.editMapLabel" : "home.openMapLabel",
+                    {
+                      title: map.displayTitle,
+                    },
+                  )}
                 >
                   <MapCardBackdrop
                     slug={map.slug}
@@ -372,30 +386,47 @@ export function UnifiedDesktopHome({
                   <div className={styles.heading}>
                     <h3>{map.displayTitle}</h3>
                     <p>
-                      {map.regionLabel}
-                      {inclusive ? ` · ${filters.region} 포함` : ""}
-                      {map.categoryLabel ? ` · ${map.categoryLabel}` : ""}
+                      {t.data("region", map.regionLabel)}
+                      {inclusive
+                        ? " " +
+                          t("home.includes", {
+                            region: t.data("region", filters.region),
+                          })
+                        : ""}
+                      {map.categoryLabel
+                        ? ` · ${t.data("categoryLabel", map.categoryLabel)}`
+                        : ""}
                     </p>
                   </div>
                   <span className={styles.count}>
-                    {inclusive && <small>전체 </small>}
-                    {map.place_count.toLocaleString("ko-KR")}
-                    <small>곳</small>
+                    {rich(
+                      t(inclusive ? "home.placeCountAll" : "home.placeCount", {
+                        count: map.place_count,
+                      }),
+                      { small: (chunk) => <small>{chunk}</small> },
+                    )}
                   </span>
                 </Link>
                 {editor &&
                   (editor.selectedId === map.id ||
                     editor.changedIds.includes(map.id)) && (
                     <span className={styles.editorBadge}>
-                      {editor.selectedId === map.id ? "편집 중" : "미적용"}
+                      {editor.selectedId === map.id
+                        ? t("home.editing")
+                        : t("home.notApplied")}
                     </span>
                   )}
                 <div className={styles.actions}>
                   <button
                     type="button"
                     className={styles.hype}
-                    aria-label={`${map.displayTitle} Hype ${engagement.isHyped(map.id) ? "취소" : "추천"}`}
-                    title="누적 Hype · 인기순은 최근 7일 기준"
+                    aria-label={t(
+                      engagement.isHyped(map.id)
+                        ? "home.unhypeMapLabel"
+                        : "home.hypeMapLabel",
+                      { title: map.displayTitle },
+                    )}
+                    title={t("home.totalHypePopularIsBased")}
                     aria-pressed={engagement.isHyped(map.id)}
                     aria-busy={engagement.isPending("hype", map.id)}
                     disabled={
@@ -421,7 +452,12 @@ export function UnifiedDesktopHome({
                   <button
                     type="button"
                     className={styles.save}
-                    aria-label={`${map.displayTitle} 지도 ${engagement.isSaved(map.id) ? "저장 취소" : "저장"}`}
+                    aria-label={t(
+                      engagement.isSaved(map.id)
+                        ? "home.unsaveMapLabel"
+                        : "home.saveMapLabel",
+                      { title: map.displayTitle },
+                    )}
                     aria-pressed={engagement.isSaved(map.id)}
                     aria-busy={engagement.isPending("save_map", map.id)}
                     disabled={
@@ -448,13 +484,13 @@ export function UnifiedDesktopHome({
         </ol>
         {!results.length && (
           <div className={styles.empty}>
-            <h3>조건에 맞는 지도가 없어요.</h3>
-            <p>검색어나 카테고리, 지역 조건을 해제해 보세요.</p>
+            <h3>{t("home.noMapsMatchYourFilters")}</h3>
+            <p>{t("home.tryRemovingSearchCategoryOr")}</p>
             <button
               type="button"
               onClick={() => update({ q: "", category: "", region: "" })}
             >
-              검색·필터 초기화
+              {t("home.clearSearchAndFilters")}
             </button>
           </div>
         )}
@@ -466,7 +502,10 @@ export function UnifiedDesktopHome({
               setLimits((value) => ({ ...value, [href]: limit + 24 }))
             }
           >
-            더 보기 · {Math.min(limit, results.length)} / {results.length}
+            {t("home.showMore", {
+              shown: Math.min(limit, results.length),
+              total: results.length,
+            })}
           </button>
         )}
       </section>

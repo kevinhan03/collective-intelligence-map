@@ -1,8 +1,46 @@
 import type { Database } from "@/types/database";
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import {
+  defaultLocale,
+  hasLocale,
+  localeCookie,
+  localePrefix,
+  localizePath,
+  stripLocale,
+} from "@/i18n/config";
+
+// Korean pages keep unprefixed URLs and are served from /ko internally;
+// /en pages carry their prefix, and a saved English choice redirects there.
+// Files and non-page routes are left alone.
+function localeRewrite(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  if (/^\/(?:api|auth|go|_next|__)(?:\/|$)|\.[\w]+$/.test(pathname))
+    return null;
+  const prefix = localePrefix(pathname);
+  if (prefix && prefix !== defaultLocale) return null;
+  const url = request.nextUrl.clone();
+  const saved = request.cookies.get(localeCookie)?.value;
+  if (!prefix && saved && saved !== defaultLocale && hasLocale(saved)) {
+    url.pathname = localizePath(pathname, saved);
+    return NextResponse.redirect(url);
+  }
+  if (prefix === defaultLocale) {
+    url.pathname = stripLocale(pathname);
+    return NextResponse.redirect(url, 308);
+  }
+  url.pathname = `/${defaultLocale}${pathname === "/" ? "" : pathname}`;
+  return url;
+}
+
 export async function proxy(request: NextRequest) {
-  let response = NextResponse.next({ request });
+  const rewrite = localeRewrite(request);
+  if (rewrite instanceof NextResponse) return rewrite;
+  const pass = () =>
+    rewrite
+      ? NextResponse.rewrite(rewrite, { request })
+      : NextResponse.next({ request });
+  let response = pass();
   if (
     !process.env.NEXT_PUBLIC_SUPABASE_URL ||
     !process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
@@ -20,7 +58,7 @@ export async function proxy(request: NextRequest) {
         getAll: () => request.cookies.getAll(),
         setAll: (values) => {
           values.forEach(({ name, value }) => request.cookies.set(name, value));
-          response = NextResponse.next({ request });
+          response = pass();
           values.forEach(({ name, value, options }) =>
             response.cookies.set(name, value, options),
           );

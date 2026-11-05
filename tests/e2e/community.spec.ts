@@ -736,9 +736,9 @@ test("mobile map load failure keeps list navigation available", async ({
   await page.route("**/chunks/*.js", async (route) => {
     const response = await route.fetch();
     const body = await response.text();
-    // Production minifies function names; this accessible label remains in
-    // the lazy map renderer and lets us fail its real network request.
-    if (body.includes("가상 장소 지도 미리보기")) {
+    // Production minifies function names; this class name remains in the
+    // lazy map renderer and lets us fail its real network request.
+    if (body.includes("map-street")) {
       blockedMapChunk = true;
       await route.abort();
     } else await route.fulfill({ response });

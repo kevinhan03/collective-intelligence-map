@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+import { useI18n } from "@/i18n/client";
 export function ShareButton({
   path,
   title,
@@ -12,6 +13,7 @@ export function ShareButton({
   title: string;
   iconOnly?: boolean;
 }) {
+  const { t } = useI18n();
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   async function share() {
@@ -23,11 +25,11 @@ export function ShareButton({
         await navigator.share({ title, url });
       } else {
         await navigator.clipboard.writeText(url);
-        setMessage("링크를 복사했어요.");
+        setMessage(t("map.linkCopied"));
       }
     } catch (error) {
       if (!(error instanceof DOMException && error.name === "AbortError"))
-        setMessage("공유하지 못했어요. 다시 시도해 주세요.");
+        setMessage(t("map.couldnTSharePleaseTry"));
     } finally {
       setBusy(false);
     }
@@ -47,10 +49,10 @@ export function ShareButton({
         className={iconOnly ? "detail-icon-action" : undefined}
         disabled={busy}
         onClick={share}
-        aria-label={`${title} 공유`}
+        aria-label={t("map.share", { title })}
       >
         <Share2 size={iconOnly ? 21 : 14} aria-hidden="true" />
-        {!iconOnly && "공유"}
+        {!iconOnly && t("map.share2")}
       </Button>
       {message && (
         <span

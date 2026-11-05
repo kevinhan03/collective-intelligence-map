@@ -5,6 +5,9 @@ import { publicDb } from "@/lib/supabase/public";
 import { canIndex, noIndex } from "@/lib/seo";
 import { configured } from "@/lib/supabase/server";
 import { ProfilePresentation } from "@/components/creator/profile-presentation";
+import { getLocale, getTranslator } from "@/i18n/server";
+import { localeAlternates } from "@/i18n/metadata";
+import { localizePath } from "@/i18n/config";
 import { recommendedPlaces } from "@/server/profile";
 export default async function PublicProfile({
   params,
@@ -47,19 +50,23 @@ export async function generateMetadata({
 }: {
   params: Promise<{ handle: string }>;
 }) {
-  const { handle } = await params;
+  const [{ handle }, t, lang] = await Promise.all([
+    params,
+    getTranslator(),
+    getLocale(),
+  ]);
   const maps = (await creatorCatalog()).filter(
     (item) => item.handle === handle,
   );
   const p = maps[0]?.profile;
   return {
-    title: `${p?.display_name || handle}의 장소 지도`,
-    description: "크리에이터가 직접 고른 장소를 지도에서 찾아보세요.",
-    alternates: { canonical: `/u/${handle}` },
+    title: t("meta.creatorMaps", { name: p?.display_name || handle }),
+    description: t("meta.creatorMapsDescription"),
+    alternates: localeAlternates(`/u/${handle}`, lang),
     robots: canIndex && maps.length ? { index: true, follow: true } : noIndex,
     openGraph: {
-      title: `${p?.display_name || handle}의 장소 지도`,
-      url: `/u/${handle}`,
+      title: t("meta.creatorMaps", { name: p?.display_name || handle }),
+      url: localizePath(`/u/${handle}`, lang),
       images: maps[0]?.map.cover_path
         ? [`/maps/${maps[0].map.slug}/cover`]
         : undefined,

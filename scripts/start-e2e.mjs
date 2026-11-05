@@ -24,10 +24,14 @@ for (const signal of ["SIGINT", "SIGTERM"]) {
 
 function run(args) {
   return new Promise((resolve, reject) => {
-    child = spawn(process.execPath, ["node_modules/next/dist/bin/next", ...args], {
-      env,
-      stdio: "inherit",
-    });
+    child = spawn(
+      process.execPath,
+      ["node_modules/next/dist/bin/next", ...args],
+      {
+        env,
+        stdio: "inherit",
+      },
+    );
     child.once("error", reject);
     child.once("exit", (code, signal) => resolve(code ?? (signal ? 1 : 0)));
   });
@@ -35,4 +39,6 @@ function run(args) {
 
 const buildStatus = await run(["build"]);
 if (stopping || buildStatus !== 0) process.exit(buildStatus || 1);
-process.exit(await run(["start", "--hostname", "127.0.0.1"]));
+// No --hostname: with 127.0.0.1, Next hands the proxy a localhost URL, so the
+// locale rewrite in src/proxy.ts is treated as external and loops.
+process.exit(await run(["start"]));

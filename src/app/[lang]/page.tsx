@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/i18n/link";
 import { MapCatalog } from "@/components/community/map-catalog";
 import { UnifiedDesktopHome } from "@/components/community/unified-desktop-home";
 import { CatalogLoading } from "@/components/community/catalog-loading";
@@ -10,8 +10,13 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { jsonLd } from "@/domain/seo";
 import { websiteStructuredData } from "@/lib/seo";
-export const metadata: Metadata = { alternates: { canonical: "/" } };
-export default function Home() {
+import { getLocale, getTranslator } from "@/i18n/server";
+import { localeAlternates } from "@/i18n/metadata";
+export async function generateMetadata(): Promise<Metadata> {
+  return { alternates: localeAlternates("/", await getLocale()) };
+}
+export default async function Home() {
+  const t = await getTranslator();
   return (
     <>
       {websiteStructuredData && (
@@ -22,23 +27,18 @@ export default function Home() {
       )}
       <noscript>
         <section className="page-wrap pb-10">
-          <h1 className="text-3xl font-semibold">
-            팅맵 (Ting map) — 취향에 맞는 장소 찾기
-          </h1>
+          <h1 className="text-3xl font-semibold">{t("home.noscriptTitle")}</h1>
           <p className="mt-4 text-muted-foreground">
-            빈티지 숍, 타코 맛집, 버거와 음악 공간을 지역과 테마별로 찾아보세요.
-            방문자의 추천 이유와 장소 정보를 함께 확인할 수 있습니다.
+            {t("home.noscriptDescription")}
           </p>
-          <p className="mt-4">
-            지도 탐색에는 JavaScript가 필요합니다. 장소 소개 페이지는 JavaScript
-            없이도 읽을 수 있습니다.
-          </p>
-          <a
+          <p className="mt-4">{t("home.noscriptJavascript")}</p>
+          <Link
             href="/discover"
+            prefetch={false}
             className="mt-4 inline-block text-primary underline"
           >
-            지역·취향별 지도 둘러보기
-          </a>
+            {t("home.noscriptBrowse")}
+          </Link>
         </section>
       </noscript>
       <Suspense
@@ -54,6 +54,7 @@ export default function Home() {
   );
 }
 async function HomeContent() {
+  const t = await getTranslator();
   const catalog = await getPublicCatalog();
   return (
     <main
@@ -74,12 +75,12 @@ async function HomeContent() {
       </div>
       <footer className={homeStyles.footer}>
         <div className="flex flex-wrap items-center gap-2">
-          <span>팅맵 · Ting map</span>
+          <span>{t("home.tingMap")}</span>
           <Link href="/terms" prefetch={false}>
-            이용약관
+            {t("home.termsOfService")}
           </Link>
           <Link href="/privacy" prefetch={false}>
-            개인정보 처리방침
+            {t("home.privacyPolicy")}
           </Link>
         </div>
       </footer>

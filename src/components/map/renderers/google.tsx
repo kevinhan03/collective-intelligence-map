@@ -4,6 +4,7 @@ import { MapFailure } from "../map-failure";
 import { useEffect, useRef, useState } from "react";
 import type { MapProps } from "../types";
 import { pinCount, thumbPath } from "../pin-content";
+import { useI18n } from "@/i18n/client";
 let loaded: Promise<void> | undefined;
 // This is the local fallback while a Cloud Map Style / Map ID is not configured.
 // Keep its contrast intentionally low so place pins and the map's surrounding
@@ -91,6 +92,7 @@ export default function GoogleMap({
   mapId,
   compact = false,
 }: MapProps) {
+  const { t } = useI18n();
   const mobile = useMobile();
   const el = useRef<HTMLDivElement>(null),
     map = useRef<google.maps.Map | null>(null);
@@ -152,18 +154,14 @@ export default function GoogleMap({
         });
         setReady(true);
       })
-      .catch(() =>
-        setError(
-          "지도를 불러오지 못했습니다. 장소 목록은 계속 이용할 수 있습니다.",
-        ),
-      );
+      .catch(() => setError(t("map.couldnTLoadTheMap3")));
     return () => {
       active = false;
       listener?.remove();
       resizeObserver?.disconnect();
       markers.current.forEach((m) => m.setMap(null));
     };
-  }, [apiKey, mapId, bounds.north, bounds.south, bounds.east, bounds.west]);
+  }, [apiKey, mapId, bounds.north, bounds.south, bounds.east, bounds.west, t]);
   useEffect(() => {
     if (!ready || !map.current) return;
     markers.current.forEach((m) => m.setMap(null));
@@ -179,11 +177,15 @@ export default function GoogleMap({
           ? '<text x="22" y="25" text-anchor="middle" fill="white" font-size="14">···</text>'
           : `<svg x="15" y="${p.positive > 0 ? 8 : 13}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${thumbPath}"/></svg>${p.positive > 0 ? `<text x="22" y="33" text-anchor="middle" fill="white" font-family="sans-serif" font-size="11" font-weight="700">${pinCount(p.positive)}</text>` : ""}`;
       const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="44" height="50" viewBox="0 0 44 50"><path d="M22 48C16 42 2 31 2 22a20 20 0 1 1 40 0c0 9-14 20-20 26Z" fill="${color}" stroke="white" stroke-width="3"/>${content}</svg>`;
-      const size = selected === p.id ? (mobile ? 38 : 44) : (mobile ? 31 : 36);
+      const size = selected === p.id ? (mobile ? 38 : 44) : mobile ? 31 : 36;
       const marker = new google.maps.Marker({
         map: map.current,
         position: { lat: p.lat, lng: p.lng },
-        title: `${p.name} · 주제 추천 ${p.positive}${p.status === "pending" ? " · 검토 대기" : ""}`,
+        title: t("map.markerTitle", {
+          name: p.name,
+          count: p.positive,
+          pending: p.status === "pending" ? t("map.pendingSuffix") : "",
+        }),
         icon: {
           url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
           scaledSize: new google.maps.Size(size, (size * 50) / 44),
@@ -193,7 +195,7 @@ export default function GoogleMap({
       marker.addListener("click", () => handlers.current.onSelect(p.id));
       return marker;
     });
-  }, [ready, places, selected, mobile]);
+  }, [ready, places, selected, mobile, t]);
   useEffect(() => {
     if (!ready || !map.current || !selected || focusRequest === 0) return;
     const place = places.find((item) => item.id === selected);

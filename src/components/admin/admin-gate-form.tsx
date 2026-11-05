@@ -1,10 +1,12 @@
 "use client";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/i18n/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { post } from "@/components/community/api";
+import { useI18n } from "@/i18n/client";
 export function AdminGateForm() {
+  const { t } = useI18n();
   const [password, setPassword] = useState(""),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
@@ -27,7 +29,7 @@ export function AdminGateForm() {
       }}
     >
       <label className="block text-sm">
-        관리자 비밀번호
+        {t("admin.adminPassword")}
         <Input
           className="mt-2"
           type="password"
@@ -43,7 +45,7 @@ export function AdminGateForm() {
         </p>
       )}
       <Button disabled={busy} size="sm" className="w-full">
-        확인
+        {t("admin.confirm")}
       </Button>
     </form>
   );

@@ -2,7 +2,8 @@
 import Image from "next/image";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
-import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { useRouter, usePathname } from "@/i18n/navigation";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +18,7 @@ import {
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
 import { post } from "./api";
+import { useI18n } from "@/i18n/client";
 type Proposal = {
   id: string;
   place_id: string;
@@ -70,6 +72,7 @@ export type AdminSnapshot = {
   duplicates: Duplicate[];
 };
 export function AdminConsole({ snapshot }: { snapshot: AdminSnapshot }) {
+  const { t } = useI18n();
   const router = useRouter();
   const params = useSearchParams();
   const pathname = usePathname();
@@ -136,7 +139,7 @@ export function AdminConsole({ snapshot }: { snapshot: AdminSnapshot }) {
       const { description: _, ...payload } = pending;
       void _;
       await post("/api/community", { ...payload, reason });
-      setSuccess("운영 조치가 완료되었습니다.");
+      setSuccess(t("admin.moderationActionCompleted"));
       setPending(null);
       setReason("");
       router.refresh();
@@ -155,11 +158,11 @@ export function AdminConsole({ snapshot }: { snapshot: AdminSnapshot }) {
       )}
       <Tabs value={tab} onValueChange={(value) => updateLocation("tab", value)}>
         <TabsList
-          aria-label="관리자 업무"
+          aria-label={t("admin.adminTasks")}
           className="h-auto w-full flex-wrap gap-1 mb-4"
         >
           <TabsTrigger value="proposals">
-            장소 검토{" "}
+            {t("admin.placeReview")}{" "}
             {
               snapshot.proposals.filter((p) =>
                 ["pending", "disputed"].includes(p.status),
@@ -167,30 +170,33 @@ export function AdminConsole({ snapshot }: { snapshot: AdminSnapshot }) {
             }
           </TabsTrigger>
           <TabsTrigger value="reports">
-            신고 {snapshot.reports.length}
+            {t("admin.report")} {snapshot.reports.length}
           </TabsTrigger>
           <TabsTrigger value="duplicates">
-            중복 후보 {snapshot.duplicates.length}
+            {t("admin.possibleDuplicate")} {snapshot.duplicates.length}
           </TabsTrigger>
-          <TabsTrigger value="history">운영 이력</TabsTrigger>
+          <TabsTrigger value="history">{t("admin.moderationLog")}</TabsTrigger>
         </TabsList>
         <TabsContent value="proposals">
           <h2 className="mb-5 text-xl font-semibold">
-            장소 검토{" "}
+            {t("admin.placeReview")}{" "}
             <span className="text-muted-foreground">{proposals.length}</span>
           </h2>
           <p className="mb-4 text-sm text-muted-foreground">
-            승인 대기{" "}
-            {snapshot.proposals.filter((p) => p.status === "pending").length}건
-            · 재검토{" "}
-            {snapshot.proposals.filter((p) => p.status === "disputed").length}건
+            {t("admin.queueSummary", {
+              pending: snapshot.proposals.filter((p) => p.status === "pending")
+                .length,
+              disputed: snapshot.proposals.filter(
+                (p) => p.status === "disputed",
+              ).length,
+            })}
           </p>
           <div className="flex flex-wrap gap-2 mb-4">
             {Object.entries({
-              pending: "승인 대기",
-              disputed: "재검토",
-              approved: "공개 중",
-              all: "전체",
+              pending: t("admin.awaitingApproval"),
+              disputed: t("admin.reReview"),
+              approved: t("admin.live"),
+              all: t("admin.all"),
             }).map(([value, label]) => (
               <Button
                 key={value}
@@ -202,28 +208,28 @@ export function AdminConsole({ snapshot }: { snapshot: AdminSnapshot }) {
               </Button>
             ))}
             <Input
-              aria-label="검토할 장소 검색"
-              placeholder="장소·주소·테마·기여자 검색"
+              aria-label={t("admin.searchPlacesToReview")}
+              placeholder={t("admin.searchPlacesAddressesThemesOr")}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
             <label className="flex items-center gap-2 text-sm">
-              정렬
+              {t("admin.sort")}
               <select
-                aria-label="장소 검토 정렬"
+                aria-label={t("admin.sortPlaceReview")}
                 value={sort}
                 onChange={(event) => setSort(event.target.value)}
                 className="rounded-lg border bg-background p-2"
               >
-                <option value="priority">확인 필요 많은 순</option>
-                <option value="oldest">오래된 순</option>
-                <option value="newest">최신순</option>
+                <option value="priority">{t("admin.mostFlagged")}</option>
+                <option value="oldest">{t("admin.oldest")}</option>
+                <option value="newest">{t("admin.newest")}</option>
               </select>
             </label>
           </div>
           {proposals.length === 0 && (
             <p className="rounded-lg border bg-card p-6 text-sm text-muted-foreground">
-              검토할 장소가 없습니다.
+              {t("admin.noPlacesToReview")}
             </p>
           )}
           <div className="space-y-4">
@@ -233,11 +239,11 @@ export function AdminConsole({ snapshot }: { snapshot: AdminSnapshot }) {
                   <h3 className="font-semibold">{p.name}</h3>
                   <Badge variant="secondary">
                     {{
-                      pending: "승인 대기",
-                      disputed: "재검토",
-                      approved: "공개 중",
-                      rejected: "거절",
-                      archived: "보관",
+                      pending: t("admin.awaitingApproval"),
+                      disputed: t("admin.reReview"),
+                      approved: t("admin.live"),
+                      rejected: t("admin.reject"),
+                      archived: t("admin.archive"),
                     }[p.status] ?? p.status}
                   </Badge>
                 </div>
@@ -245,19 +251,21 @@ export function AdminConsole({ snapshot }: { snapshot: AdminSnapshot }) {
                   {p.map_title} · @{p.handle} · {p.address}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  위치: {p.lat}, {p.lng}
+                  {t("admin.location", { lat: p.lat, lng: p.lng })}
                 </p>
                 <p className="mt-3 text-xs text-muted-foreground">
-                  확인 필요 {p.review_count ?? 0}건 · 부적합{" "}
-                  {p.negative_count ?? 0}표
+                  {t("admin.reviewCounts", {
+                    reviews: p.review_count ?? 0,
+                    negative: p.negative_count ?? 0,
+                  })}
                   {(!p.last_verified_at ||
                     now - Date.parse(p.last_verified_at) > 90 * 86400000) &&
-                    " · 최근 90일 검증 없음"}
+                    t("admin.notVerifiedInTheLast")}
                 </p>
                 <p className="mt-4 text-sm leading-7">{p.rationale}</p>
                 <div className="my-4 rounded-lg bg-secondary/50 p-3 text-xs leading-6">
-                  <strong>이름·주소·좌표 출처</strong>
-                  <p>{p.source_note || "출처 누락 — 승인 불가"}</p>
+                  <strong>{t("admin.sourceOfNameAddressAnd")}</strong>
+                  <p>{p.source_note || t("admin.missingSourceCanTApprove")}</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {(p.status === "pending"
@@ -275,16 +283,16 @@ export function AdminConsole({ snapshot }: { snapshot: AdminSnapshot }) {
                           action: "moderate",
                           id: p.id,
                           status,
-                          description: `${p.name}: ${status === "approved" ? "독립적인 데이터 출처와 주제 적합성을 확인하고 승인합니다." : status === "rejected" ? "제안을 거절합니다." : status === "disputed" ? "검토 필요 상태로 표시합니다." : "공개 지도에서 보관 처리합니다."}`,
+                          description: `${p.name}: ${status === "approved" ? t("admin.approveAfterCheckingAnIndependent") : status === "rejected" ? t("admin.rejectThisSuggestion") : status === "disputed" ? t("admin.markAsNeedingReview") : t("admin.archiveFromThePublicMap")}`,
                         })
                       }
                     >
                       {
                         {
-                          approved: "승인",
-                          rejected: "거절",
-                          disputed: "검토 필요",
-                          archived: "보관",
+                          approved: t("admin.approve"),
+                          rejected: t("admin.reject"),
+                          disputed: t("admin.needsReview"),
+                          archived: t("admin.archive"),
                         }[status]
                       }
                     </Button>
@@ -295,10 +303,11 @@ export function AdminConsole({ snapshot }: { snapshot: AdminSnapshot }) {
           </div>
         </TabsContent>
         <TabsContent value="duplicates">
-          <h2 className="mb-5 text-xl font-semibold">중복 후보</h2>
+          <h2 className="mb-5 text-xl font-semibold">
+            {t("admin.possibleDuplicate")}
+          </h2>
           <p className="mb-4 text-sm text-muted-foreground">
-            100m 이내 장소입니다. 같은 건물의 다른 매장인지 확인한 후
-            병합하세요.
+            {t("admin.thesePlacesAreWithin100")}
           </p>
           {snapshot.duplicates.map((d, i) => (
             <article
@@ -310,8 +319,7 @@ export function AdminConsole({ snapshot }: { snapshot: AdminSnapshot }) {
                   {d.source_name} → {d.target_name}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  거리 {d.distance_m}m · 최신 사용자 표 한 개를 유지하고
-                  댓글·저장을 합칩니다.
+                  {t("admin.duplicateDistance", { distance: d.distance_m })}
                 </p>
               </div>
               <Button
@@ -322,58 +330,61 @@ export function AdminConsole({ snapshot }: { snapshot: AdminSnapshot }) {
                     action: "merge",
                     id: d.source_id,
                     targetId: d.target_id,
-                    description: `원본 “${d.source_name}” → 목적 “${d.target_name}”으로 병합합니다. 원본 장소는 병합 이력과 연결을 남기고, 관계·댓글·저장·사진을 목적 장소로 이동합니다. 같은 사용자의 중복 표는 최신 표 하나를 유지합니다.`,
+                    description: t("admin.mergeSourceIntoTargetThe", {
+                      source_name: d.source_name,
+                      target_name: d.target_name,
+                    }),
                   })
                 }
               >
-                병합 검토
+                {t("admin.reviewMerge")}
               </Button>
             </article>
           ))}
           {snapshot.duplicates.length === 0 && (
             <p className="text-sm text-muted-foreground">
-              중복 후보가 없습니다.
+              {t("admin.noPossibleDuplicates")}
             </p>
           )}
         </TabsContent>
         <TabsContent value="reports">
           <h2 className="mb-5 text-xl font-semibold">
-            신고 {snapshot.reports.length}
+            {t("admin.report")} {snapshot.reports.length}
           </h2>
           <label className="mb-4 flex items-center gap-2 text-sm">
-            신고 유형
+            {t("admin.reportType")}
             <select
-              aria-label="신고 유형"
+              aria-label={t("admin.reportType")}
               value={reportFilter}
               onChange={(event) => setReportFilter(event.target.value)}
               className="rounded-lg border bg-background p-2"
             >
-              <option value="all">전체</option>
-              <option value="place">장소</option>
-              <option value="comment">댓글</option>
-              <option value="photo">사진</option>
+              <option value="all">{t("admin.all")}</option>
+              <option value="place">{t("admin.place")}</option>
+              <option value="comment">{t("admin.comment")}</option>
+              <option value="photo">{t("admin.photo")}</option>
             </select>
           </label>
           {reports.length === 0 && (
             <p className="p-4 text-sm text-muted-foreground">
-              해당 유형의 미처리 신고가 없습니다.
+              {t("admin.noOpenReportsOfThis")}
             </p>
           )}
           {reports.map((r) => (
             <article key={r.id} className="mb-4 rounded-lg border bg-card p-5">
               <p className="text-xs text-muted-foreground">
                 {r.photo_id
-                  ? "사진 신고"
+                  ? t("admin.photoReport")
                   : r.comment_id
-                    ? "댓글 신고"
-                    : "장소 신고"}{" "}
+                    ? t("admin.commentReport")
+                    : t("admin.placeReport")}{" "}
                 · {new Date(r.created_at).toLocaleDateString("ko-KR")}
               </p>
               {r.photo_id && r.photo_status !== "deleted" && (
                 <Image
                   unoptimized
                   src={`/api/photos/${r.photo_id}/image?size=thumbnail&admin=1`}
-                  alt="신고된 사진"
+                  alt={t("admin.reportedPhoto")}
                   width={240}
                   height={180}
                   className="my-3 h-auto max-h-48 w-auto rounded object-contain"
@@ -393,11 +404,13 @@ export function AdminConsole({ snapshot }: { snapshot: AdminSnapshot }) {
                     setPending({
                       action: "resolve_report",
                       id: r.id,
-                      description: `신고 ${r.id}를 검토 완료로 처리합니다. 콘텐츠 상태는 별도 조치로 변경합니다.`,
+                      description: t("admin.markReportAsReviewedContent", {
+                        id: r.id,
+                      }),
                     })
                   }
                 >
-                  처리 완료
+                  {t("admin.resolved")}
                 </Button>
                 {r.photo_id && r.photo_status === "visible" && (
                   <Button
@@ -407,11 +420,13 @@ export function AdminConsole({ snapshot }: { snapshot: AdminSnapshot }) {
                       setPending({
                         action: "hide_photo",
                         id: r.photo_id!,
-                        description: `사진 ${r.photo_id}를 모든 테마 지도에서 숨깁니다. 신고 처리 완료는 별도로 실행하세요.`,
+                        description: t("admin.hidePhotoOnAllTheme", {
+                          photo_id: r.photo_id!,
+                        }),
                       })
                     }
                   >
-                    사진 숨기기
+                    {t("admin.hidePhoto")}
                   </Button>
                 )}
                 {r.comment_id && (
@@ -422,11 +437,13 @@ export function AdminConsole({ snapshot }: { snapshot: AdminSnapshot }) {
                       setPending({
                         action: "hide_comment",
                         id: r.comment_id!,
-                        description: `댓글 ${r.comment_id}를 공개 화면에서 숨깁니다. 신고 처리 완료는 별도로 실행하세요.`,
+                        description: t("admin.hideCommentFromPublicView", {
+                          comment_id: r.comment_id!,
+                        }),
                       })
                     }
                   >
-                    댓글 숨기기
+                    {t("admin.hideComment")}
                   </Button>
                 )}
                 {r.map_place_id && (
@@ -438,11 +455,13 @@ export function AdminConsole({ snapshot }: { snapshot: AdminSnapshot }) {
                         action: "moderate",
                         id: r.map_place_id!,
                         status: "disputed",
-                        description: `장소 ${r.name ?? r.map_place_id}를 검토 필요 상태로 변경합니다. 신고 처리 완료는 별도로 실행하세요.`,
+                        description: t("admin.markForReview", {
+                          name: r.name ?? r.map_place_id ?? "",
+                        }),
                       })
                     }
                   >
-                    장소 검토 필요
+                    {t("admin.placeNeedsReview")}
                   </Button>
                 )}
               </div>
@@ -450,13 +469,15 @@ export function AdminConsole({ snapshot }: { snapshot: AdminSnapshot }) {
           ))}
         </TabsContent>
         <TabsContent value="history">
-          <h2 className="mb-5 text-xl font-semibold">최근 운영 이력</h2>
+          <h2 className="mb-5 text-xl font-semibold">
+            {t("admin.recentModerationLog")}
+          </h2>
           <p className="mb-4 text-sm text-muted-foreground">
-            최근 50건의 조치 기록입니다.
+            {t("admin.theLast50Actions")}
           </p>
           {snapshot.actions.length === 0 && (
             <p className="text-sm text-muted-foreground">
-              운영 이력이 없습니다.
+              {t("admin.noModerationHistory")}
             </p>
           )}
           <div className="divide-y rounded-lg border bg-card">
@@ -464,13 +485,13 @@ export function AdminConsole({ snapshot }: { snapshot: AdminSnapshot }) {
               <div key={a.id} className="p-4">
                 <span className="text-xs font-semibold">
                   {{
-                    moderate: "장소 상태 변경",
-                    resolve_report: "신고 처리 완료",
-                    hide_comment: "댓글 숨김",
-                    hide_photo: "사진 숨김",
-                    merge: "장소 병합",
-                    provider_settings: "검색 공급자 설정 변경",
-                  }[a.action] ?? "운영 조치"}
+                    moderate: t("admin.placeStatusChange"),
+                    resolve_report: t("admin.reportResolved"),
+                    hide_comment: t("admin.commentHidden"),
+                    hide_photo: t("admin.photoHidden"),
+                    merge: t("admin.placesMerged"),
+                    provider_settings: t("admin.searchProviderSettingsChanged"),
+                  }[a.action] ?? t("admin.moderationAction")}
                 </span>
                 <p className="mt-1 break-all text-xs text-muted-foreground">
                   {Object.entries({
@@ -505,13 +526,15 @@ export function AdminConsole({ snapshot }: { snapshot: AdminSnapshot }) {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>운영 조치를 확인해 주세요</AlertDialogTitle>
+            <AlertDialogTitle>
+              {t("admin.pleaseConfirmTheModerationAction")}
+            </AlertDialogTitle>
             <AlertDialogDescription>
               {pending?.description}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <label htmlFor="moderation-reason" className="text-sm font-medium">
-            처리 근거
+            {t("admin.reason")}
           </label>
           <Textarea
             id="moderation-reason"
@@ -519,7 +542,7 @@ export function AdminConsole({ snapshot }: { snapshot: AdminSnapshot }) {
             onChange={(e) => setReason(e.target.value)}
             minLength={5}
             maxLength={1000}
-            placeholder="검토한 출처와 판단 이유를 기록해 주세요."
+            placeholder={t("admin.recordTheSourcesYouChecked")}
           />
           {error && (
             <p role="alert" className="text-sm text-destructive">
@@ -528,10 +551,10 @@ export function AdminConsole({ snapshot }: { snapshot: AdminSnapshot }) {
           )}
           <div className="flex flex-wrap gap-2">
             {[
-              "주제 적합성과 장소 정보를 확인했습니다.",
-              "주제에 맞는 추천 근거가 부족합니다.",
-              "중복 장소로 확인했습니다.",
-              "폐업 또는 이전 여부를 확인했습니다.",
+              t("admin.checkedThemeFitAndPlace"),
+              t("admin.notEnoughReasonToFit"),
+              t("admin.confirmedAsADuplicatePlace"),
+              t("admin.confirmedClosedOrMoved"),
             ].map((text) => (
               <Button
                 key={text}
@@ -544,12 +567,14 @@ export function AdminConsole({ snapshot }: { snapshot: AdminSnapshot }) {
             ))}
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={busy}>취소</AlertDialogCancel>
+            <AlertDialogCancel disabled={busy}>
+              {t("admin.cancel")}
+            </AlertDialogCancel>
             <Button
               onClick={execute}
               disabled={busy || reason.trim().length < 5}
             >
-              {busy ? "처리 중" : "확인하고 실행"}
+              {busy ? t("admin.processing") : t("admin.confirmAndRun")}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

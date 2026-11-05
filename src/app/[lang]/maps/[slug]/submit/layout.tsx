@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { getTranslator } from "@/i18n/server";
 import { noIndex } from "@/lib/seo";
-export const metadata: Metadata = { title: "장소 제안", robots: noIndex };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslator();
+  return { title: t("meta.suggestPlace"), robots: noIndex };
+}
 export default function Layout({ children }: { children: ReactNode }) {
   return children;
 }

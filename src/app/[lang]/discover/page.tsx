@@ -7,13 +7,17 @@ import { getPublicCatalog } from "@/server/catalog";
 import styles from "@/components/community/catalog-page.module.css";
 import homeStyles from "../page.module.css";
 import { configured } from "@/lib/supabase/server";
+import { getLocale, getTranslator } from "@/i18n/server";
+import { localeAlternates } from "@/i18n/metadata";
 
-export const metadata: Metadata = {
-  title: "지역·취향별 장소 추천 지도",
-  description:
-    "빈티지 숍, 맛집, 음악 공간 등 테마별 공개 지도를 둘러보고 장소와 추천 이유를 확인하세요.",
-  alternates: { canonical: "/discover" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const [t, lang] = await Promise.all([getTranslator(), getLocale()]);
+  return {
+    title: t("meta.discoverTitle"),
+    description: t("meta.discoverDescription"),
+    alternates: localeAlternates("/discover", lang),
+  };
+}
 
 async function DiscoverMapResults() {
   const catalog = await getPublicCatalog();

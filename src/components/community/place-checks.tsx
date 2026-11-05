@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { post } from "./api";
+import { useI18n } from "@/i18n/client";
+import { intlLocale } from "@/i18n/config";
 type Summary = {
   visited: number;
   open: number;
@@ -19,6 +21,7 @@ export function PlaceChecks({
   demo: boolean;
   onChange?: () => void;
 }) {
+  const { t, lang } = useI18n();
   const [summary, setSummary] = useState<Summary | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -28,20 +31,20 @@ export function PlaceChecks({
     const controller = new AbortController();
     fetch(`/api/map-places/${id}/checks`, { signal: controller.signal })
       .then(async (r) => {
-        if (!r.ok) throw new Error("확인 기록을 불러오지 못했습니다.");
+        if (!r.ok) throw new Error(t("map.couldnTLoadVisitChecks"));
         return r.json();
       })
       .then(setSummary)
       .catch((e) => {
-        if (e.name !== "AbortError") setMessage(e.message);
+        if (e.name !== "AbortError") setMessage(t.message(e.message));
       });
     return () => controller.abort();
-  }, [id, demo, revision]);
+  }, [id, demo, revision, t]);
   return (
     <section className="rounded-xl border p-4 space-y-3">
-      <h3 className="text-sm font-semibold">최근에 다녀오셨나요?</h3>
+      <h3 className="text-sm font-semibold">{t("map.beenHereRecently")}</h3>
       <p className="text-xs text-muted-foreground">
-        최근 90일의 확인 기록입니다. 한 사람의 최신 응답만 반영합니다.
+        {t("map.visitChecksFromTheLast")}
       </p>
       <div className="flex flex-wrap gap-2">
         {(["visited", "open", "needs_review"] as const).map((kind) => (
@@ -61,9 +64,9 @@ export function PlaceChecks({
                 });
                 setRevision((v) => v + 1);
                 onChange?.();
-                setMessage("확인해 주셔서 고마워요.");
+                setMessage(t("map.thanksForChecking"));
               } catch (e) {
-                setMessage((e as Error).message);
+                setMessage(t.message((e as Error).message));
               } finally {
                 setBusy(false);
               }
@@ -71,9 +74,9 @@ export function PlaceChecks({
           >
             {
               {
-                visited: "다녀왔어요",
-                open: "운영 중이에요",
-                needs_review: "폐업·이전 확인 필요",
+                visited: t("map.iVisited"),
+                open: t("map.itSOpen"),
+                needs_review: t("map.mayBeClosedOrMoved"),
               }[kind]
             }{" "}
             {summary?.[kind] ?? 0}
@@ -82,8 +85,12 @@ export function PlaceChecks({
       </div>
       <p className="text-xs text-muted-foreground">
         {summary?.last_checked_at
-          ? `최근 확인: ${new Date(summary.last_checked_at).toLocaleDateString("ko-KR")}`
-          : "최근 확인 기록이 없어요."}
+          ? t("map.lastChecked", {
+              date: new Date(summary.last_checked_at).toLocaleDateString(
+                intlLocale(lang),
+              ),
+            })
+          : t("map.noRecentVisitChecks")}
       </p>
       {message && (
         <p role="status" className="text-xs">

@@ -1,11 +1,14 @@
-import Link from "next/link";
+import Link from "@/i18n/link";
 import { redirect, notFound } from "next/navigation";
+import { localizedPath } from "@/i18n/server";
 import { getViewer } from "@/server/queries";
 import { getCatalogAdminSnapshot } from "@/server/catalog";
 import { CatalogEditor } from "@/components/admin/catalog-editor";
+import { getTranslator } from "@/i18n/server";
 export default async function CatalogAdminPage() {
+  const t = await getTranslator();
   const viewer = await getViewer();
-  if (!viewer) redirect("/login?next=/admin/catalog");
+  if (!viewer) redirect(await localizedPath("/login?next=/admin/catalog"));
   if (viewer.role !== "admin") notFound();
   let snapshot;
   try {
@@ -13,12 +16,9 @@ export default async function CatalogAdminPage() {
   } catch {
     return (
       <main id="main" className="page-wrap">
-        <h1>홈 콘텐츠 준비가 필요합니다</h1>
-        <p>
-          로컬 또는 운영 데이터베이스에 홈 콘텐츠 마이그레이션을 적용한 뒤 다시
-          열어 주세요.
-        </p>
-        <Link href="/admin/moderation">관리로 돌아가기</Link>
+        <h1>{t("admin.homeContentNeedsSetup")}</h1>
+        <p>{t("admin.applyTheHomeContentMigration")}</p>
+        <Link href="/admin/moderation">{t("admin.backToAdmin")}</Link>
       </main>
     );
   }

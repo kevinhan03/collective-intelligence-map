@@ -4,6 +4,7 @@ import { MapFailure } from "../map-failure";
 import { useEffect, useRef, useState } from "react";
 import type { MapProps } from "../types";
 import MapLibreMap from "./maplibre";
+import { useI18n } from "@/i18n/client";
 type LatLng = { getLat(): number; getLng(): number };
 type LatLngBounds = object;
 type KMap = {
@@ -67,6 +68,7 @@ function load(key: string) {
   return loaded;
 }
 export default function KakaoMap(props: MapProps) {
+  const { t } = useI18n();
   const {
     apiKey,
     places,
@@ -131,9 +133,7 @@ export default function KakaoMap(props: MapProps) {
         k.event.addListener(instance, "idle", listener);
         setReady(true);
       })
-      .catch(() =>
-        setError("지도를 불러오지 못했습니다. 장소 목록을 이용해 주세요."),
-      );
+      .catch(() => setError(t("map.couldnTLoadTheMap2")));
     return () => {
       active = false;
       resizeObserver?.disconnect();
@@ -141,7 +141,7 @@ export default function KakaoMap(props: MapProps) {
         window.kakao?.maps.event.removeListener(map.current, "idle", listener);
       pins.current.forEach((p) => p.setMap(null));
     };
-  }, [apiKey, bounds.north, bounds.south, bounds.east, bounds.west]);
+  }, [apiKey, bounds.north, bounds.south, bounds.east, bounds.west, t]);
   useEffect(() => {
     if (!ready || !map.current || !window.kakao) return;
     const k = window.kakao.maps;
@@ -153,7 +153,11 @@ export default function KakaoMap(props: MapProps) {
       button.dataset.status = p.status;
       button.setAttribute(
         "aria-label",
-        `${p.name} · 주제 추천 ${p.positive}${p.status === "pending" ? " · 검토 대기" : ""}`,
+        t("map.markerTitle", {
+          name: p.name,
+          count: p.positive,
+          pending: p.status === "pending" ? t("map.pendingSuffix") : "",
+        }),
       );
       const span = document.createElement("span");
       if (p.status === "pending") span.textContent = "···";
@@ -166,7 +170,7 @@ export default function KakaoMap(props: MapProps) {
         content: button,
       });
     });
-  }, [ready, places, selected]);
+  }, [ready, places, selected, t]);
   useEffect(() => {
     if (
       !ready ||

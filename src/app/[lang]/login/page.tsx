@@ -1,5 +1,6 @@
-import Link from "next/link";
+import Link from "@/i18n/link";
 import { redirect } from "next/navigation";
+import { localizedPath } from "@/i18n/server";
 import { AuthForm } from "@/components/community/auth-form";
 import { configured } from "@/lib/supabase/server";
 import { getViewer } from "@/server/queries";
@@ -11,14 +12,19 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
+import { getTranslator } from "@/i18n/server";
+import { rich } from "@/i18n/rich";
 export default async function Login({
   searchParams,
 }: {
   searchParams: Promise<{ error?: string; next?: string }>;
 }) {
+  const t = await getTranslator();
   const { error, next } = await searchParams;
   if (await getViewer())
-    redirect(next ? safeReturnPath(next) : "/settings/profile");
+    redirect(
+      await localizedPath(next ? safeReturnPath(next) : "/settings/profile"),
+    );
   return (
     <main
       id="main"
@@ -28,34 +34,37 @@ export default async function Login({
         <CardHeader className="gap-4 pb-8 sm:gap-6 sm:pb-12">
           <p className="kicker mb-2">Login</p>
           <CardTitle className="text-3xl leading-tight break-keep sm:text-5xl">
-            로그인 / 회원가입
+            {t("login.signInSignUp")}
           </CardTitle>
           <CardDescription className="text-base leading-7 break-keep sm:leading-8">
-            좋아하는 지도를 팔로우하고 장소를 저장하세요.
+            {t("login.saveTheMapsYouLove")}
             <br />
-            초기 장소 제안과 검증은 초대 기여자와 함께합니다.
+            {t("login.earlyPlaceSuggestionsAndReviews")}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {error && (
             <p role="alert" className="mb-4 text-sm text-destructive">
-              Google 로그인을 완료하지 못했습니다. 다시 시도해 주세요.
+              {t("login.couldnTFinishSigningIn")}
             </p>
           )}
           <AuthForm
             enabled={configured() && process.env.GOOGLE_AUTH_ENABLED === "true"}
-            next={next ? safeReturnPath(next) : "/"}
+            next={await localizedPath(next ? safeReturnPath(next) : "/")}
           />
           <p className="mt-8 text-xs leading-6 text-muted-foreground sm:mt-16">
-            계속하면{" "}
-            <Link href="/terms" className="underline">
-              이용약관
-            </Link>
-            과{" "}
-            <Link href="/privacy" className="underline">
-              개인정보 처리방침
-            </Link>
-            을 확인한 것으로 간주합니다.
+            {rich(t("login.consent"), {
+              terms: (chunk) => (
+                <Link href="/terms" className="underline">
+                  {chunk}
+                </Link>
+              ),
+              privacy: (chunk) => (
+                <Link href="/privacy" className="underline">
+                  {chunk}
+                </Link>
+              ),
+            })}
           </p>
         </CardContent>
       </Card>

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import Link from "@/i18n/link";
 import type { Comment, MapPlace, Viewer } from "@/domain/types";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,6 +8,7 @@ import { post } from "./api";
 import { DropdownMenu } from "radix-ui";
 import { MoreHorizontal } from "lucide-react";
 
+import { useI18n } from "@/i18n/client";
 export function PlaceIntroductions({
   place,
   viewer,
@@ -23,6 +24,7 @@ export function PlaceIntroductions({
   loginHref: string;
   onReport: (id: string) => void;
 }) {
+  const { t } = useI18n();
   const [entries, setEntries] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(!demo);
   const [loadError, setLoadError] = useState("");
@@ -42,7 +44,7 @@ export function PlaceIntroductions({
       signal: controller.signal,
     })
       .then(async (response) => {
-        if (!response.ok) throw new Error("소개를 불러오지 못했습니다.");
+        if (!response.ok) throw new Error(t("place.couldnTLoadNotes"));
         return response.json();
       })
       .then((data) => {
@@ -50,13 +52,13 @@ export function PlaceIntroductions({
         setLoadError("");
       })
       .catch((error) => {
-        if (error.name !== "AbortError") setLoadError(error.message);
+        if (error.name !== "AbortError") setLoadError(t.message(error.message));
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [place.id, demo, revision]);
+  }, [place.id, demo, revision, t]);
 
   function reset() {
     setOpen(false);
@@ -70,7 +72,7 @@ export function PlaceIntroductions({
         <button
           type="button"
           className="introduction-menu-trigger detail-icon-action"
-          aria-label="장소 소개 메뉴"
+          aria-label={t("place.placeNoteMenu")}
         >
           <MoreHorizontal size={20} aria-hidden="true" />
         </button>
@@ -87,9 +89,9 @@ export function PlaceIntroductions({
             onSelect={viewer ? () => setOpen(true) : undefined}
           >
             {viewer ? (
-              "소개 추가하기"
+              t("place.addANote")
             ) : (
-              <Link href={loginHref}>로그인하고 소개 추가하기</Link>
+              <Link href={loginHref}>{t("place.signInToAddA")}</Link>
             )}
           </DropdownMenu.Item>
         </DropdownMenu.Content>
@@ -99,7 +101,7 @@ export function PlaceIntroductions({
   return (
     <section
       className="place-introductions relative rounded-2xl p-5 space-y-4"
-      aria-label="장소 소개"
+      aria-label={t("place.aboutThisPlace")}
     >
       {place.rationale && (
         <article className="introduction-primary">
@@ -111,9 +113,9 @@ export function PlaceIntroductions({
               {place.added_by ? (
                 <Link href={`/u/${place.handle}`}>@{place.handle}</Link>
               ) : (
-                place.handle
+                t.message(place.handle)
               )}{" "}
-              · 등록자의 소개
+              {t("place.byContributor")}
             </p>
             {menu}
           </div>
@@ -144,7 +146,7 @@ export function PlaceIntroductions({
                     setOpen(true);
                   }}
                 >
-                  수정
+                  {t("place.edit")}
                 </button>
                 <button
                   disabled={busy}
@@ -163,20 +165,20 @@ export function PlaceIntroductions({
                       );
                       if (editing === entry.id) reset();
                     } catch (error) {
-                      setError((error as Error).message);
+                      setError(t.message((error as Error).message));
                     } finally {
                       submitting.current = false;
                       setBusy(false);
                     }
                   }}
                 >
-                  삭제
+                  {t("place.delete")}
                 </button>
               </>
             )}
             {enabled && (
               <button disabled={busy} onClick={() => onReport(entry.id)}>
-                신고
+                {t("place.report")}
               </button>
             )}
           </div>
@@ -184,7 +186,7 @@ export function PlaceIntroductions({
       ))}
       {loading && (
         <p role="status" className="text-xs text-muted-foreground">
-          소개를 불러오는 중…
+          {t("place.loadingNotes")}
         </p>
       )}
       {loadError && (
@@ -194,25 +196,25 @@ export function PlaceIntroductions({
             onClick={() => setRevision((value) => value + 1)}
             className="underline"
           >
-            다시 불러오기
+            {t("place.reload")}
           </button>
         </p>
       )}
       {!loading && !loadError && !place.rationale && entries.length === 0 && (
         <p className="text-sm text-muted-foreground">
-          아직 소개가 없어요. 이 장소의 첫 소개를 남겨 주세요.
+          {t("place.noNotesYetBeThe")}
         </p>
       )}
       {!open && !readOnly && !demo && publicPlace && !viewer && (
         <div className="introduction-helper text-muted-foreground">
           <Link href={loginHref} className="text-primary underline">
-            로그인하고 소개 추가하기
+            {t("place.signInToAddA")}
           </Link>
         </div>
       )}
       {!readOnly && !demo && !publicPlace && (
         <p className="text-xs text-muted-foreground">
-          장소가 공개되면 누구나 소개를 추가할 수 있어요.
+          {t("place.anyoneCanAddANote")}
         </p>
       )}
       {open && enabled && (
@@ -232,7 +234,7 @@ export function PlaceIntroductions({
               reset();
               setRevision((value) => value + 1);
             } catch (error) {
-              setError((error as Error).message);
+              setError(t.message((error as Error).message));
             } finally {
               submitting.current = false;
               setBusy(false);
@@ -240,7 +242,7 @@ export function PlaceIntroductions({
           }}
         >
           <label htmlFor={`introduction-${place.id}`} className="text-sm">
-            {editing ? "내 소개 수정" : "장소 소개 추가"}
+            {editing ? t("place.editMyNote") : t("place.addAPlaceNote")}
           </label>
           <Textarea
             id={`introduction-${place.id}`}
@@ -250,14 +252,14 @@ export function PlaceIntroductions({
             maxLength={1000}
             required
             disabled={busy}
-            placeholder="이 장소의 특징이나 추천하는 점을 알려 주세요."
+            placeholder={t("place.tellUsWhatMakesThis")}
           />
           <p className="text-xs text-muted-foreground">
-            2~1,000자 · 다른 사람의 소개와 함께 표시됩니다.
+            {t("place.21000CharactersShown")}
           </p>
           <div className="flex gap-2">
             <Button size="sm" disabled={busy}>
-              {busy ? "저장 중…" : "소개 저장"}
+              {busy ? t("place.saving") : t("place.saveNote")}
             </Button>
             <Button
               type="button"
@@ -266,7 +268,7 @@ export function PlaceIntroductions({
               disabled={busy}
               onClick={reset}
             >
-              취소
+              {t("place.cancel")}
             </Button>
           </div>
         </form>

@@ -35,9 +35,9 @@ export type CheckSummary = {
   last_open_checked_at?: string | null;
 };
 
-export function operationLabel(summary: CheckSummary) {
+export function operationLabel(summary: CheckSummary, locale = "ko-KR") {
   if (summary.needs_review > 0) return "폐업·이전 확인 제보 있음";
   if (summary.open > 0 && summary.last_open_checked_at)
-    return `최근 운영 확인 · ${new Date(summary.last_open_checked_at).toLocaleDateString("ko-KR")}`;
+    return `최근 운영 확인 · ${new Date(summary.last_open_checked_at).toLocaleDateString(locale)}`;
   return summary.open > 0 ? "최근 운영 확인 있음" : "최근 운영 확인 없음";
 }

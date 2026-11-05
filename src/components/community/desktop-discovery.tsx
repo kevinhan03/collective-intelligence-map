@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import Link from "@/i18n/link";
+import { useRouter } from "@/i18n/navigation";
 import { useRef, useState } from "react";
 import {
   ArrowRight,
@@ -216,7 +216,11 @@ export function DesktopDiscovery({
                   className={`${styles.cover} group`}
                   aria-label={`${map.title} 미리보기`}
                 >
-                  <MapCardBackdrop slug={map.slug} editorial={map.editorial} sharp />
+                  <MapCardBackdrop
+                    slug={map.slug}
+                    editorial={map.editorial}
+                    sharp
+                  />
                   <span className={styles.shade} aria-hidden="true" />
                   <div className={styles.heading}>
                     <h3 className={styles.title}>{map.title}</h3>

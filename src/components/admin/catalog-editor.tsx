@@ -1,6 +1,6 @@
 "use client";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import Link from "@/i18n/link";
+import { useRouter } from "@/i18n/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
   Map as MapIcon,
@@ -44,6 +44,7 @@ import {
 } from "@/domain/catalog-admin";
 import styles from "./catalog-editor.module.css";
 
+import { useI18n } from "@/i18n/client";
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
   const r = await fetch(url, { ...init, cache: "no-store" });
   const data = await r.json();
@@ -95,6 +96,7 @@ export function CatalogEditor({
   initial: CatalogAdminSnapshot;
   userId: string;
 }) {
+  const { t } = useI18n();
   const router = useRouter();
   const [snapshot, setSnapshot] = useState(initial);
   const [drafts, setDrafts] = useState<Record<string, CatalogEdit>>({});
@@ -159,19 +161,17 @@ export function CatalogEditor({
             setDrafts(
               Object.fromEntries(parsed.data.changes.map((d) => [d.mapId, d])),
             );
-          else setMessage("저장된 임시 변경을 읽을 수 없어 초기화했습니다.");
+          else setMessage(t("admin.savedDraftChangesCouldnT"));
         }
       } catch {
-        setStorageWarning(
-          "임시 변경을 저장할 수 없습니다. 이 화면을 떠나면 변경 내용이 사라질 수 있습니다.",
-        );
+        setStorageWarning(t("admin.draftChangesCanTBe"));
       }
       setReady(true);
     });
     return () => {
       active = false;
     };
-  }, [userId]);
+  }, [userId, t]);
   useEffect(() => {
     if (!ready) return;
     try {
@@ -183,13 +183,9 @@ export function CatalogEditor({
         );
       else sessionStorage.removeItem(catalogDraftKey(userId));
     } catch {
-      queueMicrotask(() =>
-        setStorageWarning(
-          "임시 변경을 저장할 수 없습니다. 이 화면을 떠나면 변경 내용이 사라질 수 있습니다.",
-        ),
-      );
+      queueMicrotask(() => setStorageWarning(t("admin.draftChangesCanTBe")));
     }
-  }, [drafts, ready, userId]);
+  }, [drafts, ready, userId, t]);
   useEffect(() => {
     if (!changedIds.length) return;
     const unload = (e: BeforeUnloadEvent) => {
@@ -208,11 +204,7 @@ export function CatalogEditor({
         return;
       const url = new URL(link.href);
       if (url.pathname === location.pathname) return;
-      if (
-        !window.confirm(
-          "아직 적용하지 않은 변경사항이 있습니다. 이 화면을 떠날까요?",
-        )
-      ) {
+      if (!window.confirm(t("admin.youHaveChangesThatHaven"))) {
         e.preventDefault();
         e.stopPropagation();
       }
@@ -223,7 +215,7 @@ export function CatalogEditor({
       window.removeEventListener("beforeunload", unload);
       document.removeEventListener("click", click, true);
     };
-  }, [changedIds.length]);
+  }, [changedIds.length, t]);
   // On return from a signed-out/background tab, discard its private drafts.
   useEffect(() => {
     const verify = () => {
@@ -260,7 +252,7 @@ export function CatalogEditor({
     setImageFailed(false);
   }
   function revert(all = false) {
-    if (all && !window.confirm("모든 임시 변경을 되돌릴까요?")) return;
+    if (all && !window.confirm(t("admin.discardAllDraftChanges"))) return;
     setDrafts((d) => {
       if (all) return {};
       const next = { ...d };
@@ -279,7 +271,9 @@ export function CatalogEditor({
       changes: changedIds.map((id) => drafts[id]),
     });
     if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "입력 내용을 확인해 주세요.");
+      setError(
+        parsed.error.issues[0]?.message ?? t("admin.pleaseCheckYourInput"),
+      );
       return;
     }
     setBusy(true);
@@ -293,19 +287,15 @@ export function CatalogEditor({
       try {
         sessionStorage.removeItem(catalogDraftKey(userId));
       } catch {}
-      setMessage("변경사항을 적용했습니다.");
+      setMessage(t("admin.changesApplied"));
       try {
         setSnapshot(await api<CatalogAdminSnapshot>("/api/admin/catalog"));
       } catch {
-        setError(
-          "적용은 완료됐지만 최신 화면을 불러오지 못했습니다. 새로고침해 주세요.",
-        );
+        setError(t("admin.changesWereAppliedButThe"));
         setConflict(true);
       }
     } catch (e) {
-      setError(
-        e instanceof Error ? e.message : "변경사항을 적용하지 못했습니다.",
-      );
+      setError(e instanceof Error ? e.message : t("admin.couldnTApplyChanges"));
       setConflict((e as { status?: number }).status === 409);
     } finally {
       setBusy(false);
@@ -316,12 +306,10 @@ export function CatalogEditor({
     try {
       setSnapshot(await api<CatalogAdminSnapshot>("/api/admin/catalog"));
       setConflict(false);
-      setMessage(
-        "최신 내용을 불러왔습니다. 충돌한 지도의 변경을 되돌린 뒤 다시 편집해 주세요.",
-      );
+      setMessage(t("admin.loadedTheLatestContentRevert"));
     } catch (e) {
       setError(
-        e instanceof Error ? e.message : "최신 내용을 불러오지 못했습니다.",
+        e instanceof Error ? e.message : t("admin.couldnTLoadTheLatest"),
       );
     } finally {
       setBusy(false);
@@ -336,7 +324,7 @@ export function CatalogEditor({
       chosen.size > 5 * 1024 * 1024 ||
       !["image/jpeg", "image/png", "image/webp"].includes(chosen.type)
     ) {
-      setError("5MB 이하 JPG, PNG, WebP 파일을 선택해 주세요.");
+      setError(t("admin.pleaseChooseAJpgPng"));
       return;
     }
     setUploading(true);
@@ -356,7 +344,7 @@ export function CatalogEditor({
       }));
       setImageFailed(false);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "사진 업로드에 실패했습니다.");
+      setError(e instanceof Error ? e.message : t("admin.photoUploadFailed"));
     } finally {
       setUploading(false);
       if (file.current) file.current.value = "";
@@ -366,7 +354,7 @@ export function CatalogEditor({
     const value = alias.trim();
     if (!value || !edit) return;
     if (value.length > 60 || edit.aliases.length >= 20) {
-      setError("검색 별칭은 60자 이하로 20개까지 입력할 수 있습니다.");
+      setError(t("admin.youCanAddUpTo"));
       return;
     }
     if (!edit.aliases.includes(value))
@@ -402,14 +390,14 @@ export function CatalogEditor({
     </div>
   );
   const deviceControls = (
-    <div className={styles.devices} aria-label="미리보기 화면 크기">
+    <div className={styles.devices} aria-label={t("admin.previewSize")}>
       <button
         type="button"
         aria-pressed={viewport === "desktop"}
         onClick={() => setViewport("desktop")}
       >
         <Monitor size={16} />
-        데스크톱
+        {t("admin.desktop")}
       </button>
       <button
         type="button"
@@ -417,7 +405,7 @@ export function CatalogEditor({
         onClick={() => setViewport("mobile")}
       >
         <Smartphone size={16} />
-        모바일
+        {t("admin.mobile")}
       </button>
     </div>
   );
@@ -425,14 +413,18 @@ export function CatalogEditor({
     <main id="main" className={styles.editor} data-catalog-editor>
       <header className={styles.topbar}>
         <div>
-          <Link href="/" className={styles.brand} aria-label="Ting map 홈">
+          <Link
+            href="/"
+            className={styles.brand}
+            aria-label={t("admin.tingMapHome")}
+          >
             <span>
               <MapIcon size={20} />
             </span>
             Ting map
           </Link>
-          <h1>홈 콘텐츠</h1>
-          <span>변경한 지도 {changedIds.length}개</span>
+          <h1>{t("admin.homeContent")}</h1>
+          <span>{t("admin.changedMaps", { count: changedIds.length })}</span>
         </div>
         <div className={styles.actions}>
           <button
@@ -441,7 +433,7 @@ export function CatalogEditor({
             onClick={() => revert(true)}
           >
             <RotateCcw size={16} />
-            전체 되돌리기
+            {t("admin.revertAll")}
           </button>
           <button
             type="button"
@@ -456,7 +448,7 @@ export function CatalogEditor({
             onClick={() => void apply()}
           >
             <Check size={16} />
-            {busy ? "적용 중…" : "변경사항 적용"}
+            {busy ? t("admin.applying") : t("admin.applyChanges")}
           </button>
         </div>
       </header>
@@ -479,7 +471,7 @@ export function CatalogEditor({
               disabled={busy}
               onClick={() => void refresh()}
             >
-              최신 내용 확인
+              {t("admin.checkForLatest")}
             </button>
           )}
         </div>
@@ -490,51 +482,52 @@ export function CatalogEditor({
           aria-pressed={pane === "preview"}
           onClick={() => setPane("preview")}
         >
-          홈 미리보기
+          {t("admin.homePreview")}
         </button>
         <button
           type="button"
           aria-pressed={pane === "edit"}
           onClick={() => setPane("edit")}
         >
-          카드 편집
+          {t("admin.editCard")}
         </button>
       </div>
       <div className={styles.workspace} data-pane={pane}>
-        <section className={styles.preview} aria-label="홈 미리보기">
+        <section className={styles.preview} aria-label={t("admin.homePreview")}>
           <div className={styles.previewHeader}>
             <div>
-              <h2>홈 미리보기</h2>
-              <p>카드를 선택해 표시 정보를 수정하세요.</p>
+              <h2>{t("admin.homePreview")}</h2>
+              <p>{t("admin.selectACardToEdit")}</p>
             </div>
             <div>
               {deviceControls}
               <button type="button" onClick={() => setFull(true)}>
                 <Maximize size={16} />
-                전체 화면 보기
+                {t("admin.viewFullScreen")}
               </button>
             </div>
           </div>
           {preview}
         </section>
-        <aside className={styles.inspector} aria-label="카드 정보">
+        <aside className={styles.inspector} aria-label={t("admin.cardDetails")}>
           <header>
-            <h2>카드 정보</h2>
+            <h2>{t("admin.cardDetails")}</h2>
             <button
               type="button"
               onClick={() => revert()}
               disabled={!drafts[selectedId] || busy || uploading}
             >
-              <RotateCcw size={15} />이 지도 되돌리기
+              <RotateCcw size={15} />
+              {t("admin.revertThisMap")}
             </button>
           </header>
           {!selected || !edit ? (
-            <p>편집할 공개 지도가 없습니다.</p>
+            <p>{t("admin.thereAreNoPublicMaps")}</p>
           ) : (
             <fieldset disabled={busy || uploading || !ready}>
               <div className={styles.selected}>
                 <div>
-                  <span>선택한 지도</span>
+                  <span>{t("admin.selectedMap")}</span>
                   <h3>{selected.displayTitle}</h3>
                 </div>
                 <Link
@@ -542,7 +535,7 @@ export function CatalogEditor({
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  지도 열기
+                  {t("admin.openMap")}
                   <ExternalLink size={14} />
                 </Link>
               </div>
@@ -555,7 +548,7 @@ export function CatalogEditor({
                 />
                 <button type="button" onClick={() => file.current?.click()}>
                   <ImagePlus size={15} />
-                  {uploading ? "업로드 중…" : "이미지 변경"}
+                  {uploading ? t("admin.uploading") : t("admin.changeImage")}
                 </button>
               </div>
               <input
@@ -563,7 +556,7 @@ export function CatalogEditor({
                 type="file"
                 className={styles.file}
                 accept="image/jpeg,image/png,image/webp"
-                aria-label="대표 이미지 업로드"
+                aria-label={t("admin.uploadCoverImage")}
                 onChange={(e) => {
                   const f = e.target.files?.[0];
                   if (f) void upload(f);
@@ -579,16 +572,15 @@ export function CatalogEditor({
                 }}
               >
                 <Focus size={16} />
-                사진 중심 조정
+                {t("admin.adjustPhotoFocus")}
               </button>
               {editorial?.wholeSubject && (
                 <p className={styles.hint}>
-                  이 사진은 전체 피사체 표현을 유지합니다. 사진을 교체하면 중심
-                  위치를 조정할 수 있어요.
+                  {t("admin.thisPhotoKeepsTheWhole")}
                 </p>
               )}
               <label>
-                표시 이름
+                {t("admin.displayName")}
                 <input
                   value={edit.title}
                   maxLength={80}
@@ -596,7 +588,7 @@ export function CatalogEditor({
                 />
               </label>
               <label>
-                카테고리
+                {t("admin.category")}
                 <select
                   value={edit.category ?? ""}
                   onChange={(e) =>
@@ -606,7 +598,7 @@ export function CatalogEditor({
                     })
                   }
                 >
-                  <option value="">미분류</option>
+                  <option value="">{t("admin.uncategorized")}</option>
                   {catalogCategories.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.label}
@@ -615,24 +607,27 @@ export function CatalogEditor({
                 </select>
               </label>
               <label>
-                표시 지역
+                {t("admin.displayArea")}
                 <input
                   value={edit.region}
                   maxLength={60}
-                  placeholder={`기본: ${selected.regionLabel}`}
+                  placeholder={t("admin.default", {
+                    regionLabel: selected.regionLabel,
+                  })}
                   onChange={(e) => patch({ region: e.target.value })}
                 />
               </label>
               <div className={styles.aliases}>
                 <label htmlFor="catalog-alias">
-                  검색 별칭 <small>{edit.aliases.length}/20</small>
+                  {t("admin.searchAliases")}{" "}
+                  <small>{edit.aliases.length}/20</small>
                 </label>
                 <div className={styles.chips}>
                   {edit.aliases.map((a) => (
                     <button
                       key={a}
                       type="button"
-                      aria-label={`${a} 별칭 삭제`}
+                      aria-label={t("admin.removeAlias", { a })}
                       onClick={() =>
                         patch({ aliases: edit.aliases.filter((v) => v !== a) })
                       }
@@ -647,7 +642,7 @@ export function CatalogEditor({
                     id="catalog-alias"
                     value={alias}
                     maxLength={60}
-                    placeholder="검색어를 입력하고 Enter"
+                    placeholder={t("admin.typeASearchTermAnd")}
                     onChange={(e) => setAlias(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && !e.nativeEvent.isComposing) {
@@ -661,23 +656,23 @@ export function CatalogEditor({
                     disabled={!alias.trim()}
                     onClick={addAlias}
                   >
-                    추가
+                    {t("admin.add")}
                   </button>
                 </div>
                 {alias.trim() && (
                   <p className={styles.hint}>
-                    ‘추가’를 눌러 별칭 입력을 완료해 주세요.
+                    {t("admin.pressAddToFinishEntering")}
                   </p>
                 )}
               </div>
               <footer>
                 <p>
                   <Info size={15} />
-                  적용 전까지 실제 홈은 변경되지 않습니다.
+                  {t("admin.theLiveHomePageWon")}
                 </p>
                 <p>
                   <Info size={15} />
-                  인기순 정렬은 자동으로 반영됩니다.
+                  {t("admin.popularitySortingUpdatesAutomatically")}
                 </p>
               </footer>
             </fieldset>
@@ -686,10 +681,9 @@ export function CatalogEditor({
       </div>
       <Dialog open={full} onOpenChange={setFull}>
         <DialogContent className={styles.fullDialog}>
-          <DialogTitle>홈 전체 미리보기</DialogTitle>
+          <DialogTitle>{t("admin.fullHomePreview")}</DialogTitle>
           <DialogDescription>
-            카드를 선택하면 편집 대상으로 지정됩니다. 실제 지도는 ‘지도 열기’로
-            확인하세요.
+            {t("admin.selectingACardMakesIt")}
           </DialogDescription>
           {deviceControls}
           {preview}
@@ -697,11 +691,8 @@ export function CatalogEditor({
       </Dialog>
       <Dialog open={crop} onOpenChange={setCrop}>
         <DialogContent className={styles.cropDialog}>
-          <DialogTitle>사진 중심 조정</DialogTitle>
-          <DialogDescription>
-            사진을 클릭하거나 드래그하세요. 슬라이더 또는 방향키로도 조정할 수
-            있습니다.
-          </DialogDescription>
+          <DialogTitle>{t("admin.adjustPhotoFocus")}</DialogTitle>
+          <DialogDescription>{t("admin.clickOrDragOnThe")}</DialogDescription>
           {editorial?.image && (
             <>
               <div
@@ -753,7 +744,7 @@ export function CatalogEditor({
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={editorial.image}
-                  alt="중심을 조정할 원본 사진"
+                  alt={t("admin.originalPhotoToAdjustFocus")}
                   draggable={false}
                   onLoad={() => setImageFailed(false)}
                   onError={() => setImageFailed(true)}
@@ -765,15 +756,12 @@ export function CatalogEditor({
                 />
               </div>
               {imageFailed && (
-                <p role="alert">
-                  사진을 불러오지 못했습니다. 임시 사진이 만료됐다면 다시 선택해
-                  주세요.
-                </p>
+                <p role="alert">{t("admin.couldnTLoadThePhoto")}</p>
               )}
               <label>
-                가로 위치 {point.x}%
+                {t("admin.horizontalPosition")} {point.x}%
                 <input
-                  aria-label="사진 가로 위치"
+                  aria-label={t("admin.photoHorizontalPosition")}
                   type="range"
                   min={0}
                   max={100}
@@ -784,9 +772,9 @@ export function CatalogEditor({
                 />
               </label>
               <label>
-                세로 위치 {point.y}%
+                {t("admin.verticalPosition")} {point.y}%
                 <input
-                  aria-label="사진 세로 위치"
+                  aria-label={t("admin.photoVerticalPosition")}
                   type="range"
                   min={0}
                   max={100}
@@ -797,7 +785,7 @@ export function CatalogEditor({
                 />
               </label>
               <div className={styles.cropPreviews}>
-                {["데스크톱", "모바일"].map((name, i) => (
+                {[t("admin.desktop"), t("admin.mobile")].map((name, i) => (
                   <div key={name}>
                     <p>{name}</p>
                     <div
@@ -822,7 +810,7 @@ export function CatalogEditor({
               </div>
               <div className={styles.actions}>
                 <button type="button" onClick={() => setCrop(false)}>
-                  취소
+                  {t("admin.cancel")}
                 </button>
                 <button
                   type="button"
@@ -833,7 +821,7 @@ export function CatalogEditor({
                     setCrop(false);
                   }}
                 >
-                  위치 반영
+                  {t("admin.applyPosition")}
                 </button>
               </div>
             </>

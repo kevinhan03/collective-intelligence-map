@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import { operationLabel, type CheckSummary } from "@/domain/visit";
 
+import { useI18n } from "@/i18n/client";
+import { intlLocale } from "@/i18n/config";
 export function OperationSummary({
   id,
   demo,
@@ -11,6 +13,7 @@ export function OperationSummary({
   demo: boolean;
   revision: number;
 }) {
+  const { t, lang } = useI18n();
   const [summary, setSummary] = useState<CheckSummary | null>(null);
   const [error, setError] = useState(false);
   useEffect(() => {
@@ -34,10 +37,10 @@ export function OperationSummary({
       className={`text-xs ${summary?.needs_review ? "text-amber-600" : "text-muted-foreground"}`}
     >
       {summary
-        ? operationLabel(summary)
+        ? t.message(operationLabel(summary, intlLocale(lang)))
         : error
-          ? "최근 운영 확인을 불러오지 못했어요."
-          : "운영 확인 불러오는 중…"}
+          ? t("map.couldnTLoadRecentVisit")
+          : t("map.loadingVisitChecks")}
     </p>
   );
 }

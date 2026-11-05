@@ -4,13 +4,14 @@ import { demoMap } from "@/server/demo";
 import { mapSearchTitle } from "@/domain/seo";
 import { ogImage } from "@/lib/seo";
 
+vi.mock("next/root-params", () => ({ lang: async () => "ko" }));
 vi.mock("@/server/queries", () => ({ getMap: vi.fn() }));
 vi.mock("@/server/seo-queries", () => ({}));
 vi.mock("@/components/community/community-explorer", () => ({}));
 vi.mock("@/components/community/proposal-notice", () => ({}));
 vi.mock("@/components/community/viewer-state", () => ({}));
 import { getMap } from "@/server/queries";
-import { generateMetadata } from "@/app/maps/[slug]/page";
+import { generateMetadata } from "@/app/[lang]/maps/[slug]/page";
 
 it("missing maps override an indexable parent's robots directive", async () => {
   vi.mocked(getMap).mockResolvedValue(null);

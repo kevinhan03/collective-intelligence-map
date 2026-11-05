@@ -1,7 +1,7 @@
 "use client";
 import { useRef, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import Link from "@/i18n/link";
+import { useRouter } from "@/i18n/navigation";
 import { ArrowLeft, Copy, ExternalLink } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,6 +13,7 @@ import {
 } from "@/domain/creator";
 import { ProfilePresentation } from "@/components/creator/profile-presentation";
 import type { Viewer } from "@/domain/types";
+import { useI18n } from "@/i18n/client";
 export function ProfileForm({
   viewer,
   snapshot = null,
@@ -26,6 +27,7 @@ export function ProfileForm({
   contributionError?: string;
   editing?: boolean;
 }) {
+  const { t } = useI18n();
   const [handle, setHandle] = useState(viewer.handle),
     [bio, setBio] = useState(viewer.bio);
   const [displayName, setDisplayName] = useState(
@@ -67,9 +69,12 @@ export function ProfileForm({
   );
   if (!editing)
     return (
-      <section className="profile-settings-overview" aria-label="프로필">
+      <section
+        className="profile-settings-overview"
+        aria-label={t("profile.profile")}
+      >
         <header className="profile-overview-heading">
-          <h1>프로필</h1>
+          <h1>{t("profile.profile")}</h1>
         </header>
         <ProfilePresentation
           handle={savedHandle}
@@ -92,8 +97,8 @@ export function ProfileForm({
           editProfileHref="/settings/profile?edit=1"
         />
         <nav className="profile-account-links profile-overview-links">
-          <Link href="/studio">내 지도 관리</Link>
-          <Link href="/my-proposals">내 제안 보기</Link>
+          <Link href="/studio">{t("profile.manageMyMaps")}</Link>
+          <Link href="/my-proposals">{t("profile.viewMySuggestions")}</Link>
         </nav>
       </section>
     );
@@ -112,7 +117,7 @@ export function ProfileForm({
             featuredMapId: snapshot?.profile?.featured_map_id || "",
           });
           if (snapshot && !payload.success) {
-            setMessage(payload.error.issues[0].message);
+            setMessage(t.message(payload.error.issues[0].message));
             return;
           }
           submitting.current = true;
@@ -130,13 +135,12 @@ export function ProfileForm({
             setSavedHandle(handle);
             if (snapshot && payload.success)
               await post("/api/creator/maps", payload.data);
-            setMessage("프로필을 저장했습니다.");
+            setMessage(t("profile.profileSaved"));
             router.refresh();
           } catch (error) {
             setMessage(
-              (baseSaved
-                ? "사용자 이름·소개는 저장됐습니다. 표시 이름·Instagram 저장 실패: "
-                : "") + (error as Error).message,
+              (baseSaved ? t("profile.yourUsernameAndBioWere") : "") +
+                t.message((error as Error).message),
             );
           } finally {
             submitting.current = false;
@@ -146,15 +150,15 @@ export function ProfileForm({
       >
         <div className="profile-editor-heading">
           <Link href="/settings/profile" className="profile-edit-back">
-            <ArrowLeft size={15} /> 프로필로 돌아가기
+            <ArrowLeft size={15} /> {t("profile.backToProfile")}
           </Link>
-          <h1>프로필 편집</h1>
-          <p>나의 취향이 담긴 장소를 더 많은 사람들과 공유해 보세요.</p>
+          <h1>{t("profile.editProfile")}</h1>
+          <p>{t("profile.shareThePlacesThatReflect")}</p>
         </div>
         <fieldset disabled={busy} className="profile-fields">
           <div className="profile-name-fields">
             <label>
-              표시 이름
+              {t("profile.displayName")}
               <Input
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
@@ -163,7 +167,7 @@ export function ProfileForm({
               />
             </label>
             <label>
-              사용자 이름
+              {t("profile.username")}
               <Input
                 id="handle"
                 value={handle}
@@ -171,22 +175,25 @@ export function ProfileForm({
                 pattern="[a-zA-Z0-9_]{3,30}"
                 required
               />
-              <span className="profile-help">영문·숫자·밑줄, 3–30자</span>
+              <span className="profile-help">
+                {t("profile.lettersNumbersAndUnderscores3")}
+              </span>
             </label>
           </div>
           <label>
-            소개
+            {t("profile.bio")}
             <Textarea
               id="bio"
               value={bio}
               onChange={(e) => setBio(e.target.value)}
               maxLength={500}
-              placeholder="어떤 장소와 주제에 관심이 있나요?"
+              placeholder={t("profile.whatKindsOfPlacesAnd")}
             />
             <span className="profile-character-count">{bio.length}/500</span>
           </label>
           <label>
-            Instagram <span className="profile-help">(선택)</span>
+            Instagram{" "}
+            <span className="profile-help">{t("profile.optional")}</span>
             <Input
               value={instagram}
               onChange={(e) => setInstagram(e.target.value)}
@@ -197,12 +204,11 @@ export function ProfileForm({
           </label>
           {!snapshot && (
             <p className="profile-help">
-              표시 이름과 Instagram 편집은 크리에이터 기능 준비 후 사용할 수
-              있습니다.
+              {t("profile.displayNameAndInstagramEditing")}
             </p>
           )}
           <div>
-            <p className="profile-field-label">프로필 URL</p>
+            <p className="profile-field-label">{t("profile.profileUrl")}</p>
             <div className="profile-url-row">
               <span>/u/{handle}</span>
               <button
@@ -213,16 +219,14 @@ export function ProfileForm({
                     await navigator.clipboard.writeText(
                       new URL("/u/" + handle, window.location.origin).href,
                     );
-                    setMessage(
-                      "링크를 복사했습니다. 변경한 사용자 이름은 저장 후 적용됩니다.",
-                    );
+                    setMessage(t("profile.linkCopiedAChangedUsername"));
                   } catch {
-                    setMessage("링크를 복사하지 못했습니다.");
+                    setMessage(t("profile.couldnTCopyTheLink"));
                   }
                 }}
               >
                 <span>
-                  <Copy size={15} /> 링크 복사
+                  <Copy size={15} /> {t("profile.copyLink")}
                 </span>
               </button>
             </div>
@@ -230,11 +234,11 @@ export function ProfileForm({
         </fieldset>
         <div className="profile-save-row">
           <button className="profile-action profile-primary" disabled={busy}>
-            <span>{busy ? "저장 중" : "변경사항 저장"}</span>
+            <span>{busy ? t("profile.saving") : t("profile.saveChanges")}</span>
           </button>
           <Link href={"/u/" + savedHandle} className="profile-action">
             <span>
-              <ExternalLink size={15} /> 공개 프로필 보기
+              <ExternalLink size={15} /> {t("profile.viewPublicProfile")}
             </span>
           </Link>
         </div>
@@ -244,15 +248,13 @@ export function ProfileForm({
           </p>
         )}
         <nav className="profile-account-links">
-          <Link href="/studio">내 지도 관리</Link>
-          <Link href="/my-proposals">내 제안 보기</Link>
+          <Link href="/studio">{t("profile.manageMyMaps")}</Link>
+          <Link href="/my-proposals">{t("profile.viewMySuggestions")}</Link>
         </nav>
       </form>
       <aside className="profile-desktop-preview">
-        <h2>공개 프로필 미리보기</h2>
-        <p className="profile-help">
-          입력한 내용이 공개 화면에 이렇게 표시됩니다.
-        </p>
+        <h2>{t("profile.publicProfilePreview")}</h2>
+        <p className="profile-help">{t("profile.thisIsHowYourProfile")}</p>
         <div className="profile-preview-content">{preview}</div>
       </aside>
     </div>

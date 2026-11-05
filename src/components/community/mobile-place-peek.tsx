@@ -2,6 +2,7 @@
 import { usePlaceSheetDrag } from "@/hooks/use-place-sheet-drag";
 import { PlaceSheetHandle } from "./place-sheet-handle";
 
+import { useI18n } from "@/i18n/client";
 /** The top edge of the dismissed sheet stays available at the map's bottom. */
 export function MobilePlacePeek({
   subject,
@@ -10,6 +11,7 @@ export function MobilePlacePeek({
   subject: string;
   onExpand: () => void;
 }) {
+  const { t } = useI18n();
   const expand = () => {
     onExpand();
     requestAnimationFrame(() => {
@@ -24,7 +26,7 @@ export function MobilePlacePeek({
   return (
     <section
       className="mobile-place-peek"
-      aria-label="접힌 장소 카드"
+      aria-label={t("map.collapsedPlaceCard")}
       {...drag}
     >
       <PlaceSheetHandle stage="collapsed" subject={subject} onExpand={expand} />

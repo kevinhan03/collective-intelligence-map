@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import type { Database } from "@/types/database";
-import { anonymousVoteCookie, anonymousVoteHash } from "@/server/anonymous-votes";
+import {
+  anonymousVoteCookie,
+  anonymousVoteHash,
+} from "@/server/anonymous-votes";
 import { loginReturnCookie, safeReturnPath } from "@/domain/login-return";
+import { defaultLocale, localePrefix, localizePath } from "@/i18n/config";
 export async function GET(request: NextRequest) {
   const url = new URL(request.url),
     code = url.searchParams.get("code");
@@ -10,7 +14,9 @@ export async function GET(request: NextRequest) {
   const returnCookie = request.cookies.get(loginReturnCookie)?.value;
   let next = "/";
   try {
-    next = safeReturnPath(returnCookie ? decodeURIComponent(returnCookie) : null);
+    next = safeReturnPath(
+      returnCookie ? decodeURIComponent(returnCookie) : null,
+    );
   } catch {
     next = "/";
   }
@@ -35,7 +41,10 @@ export async function GET(request: NextRequest) {
     ok = !error;
   }
   if (!ok) {
-    const login = new URL("/login", origin);
+    const login = new URL(
+      localizePath("/login", localePrefix(next) ?? defaultLocale),
+      origin,
+    );
     login.searchParams.set("error", "callback");
     if (next !== "/") login.searchParams.set("next", next);
     response = NextResponse.redirect(login);

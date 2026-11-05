@@ -1,5 +1,6 @@
 import { getPublicCatalog } from "@/server/catalog";
 import { redirect } from "next/navigation";
+import { localizedPath } from "@/i18n/server";
 import { getViewer, rendererFor } from "@/server/queries";
 import { db } from "@/lib/supabase/server";
 import {
@@ -8,7 +9,7 @@ import {
 } from "@/components/community/saved-places";
 export default async function Saved() {
   const viewer = await getViewer();
-  if (!viewer) redirect("/login");
+  if (!viewer) redirect(await localizedPath("/login"));
   const { data, error } = await (await db()).rpc("saved_place_cards");
   if (error) throw new Error("저장 목록을 불러올 수 없습니다.");
   const cards = (data ?? []) as SavedPlace[];

@@ -4,6 +4,7 @@ import { TrainFront } from "lucide-react";
 import type { MapPlace, NearbyStations, RailStation } from "@/domain/types";
 import { directionsUrl, formatDistance } from "@/domain/visit";
 
+import { useI18n } from "@/i18n/client";
 export function NearbyStationInfo({
   place,
   compact = false,
@@ -15,6 +16,7 @@ export function NearbyStationInfo({
   demo: boolean;
   onSelect?: (station: RailStation) => void;
 }) {
+  const { t } = useI18n();
   const [result, setResult] = useState<NearbyStations | null>(null);
   const [error, setError] = useState(false);
   const [retry, setRetry] = useState(0);
@@ -38,7 +40,7 @@ export function NearbyStationInfo({
   if (error)
     return (
       <p className="text-xs text-muted-foreground">
-        역 정보를 불러오지 못했어요.{" "}
+        {t("map.couldnTLoadStationInfo")}{" "}
         <button
           className="min-h-9 underline"
           onClick={() => {
@@ -46,34 +48,34 @@ export function NearbyStationInfo({
             setRetry((v) => v + 1);
           }}
         >
-          재시도
+          {t("map.retry")}
         </button>
       </p>
     );
   if (!result)
     return (
       <p role="status" className="text-xs text-muted-foreground">
-        가까운 역을 찾고 있어요…
+        {t("map.findingNearbyStations")}
       </p>
     );
   if (result.status !== "ready")
     return (
       <p className="text-xs text-muted-foreground">
         {result.status === "preparing"
-          ? "가까운 역 정보를 준비 중이에요."
-          : "이 지역의 역 정보는 아직 제공하지 않아요."}
+          ? t("map.nearbyStationInfoIsBeing")
+          : t("map.stationInfoIsnTAvailable")}
       </p>
     );
   if (!result.stations.length)
     return (
       <p className="text-xs text-muted-foreground">
         {compact
-          ? "가까운 지하철·기차역이 없어요."
-          : "직선거리 2km 안에 등록된 지하철·기차역이 없어요."}
+          ? t("map.noNearbySubwayOrTrain")
+          : t("map.noSubwayOrTrainStations")}
       </p>
     );
   return (
-    <section aria-label="가까운 지하철·기차역" className="space-y-2">
+    <section aria-label={t("map.nearbyStations")} className="space-y-2">
       {(compact ? result.stations.slice(0, 1) : result.stations).map(
         (station) => (
           <div
@@ -88,7 +90,12 @@ export function NearbyStationInfo({
             >
               <TrainFront size={14} aria-hidden="true" /> {station.name}
               {!compact && (
-                <> · 직선거리 {formatDistance(station.distance_m)}</>
+                <>
+                  {" "}
+                  {t("map.straightLineDistance", {
+                    distance: formatDistance(station.distance_m),
+                  })}
+                </>
               )}
             </button>
             {!compact && (
@@ -98,7 +105,7 @@ export function NearbyStationInfo({
                 target="_blank"
                 rel="noreferrer"
               >
-                역에서 걸어가기
+                {t("map.walkFromTheStation")}
               </a>
             )}
           </div>
@@ -111,7 +118,7 @@ export function NearbyStationInfo({
           rel="noreferrer"
           className="block text-[10px] text-muted-foreground"
         >
-          역 정보 © OpenStreetMap contributors · 직선거리 기준
+          {t("map.stationDataOpenstreetmapContributorsStraight")}
         </a>
       )}
     </section>

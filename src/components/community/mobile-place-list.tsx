@@ -8,6 +8,7 @@ import { isNew, isControversial, isVerified } from "@/domain/relevance";
 import { photoImageUrl } from "@/domain/place-photo";
 import { createThumbnailQueue } from "./place-thumbnail-queue";
 
+import { useI18n } from "@/i18n/client";
 type Props = {
   places: MapPlace[];
   selected: string | null;
@@ -53,6 +54,7 @@ function MobilePlaceRow({
   index: number;
   queue: ReturnType<typeof createThumbnailQueue> | null;
 }) {
+  const { t } = useI18n();
   const row = useRef<HTMLElement>(null);
   const [photo, setPhoto] = useState<string | null | undefined>(undefined);
   useEffect(() => {
@@ -118,7 +120,7 @@ function MobilePlaceRow({
             <button
               type="button"
               className="mobile-list-save"
-              aria-label={`${place.name} ${saved ? "저장 해제" : "저장"}`}
+              aria-label={`${place.name} ${saved ? t("map.unsave") : t("map.save")}`}
               aria-pressed={saved}
               disabled={
                 props.demo || props.busy || props.isSavePending?.(place.id)
@@ -143,21 +145,24 @@ function MobilePlaceRow({
                 )}
                 {isControversial(place) && (
                   <span className="place-badge place-badge-controversial">
-                    논쟁 중
+                    {t("map.disputed")}
                   </span>
                 )}
                 {isVerified(place) && (
                   <span className="place-badge place-badge-verified">
-                    검증됨
+                    {t("map.verified")}
                   </span>
                 )}
               </div>
             )}
           <div className="mobile-list-body">
             <div className="mobile-list-copy">
-              {(props.demo || placeArea(place.address)) && (
+              {(props.demo || t.area(placeArea(place.address))) && (
                 <p className="mobile-list-area">
-                  {[props.demo ? "가상 예시" : null, placeArea(place.address)]
+                  {[
+                    props.demo ? t("map.sample") : null,
+                    t.area(placeArea(place.address)),
+                  ]
                     .filter(Boolean)
                     .join(" · ")}
                 </p>
@@ -167,7 +172,10 @@ function MobilePlaceRow({
               )}
               {distance && (
                 <p className="mobile-list-area">
-                  {props.station?.name} · 직선거리 {distance}
+                  {t("map.stationDistance", {
+                    station: props.station?.name ?? "",
+                    distance,
+                  })}
                 </p>
               )}
             </div>

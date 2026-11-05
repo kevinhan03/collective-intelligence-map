@@ -18,6 +18,7 @@ import { usePlaceSheetDrag } from "@/hooks/use-place-sheet-drag";
 import { useSheetStageMotion } from "@/hooks/use-sheet-stage-motion";
 import { placeArea } from "@/domain/place-location";
 
+import { useI18n } from "@/i18n/client";
 export function MobilePlaceCarousel({
   places,
   activeId,
@@ -53,6 +54,7 @@ export function MobilePlaceCarousel({
   onVote: (id: string) => void;
   getVote: (id: string) => number;
 }) {
+  const { t } = useI18n();
   const card = useRef<HTMLElement>(null);
   useSheetStageMotion(card, "summary");
   const track = useRef<HTMLDivElement>(null);
@@ -165,7 +167,7 @@ export function MobilePlaceCarousel({
       className="mobile-place-carousel"
       data-multiple={places.length > 1}
       data-sheet-stage="summary"
-      aria-label="장소 미리보기"
+      aria-label={t("map.placePreview")}
     >
       <PlaceBackdrop
         key={currentPlace.place_id}
@@ -184,7 +186,7 @@ export function MobilePlaceCarousel({
             <button
               type="button"
               className="mobile-save-action"
-              aria-label={`${currentPlace.name} ${isSaved(currentPlace.id) ? "저장 해제" : "저장"}`}
+              aria-label={`${currentPlace.name} ${isSaved(currentPlace.id) ? t("map.unsave") : t("map.save")}`}
               aria-pressed={isSaved(currentPlace.id)}
               disabled={disabled || savePending}
               onClick={() => onSave(currentPlace.id)}
@@ -197,7 +199,7 @@ export function MobilePlaceCarousel({
             </button>
             <button
               className="place-sheet-close"
-              aria-label="장소 카드 닫기"
+              aria-label={t("map.closePlaceCard")}
               onClick={onClose}
             >
               <X size={18} />
@@ -207,12 +209,12 @@ export function MobilePlaceCarousel({
       </div>
       <div className="mobile-place-meta flex items-center justify-between px-4">
         <span className="text-sm text-muted-foreground" aria-live="polite">
-          {placeArea(currentPlace.address) || "기타 지역"} · {index + 1} /{" "}
-          {places.length}곳
+          {t.area(placeArea(currentPlace.address)) || t("map.otherAreas")} ·{" "}
+          {index + 1} / {t("map.placeCount", { count: places.length })}
         </span>
         <div className="mobile-place-controls">
           <button
-            aria-label="이전 장소"
+            aria-label={t("map.previousPlace")}
             className="mobile-place-arrow"
             disabled={index === 0}
             onClick={() => onSelect(places[index - 1].id)}
@@ -220,7 +222,7 @@ export function MobilePlaceCarousel({
             <ChevronLeft size={20} aria-hidden="true" />
           </button>
           <button
-            aria-label="다음 장소"
+            aria-label={t("map.nextPlace")}
             className="mobile-place-arrow"
             disabled={index === places.length - 1}
             onClick={() => onSelect(places[index + 1].id)}
@@ -234,7 +236,7 @@ export function MobilePlaceCarousel({
           <article
             key={place.id}
             className="mobile-place-slide"
-            aria-label={`${place.name} 미리보기`}
+            aria-label={t("map.preview", { name: place.name })}
             inert={i !== index}
             aria-hidden={i !== index}
           >
@@ -252,17 +254,23 @@ export function MobilePlaceCarousel({
                       className="detail-reaction"
                       disabled={disabled || votePending}
                       aria-pressed={getVote(place.id) === 1}
-                      aria-label={`주제에 어울려요 ${place.positive}`}
+                      aria-label={t("map.fitsTheTheme2", {
+                        positive: place.positive,
+                      })}
                       onClick={() => onVote(place.id)}
                     >
                       <ThumbsUp size={18} />
-                      <span>주제에 어울려요 {place.positive}</span>
+                      <span>
+                        {t("map.fitsCount", { count: place.positive })}
+                      </span>
                     </button>
                   )}
                   <button
                     type="button"
                     className="detail-reaction"
-                    aria-label={`댓글 ${i === index ? thread.total : 0}개 모두 보기`}
+                    aria-label={t("map.viewAllComments", {
+                      count: i === index ? thread.total : 0,
+                    })}
                     onClick={() => onOpenComments(place.id)}
                   >
                     <MessageCircle size={18} />

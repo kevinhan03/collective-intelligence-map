@@ -314,8 +314,9 @@
 }
 .featured .cardFooter {
   position: absolute;
-  bottom: 10px;
-  right: calc(18px + 6ch);
+  top: 8px;
+  left: 8px;
+  z-index: 2;
   padding: 0;
 }
 .allMaps,
@@ -517,6 +518,8 @@
     bottom: 24px;
   }
   .featured .cardFooter {
+    top: auto;
+    left: auto;
     right: calc(24px + 6ch);
     bottom: 16px;
   }
@@ -584,8 +587,10 @@
   font-size: 1.375rem;
 }
 .catalog[data-editor-mode] .featured .cardFooter {
-  right: calc(18px + 6ch);
-  bottom: 10px;
+  top: 8px;
+  left: 8px;
+  right: auto;
+  bottom: auto;
 }
 .catalog[data-editor-mode] .desktopFilters,
 .catalog[data-editor-mode] .discoveryHeading {

@@ -1,6 +1,10 @@
 import { sameOrigin } from "@/domain/request-origin";
 import "server-only";
 import { NextResponse } from "next/server";
+import { headers } from "next/headers";
+import { defaultLocale, localePrefix, type Locale } from "@/i18n/config";
+import { getMessages } from "@/i18n/dictionaries";
+import { createTranslator } from "@/i18n/translate";
 import { ZodError } from "zod";
 import { getViewer } from "./queries";
 export class HttpError extends Error {
@@ -22,22 +26,38 @@ export function json(data: unknown, status = 200) {
     headers: { "Cache-Control": "private, no-store" },
   });
 }
-export function failure(error: unknown) {
+export async function failure(error: unknown) {
+  const t = await requestTranslator();
   if (error instanceof ZodError)
     return json(
-      { error: error.issues[0]?.message ?? "입력을 확인해 주세요." },
+      { error: t.message(error.issues[0]?.message ?? "입력을 확인해 주세요.") },
       400,
     );
   if (error instanceof HttpError)
-    return json({ error: error.message }, error.status);
+    return json({ error: t.message(error.message) }, error.status);
   console.error(
     "request_failed",
     error instanceof Error ? error.name : "UnknownError",
   );
   return json(
-    { error: "요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요." },
+    {
+      error: t.message(
+        "요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      ),
+    },
     500,
   );
+}
+// API routes sit outside /[lang]; the calling page's URL tells the language.
+async function requestTranslator() {
+  let lang: Locale = defaultLocale;
+  try {
+    const referer = (await headers()).get("referer");
+    if (referer) lang = localePrefix(new URL(referer).pathname) ?? lang;
+  } catch {
+    // Outside a request (tests) or a malformed referer: keep Korean.
+  }
+  return createTranslator(lang, await getMessages(lang));
 }
 export async function body(request: Request, maxLength = 12000) {
   if (

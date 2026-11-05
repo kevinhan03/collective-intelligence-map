@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/i18n/navigation";
 import { Pencil, X } from "lucide-react";
 import { tagNameSchema, type MapTag } from "@/domain/map-tags";
 import type { ThemeMap, Viewer } from "@/domain/types";
@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { post } from "./api";
 import styles from "./map-tags.module.css";
 
+import { useI18n } from "@/i18n/client";
 export function MapTagSettings({
   map,
   viewer,
@@ -18,6 +19,7 @@ export function MapTagSettings({
   viewer: Viewer | null;
   demo: boolean;
 }) {
+  const { t } = useI18n();
   const router = useRouter();
   const canManage =
     !demo &&
@@ -46,18 +48,19 @@ export function MapTagSettings({
       setName("");
       setEditing(null);
       setRemoving(null);
-      setNotice("태그를 저장했습니다.");
+      setNotice(t("map.tagSaved"));
       router.refresh();
     } catch (e) {
-      setError((e as Error).message);
+      setError(t.message((e as Error).message));
     } finally {
       setBusy(false);
     }
   }
   return (
-    <section className={styles.section} aria-label="장소 분류 태그">
+    <section className={styles.section} aria-label={t("map.placeTags")}>
       <h3 className={styles.heading}>
-        장소 분류 태그 <span className={styles.hint}>{tags.length}/30</span>
+        {t("map.placeTags")}{" "}
+        <span className={styles.hint}>{tags.length}/30</span>
       </h3>
       <div className={styles.chips}>
         {tags.map((tag) =>
@@ -68,7 +71,7 @@ export function MapTagSettings({
                 type="button"
                 className={styles.iconButton}
                 disabled={busy}
-                aria-label={`${tag.name} 태그 이름 변경`}
+                aria-label={t("map.renameTag", { name: tag.name })}
                 onClick={() => {
                   setEditing(tag.id);
                   setName(`#${tag.name}`);
@@ -81,7 +84,7 @@ export function MapTagSettings({
                 type="button"
                 className={styles.iconButton}
                 disabled={busy}
-                aria-label={`${tag.name} 태그 삭제`}
+                aria-label={t("map.deleteTag", { name: tag.name })}
                 onClick={() => setRemoving(tag)}
               >
                 <X size={14} />
@@ -94,9 +97,7 @@ export function MapTagSettings({
           ),
         )}
       </div>
-      {!tags.length && (
-        <p className={styles.hint}>아직 장소 분류 태그가 없습니다.</p>
-      )}
+      {!tags.length && <p className={styles.hint}>{t("map.noPlaceTagsYet")}</p>}
       {canManage && (
         <>
           <form
@@ -105,7 +106,7 @@ export function MapTagSettings({
               event.preventDefault();
               const parsed = tagNameSchema.safeParse(name);
               if (!parsed.success) {
-                setError(parsed.error.issues[0].message);
+                setError(t.message(parsed.error.issues[0].message));
                 return;
               }
               void save(
@@ -116,8 +117,8 @@ export function MapTagSettings({
             }}
           >
             <Input
-              aria-label="장소 태그 이름"
-              placeholder="#태그 입력 후 Enter"
+              aria-label={t("map.placeTagName")}
+              placeholder={t("map.typeTagAndPressEnter")}
               value={name}
               disabled={busy}
               onChange={(event) => setName(event.target.value)}
@@ -130,7 +131,7 @@ export function MapTagSettings({
               size="sm"
               disabled={busy || (!editing && tags.length >= 30)}
             >
-              {editing ? "저장" : "추가"}
+              {editing ? t("map.save") : t("map.add")}
             </Button>
             {editing && (
               <Button
@@ -142,23 +143,19 @@ export function MapTagSettings({
                   setName("");
                 }}
               >
-                취소
+                {t("map.cancel")}
               </Button>
             )}
           </form>
-          <p className={styles.hint}>
-            관리자와 지도 소유자가 관리합니다. 장소 상세에서 여러 태그를 지정할
-            수 있어요.
-          </p>
+          <p className={styles.hint}>{t("map.managedByAdminsAndThe")}</p>
           {removing && (
             <div
               role="group"
-              aria-label="태그 삭제 확인"
+              aria-label={t("map.confirmTagDeletion")}
               className={styles.section}
             >
               <p className={styles.hint}>
-                #{removing.name} 태그를 삭제하면 지도 필터와 장소 상세에서
-                숨겨집니다.
+                {t("map.deleteTagWarning", { name: removing.name })}
               </p>
               <div className={styles.actions}>
                 <Button
@@ -169,7 +166,7 @@ export function MapTagSettings({
                     void save({ action: "archive", id: removing.id })
                   }
                 >
-                  태그 삭제
+                  {t("map.deleteTag2")}
                 </Button>
                 <Button
                   size="sm"
@@ -177,7 +174,7 @@ export function MapTagSettings({
                   disabled={busy}
                   onClick={() => setRemoving(null)}
                 >
-                  취소
+                  {t("map.cancel")}
                 </Button>
               </div>
             </div>

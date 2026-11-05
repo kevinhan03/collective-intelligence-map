@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import Link from "next/link";
+import Link from "@/i18n/link";
 import { ProposalNotice } from "@/components/community/proposal-notice";
 import {
   HydrateViewer,
@@ -20,6 +20,9 @@ import { configured } from "@/lib/supabase/server";
 import { CommunityExplorer } from "@/components/community/community-explorer";
 import { mapSearchTitle } from "@/domain/seo";
 import { noIndex, ogImage } from "@/lib/seo";
+import { getLocale, getTranslator } from "@/i18n/server";
+import { localeAlternates } from "@/i18n/metadata";
+import { localizePath } from "@/i18n/config";
 import { getPublicPlace } from "@/server/seo-queries";
 export async function generateStaticParams() {
   return (await getMaps()).map((map) => ({ slug: map.slug }));
@@ -41,6 +44,7 @@ async function MapContent({
   submitted: boolean;
   created: boolean;
 }) {
+  const t = await getTranslator();
   if (!map) return null;
   const [places, pendingPlaces, proposal, linkedPlace] = await Promise.all([
     getInitialPlaces(map),
@@ -78,9 +82,9 @@ async function MapContent({
             role="status"
             className="mx-auto max-w-7xl px-6 py-3 text-sm text-primary"
           >
-            처리 상태가 변경됐을 수 있어요.{" "}
+            {t("pages.theReviewStatusMayHave")}{" "}
             <Link href="/my-proposals" className="underline">
-              내 제안에서 확인하기
+              {t("pages.checkMySuggestions")}
             </Link>
           </p>
         ))}
@@ -97,12 +101,13 @@ async function MapContent({
   );
 }
 
-function MapContentFallback() {
+async function MapContentFallback() {
+  const t = await getTranslator();
   return (
     <main
       id="main"
       className="page-wrap animate-pulse space-y-6"
-      aria-label="지도 불러오는 중"
+      aria-label={t("pages.loadingMap")}
     >
       <div className="h-10 w-64 rounded bg-muted" />
       <div className="h-80 rounded-xl bg-muted" />
@@ -115,8 +120,12 @@ export async function generateMetadata({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  const map = await getMap((await params).slug);
-  if (!map) return { title: "지도를 찾을 수 없어요", robots: noIndex };
+  const [map, t, lang] = await Promise.all([
+    params.then(({ slug }) => getMap(slug)),
+    getTranslator(),
+    getLocale(),
+  ]);
+  if (!map) return { title: t("meta.mapNotFound"), robots: noIndex };
   const images =
     map.kind === "creator" && map.cover_path
       ? [`/maps/${map.slug}/cover`]
@@ -124,11 +133,11 @@ export async function generateMetadata({
   return {
     title: mapSearchTitle(map),
     description: map.description,
-    alternates: { canonical: `/maps/${map.slug}` },
+    alternates: localeAlternates(`/maps/${map.slug}`, lang),
     openGraph: {
       title: mapSearchTitle(map),
       description: map.description,
-      url: `/maps/${map.slug}`,
+      url: localizePath(`/maps/${map.slug}`, lang),
       images,
     },
     twitter: {

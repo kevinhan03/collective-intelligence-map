@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { notFound, redirect } from "next/navigation";
+import { localizedPath } from "@/i18n/server";
 import { ownerMap, creatorPlaces } from "@/server/creator";
 import { getViewer, rendererFor } from "@/server/queries";
 import { CommunityExplorer } from "@/components/community/community-explorer";
@@ -9,7 +10,7 @@ export default async function Preview({
   params: Promise<{ id: string }>;
 }) {
   const viewer = await getViewer();
-  if (!viewer) redirect("/login?next=%2Fstudio");
+  if (!viewer) redirect(await localizedPath("/login?next=%2Fstudio"));
   const id = z.uuid().safeParse((await params).id);
   if (!id.success) notFound();
   const map = await ownerMap(id.data);

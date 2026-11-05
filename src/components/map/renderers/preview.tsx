@@ -2,11 +2,13 @@
 import type { MapProps } from "../types";
 import { ThumbsUp } from "lucide-react";
 import { pinCount } from "../pin-content";
+import { useI18n } from "@/i18n/client";
 export default function PreviewMap({ places, selected, onSelect }: MapProps) {
+  const { t } = useI18n();
   return (
     <div
       className="map-grid relative h-full min-h-[420px] overflow-hidden"
-      aria-label="가상 장소 지도 미리보기"
+      aria-label={t("map.samplePlaceMapPreview")}
     >
       <div className="absolute -top-10 left-[14%] h-[120%] w-30 rotate-[-24deg] rounded-full bg-[#dde5ce]" />
       <div className="map-street top-[30%] -left-10 h-4 w-[120%] rotate-[-18deg]" />
@@ -25,7 +27,11 @@ export default function PreviewMap({ places, selected, onSelect }: MapProps) {
           className="map-pin"
           data-selected={selected === p.id}
           data-status={p.status}
-          aria-label={`${p.name} 지도에서 선택 · 주제 추천 ${p.positive}${p.status === "pending" ? " · 검토 대기" : ""}`}
+          aria-label={t("map.markerSelect", {
+            name: p.name,
+            count: p.positive,
+            pending: p.status === "pending" ? t("map.pendingSuffix") : "",
+          })}
           onClick={() => onSelect(p.id)}
           style={{
             left: `${18 + (p.lng - 139.69) * 1900}%`,
@@ -43,8 +49,8 @@ export default function PreviewMap({ places, selected, onSelect }: MapProps) {
         </button>
       ))}
       <div className="pointer-events-none absolute right-4 bottom-4 left-4 flex justify-between rounded-lg border bg-white/90 px-3 py-2 text-[10px] text-muted-foreground">
-        <span>가상 장소 · 위치도 예시입니다</span>
-        <span>실제 지도는 연결 후 표시</span>
+        <span>{t("map.samplePlaceLocationIsAn")}</span>
+        <span>{t("map.theRealMapAppearsOnce")}</span>
       </div>
     </div>
   );

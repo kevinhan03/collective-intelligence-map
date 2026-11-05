@@ -51,7 +51,8 @@ export async function POST(request: Request) {
         p_enabled: payload.enabled,
       });
       dbError(result.error);
-      revalidateTag("public-community", { expire: 0 });
+      // Hype changes ranking counts only; keep places, comments and regions warm.
+      revalidateTag("map-engagement", { expire: 0 });
       return json(result.data);
     }
     const changed = await client.rpc("community_command", {

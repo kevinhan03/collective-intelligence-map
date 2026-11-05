@@ -86,7 +86,26 @@ type LabelMap = Pick<Map, "getStyle" | "setLayoutProperty" | "getZoom"> & {
   off(event: "moveend", handler: () => void): unknown;
 };
 
-export function configureBasemapLabels(map: LabelMap) {
+// `label` localizes place names; `attribution` is the dong source credit (HTML).
+export function configureBasemapLabels(
+  map: LabelMap,
+  {
+    label = (name: string) => name,
+    attribution = '동 경계: <a href="https://sgis.kostat.go.kr">SGIS</a> (공공누리 제1유형) · 가공: <a href="https://github.com/vuski/admdongkor">vuski/admdongkor</a>, 팅맵 · <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>',
+  }: { label?: (name: string) => string; attribution?: string } = {},
+) {
+  const localized = <T extends FeatureCollection<Point, { name: string }>>(
+    data: T,
+  ): T => ({
+    ...data,
+    features: data.features.map((feature) => ({
+      ...feature,
+      properties: {
+        ...feature.properties,
+        name: label(feature.properties.name),
+      },
+    })),
+  });
   const layers = map.getStyle().layers ?? [];
   const placeLayer = layers.find(
     (layer): layer is SymbolLayerSpecification =>
@@ -107,7 +126,10 @@ export function configureBasemapLabels(map: LabelMap) {
   if (!map.getStyle().glyphs) return () => {};
 
   if (!map.getSource(CITY_SOURCE_ID)) {
-    map.addSource(CITY_SOURCE_ID, { type: "geojson", data: orientationLabels });
+    map.addSource(CITY_SOURCE_ID, {
+      type: "geojson",
+      data: localized(orientationLabels),
+    });
   }
   if (!map.getLayer(CITY_LABEL_ID)) {
     map.addLayer({
@@ -133,7 +155,13 @@ export function configureBasemapLabels(map: LabelMap) {
         ],
         "text-variable-anchor": ["bottom", "top", "left", "right"],
         // The capital's dense place pins extend beyond its center point.
-        "text-radial-offset": ["match", ["get", "name"], "서울", 2.4, 1.2],
+        "text-radial-offset": [
+          "match",
+          ["get", "name"],
+          label("서울"),
+          2.4,
+          1.2,
+        ],
         "text-padding": 4,
         "text-allow-overlap": false,
         "text-ignore-placement": false,
@@ -194,9 +222,8 @@ export function configureBasemapLabels(map: LabelMap) {
         if (!map.getSource(NEIGHBORHOOD_SOURCE_ID)) {
           map.addSource(NEIGHBORHOOD_SOURCE_ID, {
             type: "geojson",
-            data,
-            attribution:
-              '동 경계: <a href="https://sgis.kostat.go.kr">SGIS</a> (공공누리 제1유형) · 가공: <a href="https://github.com/vuski/admdongkor">vuski/admdongkor</a>, 팅맵 · <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>',
+            data: localized(data),
+            attribution,
           });
         }
         map.addLayer({

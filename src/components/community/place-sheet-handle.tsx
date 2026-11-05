@@ -1,12 +1,13 @@
 "use client";
 import { useRef } from "react";
 
+import { useI18n } from "@/i18n/client";
 export function PlaceSheetHandle({
   stage,
   onExpand,
   onCollapse,
   onActivate,
-  subject = "장소 카드",
+  subject: subjectLabel,
 }: {
   stage: "collapsed" | "summary" | "detail";
   onExpand?: () => void;
@@ -14,22 +15,24 @@ export function PlaceSheetHandle({
   onActivate?: () => void;
   subject?: string;
 }) {
+  const { t } = useI18n();
+  const subject = subjectLabel ?? t("map.placeCard");
   const lastWheel = useRef(0);
   const label =
     stage === "collapsed"
-      ? `${subject} 펼치기`
+      ? t("map.expand", { subject })
       : stage === "summary"
-        ? subject === "장소 카드"
-          ? "장소 상세 펼치기"
-          : `${subject} 접기`
-        : `${subject} 요약으로 접기`;
+        ? subjectLabel === undefined
+          ? t("map.expandPlaceDetails")
+          : t("map.collapse", { subject })
+        : t("map.collapseToSummary", { subject });
   return (
     <button
       type="button"
       className="place-sheet-handle"
       aria-label={label}
       aria-expanded={stage !== "collapsed"}
-      title="위로 쓸어 펼치고 아래로 쓸어 접기"
+      title={t("map.swipeUpToExpandDown")}
       onClick={() => {
         if (onActivate) onActivate();
         else if (stage === "detail") onCollapse?.();

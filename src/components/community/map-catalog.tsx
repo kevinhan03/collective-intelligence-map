@@ -1,6 +1,7 @@
 "use client";
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import Link from "@/i18n/link";
+import { useSearchParams } from "next/navigation";
+import { useRouter } from "@/i18n/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
@@ -26,6 +27,7 @@ import { CatalogCard } from "./catalog-card";
 import { useMapEngagement } from "./use-map-engagement";
 import styles from "./map-catalog.module.css";
 
+import { useI18n } from "@/i18n/client";
 const categoryIcons = {
   food: UtensilsCrossed,
   fashion: ShoppingBag,
@@ -53,6 +55,7 @@ export function MapCatalog({
     onNavigate: (mode: "home" | "discover") => void;
   };
 }) {
+  const { t } = useI18n();
   const params = useSearchParams();
   const router = useRouter();
   const deviceMobile = useMobile();
@@ -180,35 +183,39 @@ export function MapCatalog({
   const fields = (
     <>
       <label>
-        지역
+        {t("home.area")}
         <select
-          aria-label="지역"
+          aria-label={t("home.area")}
           value={filters.region}
           onChange={(e) => update({ region: e.target.value })}
         >
-          <option value="">모든 지역</option>
+          <option value="">{t("home.allAreas")}</option>
           {regions.map((region) => (
-            <option key={region}>{region}</option>
+            <option key={region} value={region}>
+              {t.data("region", region)}
+            </option>
           ))}
         </select>
       </label>
       <label>
-        세부 테마
+        {t("home.subThemes")}
         <select
-          aria-label="세부 테마"
+          aria-label={t("home.subThemes")}
           value={filters.theme}
           onChange={(e) => update({ theme: e.target.value })}
         >
-          <option value="">모든 테마</option>
+          <option value="">{t("home.allThemes")}</option>
           {themes.map((theme) => (
-            <option key={theme}>{theme}</option>
+            <option key={theme} value={theme}>
+              {t.data("theme", theme)}
+            </option>
           ))}
         </select>
       </label>
       <label>
-        정렬
+        {t("home.sort")}
         <select
-          aria-label="정렬"
+          aria-label={t("home.sort")}
           value={filters.sort}
           onChange={(e) =>
             update({ sort: e.target.value as CatalogFilters["sort"] })
@@ -217,8 +224,8 @@ export function MapCatalog({
           {catalogSorts.map((sort) => (
             <option key={sort.id} value={sort.id}>
               {sort.id === "default" && filters.q.trim()
-                ? "관련도순"
-                : sort.label}
+                ? t("home.mostRelevant")
+                : t.data("sort", sort.id)}
             </option>
           ))}
         </select>
@@ -232,10 +239,12 @@ export function MapCatalog({
   );
   const conditionName = (key: (typeof activeConditions)[number]) =>
     key === "category"
-      ? catalogCategories.find((c) => c.id === filters.category)?.label
+      ? t.data("category", filters.category)
       : key === "sort"
-        ? catalogSorts.find((s) => s.id === filters.sort)?.label
-        : filters[key];
+        ? t.data("sort", filters.sort)
+        : key === "q"
+          ? filters.q
+          : t.data(key, filters[key]);
   return (
     <div
       className={styles.catalog}
@@ -243,7 +252,7 @@ export function MapCatalog({
       data-editor-mode={editorMode || undefined}
     >
       {mode === "home" ? (
-        <h1 className={styles.srOnly}>취향으로 찾는 테마 지도</h1>
+        <h1 className={styles.srOnly}>{t("home.themeMapsToMatchYour")}</h1>
       ) : (
         <div className={styles.discoveryHeading}>
           <Link
@@ -256,20 +265,21 @@ export function MapCatalog({
               } else remember();
             }}
           >
-            홈
+            {t("home.home")}
           </Link>
           <h1>
-            {catalogCategories.find((c) => c.id === filters.category)?.label ??
-              "전체 지도"}
+            {filters.category
+              ? t.data("category", filters.category)
+              : t("home.allMaps")}
           </h1>
-          <p>테마와 지역으로, 가보고 싶은 지도를 찾아보세요.</p>
+          <p>{t("home.findMapsYouLlWant")}</p>
         </div>
       )}
       <form
         key={filters.q}
         className={styles.search}
         role="search"
-        aria-label="테마 지도 찾기"
+        aria-label={t("home.findThemeMaps")}
         onSubmit={(e) => {
           e.preventDefault();
           const q = String(new FormData(e.currentTarget).get("q") ?? "").trim();
@@ -281,15 +291,15 @@ export function MapCatalog({
           name="q"
           type="search"
           maxLength={100}
-          aria-label="지도 검색"
-          placeholder="테마나 지역으로 지도 찾기"
+          aria-label={t("home.searchMaps")}
+          placeholder={t("home.findMapsByThemeOr")}
           defaultValue={mode === "home" ? "" : filters.q}
         />
-        <button type="submit" aria-label="지도 검색 결과 보기">
+        <button type="submit" aria-label={t("home.showMapResults")}>
           <ArrowRight size={20} aria-hidden="true" />
         </button>
       </form>
-      <nav className={styles.categories} aria-label="지도 카테고리">
+      <nav className={styles.categories} aria-label={t("home.mapCategories")}>
         {catalogCategories.map((category) => {
           const Icon = categoryIcons[category.id];
           return (
@@ -321,29 +331,34 @@ export function MapCatalog({
               }}
             >
               <Icon size={16} aria-hidden="true" />
-              {category.label}
+              {t.data("category", category.id)}
             </Link>
           );
         })}
       </nav>
       {engagement.error && (
         <p className={styles.error} role="alert">
-          {engagement.error}
+          {t.message(engagement.error)}
           {!engagement.ready && (
             <button type="button" onClick={() => void engagement.reload()}>
-              다시 시도
+              {t("home.tryAgain")}
             </button>
           )}
         </p>
       )}
       {demo && !editor && (
-        <p className={styles.demo}>미리보기 · 장소와 추천은 가상 예시입니다.</p>
+        <p className={styles.demo}>
+          {t("home.previewPlacesAndRecommendationsAre")}
+        </p>
       )}
       {mode === "home" ? (
         <>
           {selection.featured && (
-            <section className={styles.section} aria-label="지금 둘러볼 지도">
-              <h2>지금 둘러볼 지도</h2>
+            <section
+              className={styles.section}
+              aria-label={t("home.mapsToExploreNow")}
+            >
+              <h2>{t("home.mapsToExploreNow")}</h2>
               <CatalogCard
                 map={selection.featured}
                 engagement={engagement}
@@ -358,9 +373,9 @@ export function MapCatalog({
               />
             </section>
           )}
-          <section className={styles.section} aria-label="더 많은 테마">
+          <section className={styles.section} aria-label={t("home.moreThemes")}>
             <div className={styles.sectionHeader}>
-              <h2>더 많은 테마</h2>
+              <h2>{t("home.moreThemes")}</h2>
               <Link
                 href="/discover"
                 onClick={(event) => {
@@ -370,7 +385,7 @@ export function MapCatalog({
                   } else remember();
                 }}
               >
-                전체 보기 <ArrowRight size={16} aria-hidden="true" />
+                {t("home.seeAll")} <ArrowRight size={16} aria-hidden="true" />
               </Link>
             </div>
             <ul className={styles.grid}>
@@ -389,7 +404,7 @@ export function MapCatalog({
               ))}
             </ul>
             {!maps.length && (
-              <p className={styles.empty}>공개된 지도를 준비하고 있어요.</p>
+              <p className={styles.empty}>{t("home.weReGettingPublicMaps")}</p>
             )}
             <Link
               href="/discover"
@@ -401,7 +416,7 @@ export function MapCatalog({
                 } else remember();
               }}
             >
-              전체 지도 {maps.length}개 보기{" "}
+              {t("home.viewAllMapsCount", { count: maps.length })}{" "}
               <ArrowRight size={17} aria-hidden="true" />
             </Link>
           </section>
@@ -411,11 +426,14 @@ export function MapCatalog({
           <div className={styles.desktopFilters}>{fields}</div>
           <div className={styles.resultToolbar}>
             <p role="status" aria-live="polite">
-              지도 {results.length.toLocaleString("ko-KR")}개
+              {t("home.mapCount", { count: results.length })}
             </p>
           </div>
           {activeConditions.length > 0 && (
-            <div className={styles.conditions} aria-label="선택한 검색 조건">
+            <div
+              className={styles.conditions}
+              aria-label={t("home.selectedFilters")}
+            >
               {activeConditions.map((key) => (
                 <button
                   key={key}
@@ -423,7 +441,9 @@ export function MapCatalog({
                   onClick={() =>
                     update({ [key]: key === "sort" ? "default" : "" })
                   }
-                  aria-label={`${conditionName(key)} 조건 해제`}
+                  aria-label={t("home.removeFilter", {
+                    value: conditionName(key),
+                  })}
                 >
                   {conditionName(key)}
                   <X size={13} aria-hidden="true" />
@@ -442,18 +462,16 @@ export function MapCatalog({
                     })
                   }
                 >
-                  모두 해제
+                  {t("home.clearAll")}
                 </button>
               )}
             </div>
           )}
           {filters.sort === "popular" && (
-            <p className={styles.sortNote}>
-              순위는 최근 7일 Hype 기준이며, 카드에는 누적 Hype가 표시됩니다.
-            </p>
+            <p className={styles.sortNote}>{t("home.rankingIsBasedOnHype")}</p>
           )}
           <h2 ref={heading} tabIndex={-1} className={styles.srOnly}>
-            지도 검색 결과
+            {t("home.mapSearchResults")}
           </h2>
           {results.length ? (
             <>
@@ -488,7 +506,7 @@ export function MapCatalog({
                     } catch {}
                   }}
                 >
-                  더 보기{" "}
+                  {t("home.showMoreButton")}{" "}
                   <span>
                     {Math.min(limit, results.length)} / {results.length}
                   </span>
@@ -497,11 +515,11 @@ export function MapCatalog({
             </>
           ) : (
             <div className={styles.empty}>
-              <h2>조건에 맞는 지도가 없어요.</h2>
-              <p>선택한 조건을 하나씩 해제해 보세요.</p>
+              <h2>{t("home.noMapsMatchYourFilters")}</h2>
+              <p>{t("home.tryRemovingFiltersOneAt")}</p>
               {filters.region && (
                 <button type="button" onClick={() => update({ region: "" })}>
-                  지역만 해제
+                  {t("home.removeAreaOnly")}
                 </button>
               )}
               {filters.category && (
@@ -509,12 +527,12 @@ export function MapCatalog({
                   type="button"
                   onClick={() => update({ category: "", theme: "" })}
                 >
-                  다른 카테고리 보기
+                  {t("home.seeOtherCategories")}
                 </button>
               )}
               {filters.q && (
                 <button type="button" onClick={() => update({ q: "" })}>
-                  검색어 지우기
+                  {t("home.clearSearch")}
                 </button>
               )}
             </div>

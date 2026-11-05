@@ -4,6 +4,7 @@ import { Check } from "lucide-react";
 import type { MapTag } from "@/domain/map-tags";
 import styles from "./map-tags.module.css";
 
+import { useI18n } from "@/i18n/client";
 export function MapTagBar({
   tags,
   selected,
@@ -17,6 +18,7 @@ export function MapTagBar({
   floating: boolean;
   anchor: HTMLElement | null;
 }) {
+  const { t } = useI18n();
   const bar = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!anchor || !bar.current || !floating || !tags.length) return;
@@ -38,7 +40,7 @@ export function MapTagBar({
       data-map-tag-bar
       className={`${styles.bar} ${floating ? styles.floating : ""}`}
       role="group"
-      aria-label="장소 태그 필터"
+      aria-label={t("map.placeTagFilter")}
     >
       <button
         className={styles.chip}
@@ -46,7 +48,7 @@ export function MapTagBar({
         aria-pressed={!selected.length}
         onClick={() => onChange([])}
       >
-        전체
+        {t("map.all")}
       </button>
       {tags.map((tag) => {
         const active = selected.includes(tag.id);

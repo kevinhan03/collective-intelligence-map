@@ -1,4 +1,6 @@
 import "server-only";
+import { z } from "zod";
+import type { PhotoPreviews } from "@/domain/place-photo";
 import { publicDb } from "@/lib/supabase/public";
 import { serviceDb } from "@/lib/supabase/admin";
 import { photoCursorSchema, type PhotoPage } from "@/domain/place-photo";
@@ -85,4 +87,24 @@ export async function cleanupPhoto(id: string) {
     p_paths: paths,
   });
   if (ack.error) console.error("photo_cleanup_ack_pending", { photoId: id });
+}
+
+export async function getPhotoPreviews(
+  placeIds: string[],
+): Promise<PhotoPreviews> {
+  const { data, error } = await publicDb().rpc("place_photo_previews", {
+    place_ids: placeIds,
+  });
+  dbError(error);
+  const rows = z
+    .array(z.object({ place_id: z.uuid(), photo_id: z.uuid().nullable() }))
+    .parse(data);
+  const previews: PhotoPreviews = Object.fromEntries(
+    placeIds.map((id) => [id, null]),
+  );
+  for (const row of rows) {
+    if (Object.hasOwn(previews, row.place_id))
+      previews[row.place_id] = row.photo_id;
+  }
+  return previews;
 }

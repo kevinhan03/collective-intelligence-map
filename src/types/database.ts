@@ -828,6 +828,11 @@ export type Database = {
       };
     };
     Functions: {
+      place_photo_previews: {
+        Args: { place_ids: string[] };
+        Returns: { place_id: string; photo_id: string | null }[];
+      };
+
       admin_catalog_command: { Args: { payload: Json }; Returns: Json };
       catalog_image_access: { Args: { image_id: string }; Returns: Json };
       catalog_image_cleanup: { Args: { payload: Json }; Returns: Json };

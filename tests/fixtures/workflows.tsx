@@ -203,12 +203,18 @@ function ListFixture() {
   const [active, setActive] = useState(true);
   const [selected, setSelected] = useState<string | null>(null);
   const [saved, setSaved] = useState<string[]>([]);
-  const places = Array.from({ length: 12 }, (_, index) => ({
-    ...sheetPlace,
-    id: `list-${index}`,
-    place_id: `11111111-1111-4111-8111-${String(index + 1).padStart(12, "0")}`,
-    name: index === 0 ? sheetPlace.name : `장소 ${index + 1}`,
-  }));
+  const places = Array.from(
+    {
+      length:
+        new URLSearchParams(location.search).get("count") === "10" ? 10 : 12,
+    },
+    (_, index) => ({
+      ...sheetPlace,
+      id: `list-${index}`,
+      place_id: `11111111-1111-4111-8111-${String(index + 1).padStart(12, "0")}`,
+      name: index === 0 ? sheetPlace.name : `장소 ${index + 1}`,
+    }),
+  );
   return (
     <section className="community-explorer" data-mobile-view="list">
       <button onClick={() => setActive(!active)}>지도 전환</button>

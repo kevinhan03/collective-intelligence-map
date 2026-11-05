@@ -61,9 +61,17 @@ test("Hype uses the authenticated RPC identity and invalidates public ranking co
     p_map: id,
     p_enabled: true,
   });
-  expect(mocks.invalidate).toHaveBeenCalledWith("public-community", {
+  expect(mocks.invalidate).toHaveBeenCalledWith("map-engagement", {
     expire: 0,
   });
+});
+test("failed Hype writes leave the ranking cache untouched", async () => {
+  mocks.rpc.mockResolvedValue({
+    data: null,
+    error: { code: "42501", message: "denied" },
+  });
+  expect((await post({ action: "hype", id, enabled: true })).status).toBe(403);
+  expect(mocks.invalidate).not.toHaveBeenCalled();
 });
 test("map saves reuse follows and a confirmed save survives a count-refresh failure", async () => {
   mocks.publicRpc.mockResolvedValue({

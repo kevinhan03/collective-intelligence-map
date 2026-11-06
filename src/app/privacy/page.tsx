@@ -25,6 +25,30 @@ export default function Privacy() {
         을 확인해 주세요. 지도 공급자가 브라우저의 IP 등 연결 정보를 수신할 수
         있습니다.
       </p>
+      <p className="text-sm leading-7">
+        공개 화면의 방문 통계와 이용 흐름을 파악하기 위해 Vercel Analytics,
+        PostHog, Microsoft Clarity를 사용합니다. 페이지 조회, 기기 정보,
+        지도·목록 전환과 장소 상세 열기 등 이용 이벤트를 분석합니다. PostHog는
+        브라우저 세션 식별자를 사용하며 계정 정보와 연결하지 않습니다. Clarity는
+        쿠키 저장 없이 클릭·스크롤 및 마스킹한 화면을 기록합니다.
+        로그인·관리·개인 저장 등 비공개 화면은 수집하지 않으며,
+        검색어·이메일·인증 코드·입력 내용은 분석 이벤트에 첨부하지 않습니다.
+        <a className="underline" href="https://vercel.com/legal/privacy-policy">
+          Vercel
+        </a>
+        ,{" "}
+        <a className="underline" href="https://posthog.com/privacy">
+          PostHog
+        </a>
+        ,{" "}
+        <a
+          className="underline"
+          href="https://privacy.microsoft.com/privacystatement"
+        >
+          Microsoft
+        </a>
+        의 개인정보 처리 안내를 확인할 수 있습니다.
+      </p>
       <p className="rounded border p-4 text-sm text-muted-foreground">
         공개 출시 전 처리 주체·연락처·보유 기간·국외 이전·열람 및 삭제 요청
         절차를 운영 환경에 맞게 확정해야 합니다.

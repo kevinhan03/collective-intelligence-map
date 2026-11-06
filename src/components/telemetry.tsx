@@ -1,18 +1,25 @@
 "use client";
+import { useEffect } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import {
+  commitAnalyticsPage,
+  startProductAnalytics,
+} from "@/lib/product-analytics";
+import { publicTelemetryUrl } from "@/lib/telemetry-policy";
+export { publicTelemetryUrl } from "@/lib/telemetry-policy";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
-// Authentication URLs may contain one-time codes. Never send query strings.
-export function publicTelemetryUrl(raw: string): string | null {
-  const url = new URL(raw);
-  if (/^\/(auth|login|admin|settings|u|saved)(\/|$)/.test(url.pathname))
-    return null;
-  url.search = "";
-  url.hash = "";
-  return url.toString();
-}
-
 export function Telemetry() {
+  const pathname = usePathname();
+  const search = useSearchParams().toString();
+  useEffect(() => {
+    commitAnalyticsPage();
+    const timer = window.setTimeout(() => {
+      void startProductAnalytics();
+    }, 1000);
+    return () => window.clearTimeout(timer);
+  }, [pathname, search]);
   return (
     <>
       <Analytics

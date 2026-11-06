@@ -1,5 +1,7 @@
 "use client";
 
+import { captureProductEvent } from "./product-analytics";
+import { publicTelemetryUrl } from "./telemetry-policy";
 import { track } from "@vercel/analytics/react";
 import type { RendererConfig, Sort } from "@/domain/types";
 
@@ -23,5 +25,11 @@ export function trackCommunityEvent(
     sort?: Sort;
   } = {},
 ) {
+  if (
+    typeof window === "undefined" ||
+    !publicTelemetryUrl(window.location.href)
+  )
+    return;
   track(event, properties);
+  captureProductEvent(event, properties);
 }

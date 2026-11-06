@@ -23,7 +23,11 @@ error/performance capture are disabled. Anonymous IDs live in sessionStorage,
 so repeat visitors across sessions are not deduplicated by PostHog.
 
 Clarity: heatmaps and masked replay, using Microsoft's `clarity-js` engine with
-explicit startup and stop rather than the auto-starting remote tag. Text,
+explicit startup and stop rather than the auto-starting remote tag. Its upload
+collector (`https://b.clarity.ms/collect`) matches this project's official
+`https://www.clarity.ms/tag/<project-id>` installation configuration. If changing
+projects, verify the assigned collector there; `www.clarity.ms/collect` is not
+an ingestion endpoint. Text,
 images and links under body are masked. Cookie storage/advertising consent is
 denied. No identify calls. Only clean public URLs are recorded; query/hash URLs
 and sensitive same-site referrers are skipped. Vercel/PostHog still count those

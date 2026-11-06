@@ -2,7 +2,12 @@ import { expect, it, vi } from "vitest";
 import { execFileSync } from "node:child_process";
 import { demoMap } from "@/server/demo";
 import { mapSearchTitle } from "@/domain/seo";
-import { ogImage } from "@/lib/seo";
+import {
+  mapShareImage,
+  mapShareTitle,
+  shareCardTitle,
+  SHARE_CARD_SIZE,
+} from "@/domain/share-card";
 
 vi.mock("@/server/queries", () => ({ getMap: vi.fn() }));
 vi.mock("@/server/seo-queries", () => ({}));
@@ -65,18 +70,28 @@ it.each([false, true])(
       params: Promise.resolve({ slug: map.slug }),
     });
     const title = mapSearchTitle(map);
-    const images = creator ? [`/maps/${map.slug}/cover`] : [ogImage];
+    const images = [
+      {
+        url: mapShareImage(map),
+        ...SHARE_CARD_SIZE,
+        alt: `${shareCardTitle(map)} · Ting map`,
+      },
+    ];
     expect(metadata).toEqual({
       title,
       description: map.description,
       alternates: { canonical: `/maps/${map.slug}` },
       openGraph: {
-        title,
+        title: mapShareTitle(map),
         description: map.description,
         url: `/maps/${map.slug}`,
         images,
       },
-      twitter: { title, description: map.description, images },
+      twitter: {
+        title: mapShareTitle(map),
+        description: map.description,
+        images,
+      },
     });
   },
 );

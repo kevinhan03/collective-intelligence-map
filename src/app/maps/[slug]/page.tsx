@@ -1,3 +1,9 @@
+import {
+  mapShareImage,
+  mapShareTitle,
+  shareCardTitle,
+  SHARE_CARD_SIZE,
+} from "@/domain/share-card";
 import { Suspense } from "react";
 import Link from "next/link";
 import { ProposalNotice } from "@/components/community/proposal-notice";
@@ -19,7 +25,7 @@ import {
 import { configured } from "@/lib/supabase/server";
 import { CommunityExplorer } from "@/components/community/community-explorer";
 import { mapSearchTitle } from "@/domain/seo";
-import { noIndex, ogImage } from "@/lib/seo";
+import { noIndex } from "@/lib/seo";
 import { getPublicPlace } from "@/server/seo-queries";
 export async function generateStaticParams() {
   return (await getMaps()).map((map) => ({ slug: map.slug }));
@@ -117,22 +123,25 @@ export async function generateMetadata({
 }) {
   const map = await getMap((await params).slug);
   if (!map) return { title: "지도를 찾을 수 없어요", robots: noIndex };
-  const images =
-    map.kind === "creator" && map.cover_path
-      ? [`/maps/${map.slug}/cover`]
-      : [ogImage];
+  const images = [
+    {
+      url: mapShareImage(map),
+      ...SHARE_CARD_SIZE,
+      alt: `${shareCardTitle(map)} · Ting map`,
+    },
+  ];
   return {
     title: mapSearchTitle(map),
     description: map.description,
     alternates: { canonical: `/maps/${map.slug}` },
     openGraph: {
-      title: mapSearchTitle(map),
+      title: mapShareTitle(map),
       description: map.description,
       url: `/maps/${map.slug}`,
       images,
     },
     twitter: {
-      title: mapSearchTitle(map),
+      title: mapShareTitle(map),
       description: map.description,
       images,
     },

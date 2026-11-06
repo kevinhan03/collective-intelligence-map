@@ -2,6 +2,14 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   devIndicators: false,
+  outputFileTracingIncludes: {
+    "/og/**": [
+      "./src/app/icon.svg",
+      "./public/*.{jpg,jpeg,png,webp}",
+      "./node_modules/@sun-typeface/suit/fonts/static/otf/SUIT-Regular.otf",
+      "./node_modules/@sun-typeface/suit/fonts/static/otf/SUIT-Heavy.otf",
+    ],
+  },
   cacheComponents: true,
   // Keep the existing Link prefetch behavior until routes are reviewed for
   // Partial Prefetching (docs: adopting-partial-prefetching). Flip to true

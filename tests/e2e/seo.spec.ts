@@ -1,7 +1,14 @@
+import sharp from "sharp";
+import { catalogEditorial } from "../../src/domain/catalog-config";
+import { mapShareImage, mapShareTitle } from "../../src/domain/share-card";
 import { expect, test } from "@playwright/test";
 import { demoMap, demoPlaces } from "../../src/server/demo";
 import { mapSearchTitle, placePath } from "../../src/domain/seo";
-const publicDemoMap = { ...demoMap, title: "도쿄 패션 스토어" };
+const publicDemoMap = {
+  ...demoMap,
+  title: "도쿄 패션 스토어",
+  editorial: catalogEditorial[demoMap.slug],
+};
 
 for (const userAgent of [
   "Googlebot",
@@ -188,7 +195,7 @@ test("public map keeps its title, description, canonical and sharing metadata", 
   );
   await expect(page.locator('meta[property="og:title"]')).toHaveAttribute(
     "content",
-    mapSearchTitle(publicDemoMap),
+    mapShareTitle(publicDemoMap),
   );
   await expect(page.locator('meta[property="og:description"]')).toHaveAttribute(
     "content",
@@ -200,14 +207,34 @@ test("public map keeps its title, description, canonical and sharing metadata", 
   );
   await expect(page.locator('meta[property="og:image"]')).toHaveAttribute(
     "content",
-    "http://localhost:3000/glass-neighborhood-og.jpg",
+    `http://localhost:3000${mapShareImage(publicDemoMap)}`,
   );
   await expect(page.locator('meta[name="twitter:title"]')).toHaveAttribute(
     "content",
-    mapSearchTitle(publicDemoMap),
+    mapShareTitle(publicDemoMap),
   );
   await expect(page.locator('meta[name="twitter:image"]')).toHaveAttribute(
     "content",
-    "http://localhost:3000/glass-neighborhood-og.jpg",
+    `http://localhost:3000${mapShareImage(publicDemoMap)}`,
+  );
+});
+
+test("share images are anonymously fetchable JPEGs and missing maps stay private", async ({
+  request,
+}) => {
+  for (const path of ["/og/home.jpg?v=1", mapShareImage(publicDemoMap)]) {
+    const response = await request.get(path);
+    expect(response.status()).toBe(200);
+    expect(response.headers()["content-type"]).toContain("image/jpeg");
+    const metadata = await sharp(await response.body()).metadata();
+    expect([metadata.width, metadata.height]).toEqual([1200, 630]);
+  }
+  const first = await request.get(mapShareImage(publicDemoMap));
+  const next = await request.get(mapShareImage(publicDemoMap), {
+    headers: { "if-none-match": first.headers().etag },
+  });
+  expect(next.status()).toBe(304);
+  expect((await request.get("/og/maps/missing-map/image.jpg")).status()).toBe(
+    404,
   );
 });

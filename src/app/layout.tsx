@@ -13,6 +13,7 @@ import {
   siteName,
   siteTitle,
   siteDescription,
+  ogImage,
 } from "@/lib/seo";
 const suit = localFont({
   src: "../../node_modules/@sun-typeface/suit/fonts/variable/woff2/SUIT-Variable.woff2",
@@ -50,7 +51,14 @@ export const metadata: Metadata = {
     title,
     description,
     siteName,
-    images: ["/glass-neighborhood-og.jpg"],
+    images: [
+      {
+        url: ogImage,
+        width: 1200,
+        height: 630,
+        alt: "팅맵 — 취향이 모이는 지도",
+      },
+    ],
     locale: "ko_KR",
     type: "website",
   },
@@ -58,7 +66,14 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title,
     description,
-    images: ["/glass-neighborhood-og.jpg"],
+    images: [
+      {
+        url: ogImage,
+        width: 1200,
+        height: 630,
+        alt: "팅맵 — 취향이 모이는 지도",
+      },
+    ],
   },
 };
 export default function RootLayout({

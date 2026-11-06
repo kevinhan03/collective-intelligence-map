@@ -124,7 +124,8 @@ export async function startProductAnalytics() {
   ) {
     clarity.start({
       projectId,
-      upload: "https://www.clarity.ms/collect",
+      // Collector assigned by this project's official /tag installation config.
+      upload: "https://b.clarity.ms/collect",
       track: false,
       mask: ["body"],
       fraud: false,

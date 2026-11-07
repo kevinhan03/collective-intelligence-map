@@ -210,6 +210,7 @@ export function PlaceDetail({
       <Link
         href={loginHref}
         className="detail-icon-action"
+        {...analyticsControl("place-save", place.map_id, place)}
         aria-label="로그인하고 장소 저장"
       >
         <Bookmark size={21} />

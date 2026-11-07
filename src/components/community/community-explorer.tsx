@@ -736,7 +736,11 @@ function ExplorerContent({
     setFailedSaveId(null);
     try {
       if (!(await actions.save(id))) return;
-      const place = places.find((item) => item.id === id);
+      const place = [
+        ...places,
+        ...filtered,
+        ...(openedSearchPlace ? [openedSearchPlace] : []),
+      ].find((item) => item.id === id);
       if (place?.status === "approved")
         trackCommunityEvent(enabled ? "place_saved" : "place_unsaved", {
           place_id: place.place_id,

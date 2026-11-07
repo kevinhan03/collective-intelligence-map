@@ -61,6 +61,7 @@ export function PendingReview({
   }
   return (
     <section
+      data-analytics-private=""
       className="border-b bg-secondary/20 px-5 py-4 md:px-9"
       aria-label="승인 대기 장소"
     >

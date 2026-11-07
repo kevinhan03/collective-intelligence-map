@@ -162,6 +162,7 @@ export function MobilePlaceCarousel({
   return (
     <section
       ref={card}
+      {...analyticsControl("place-preview", currentPlace.map_id, currentPlace)}
       {...swipe}
       className="mobile-place-carousel"
       data-multiple={places.length > 1}

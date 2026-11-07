@@ -194,6 +194,14 @@ test("real SDK captures public clicks without DOM text, forms, pending data or p
       { timeout: 15000 },
     )
     .toBe(2);
+  // A public navigation click may lead to a private destination: attribute
+  // only the click to its public source, without recording the private page.
+  expect(
+    events.filter(
+      (x) =>
+        x.event === "$autocapture" && x.properties.control === "private-open",
+    ),
+  ).toHaveLength(1);
   const raw = JSON.stringify(events);
   for (const secret of [
     "leak@example.com",

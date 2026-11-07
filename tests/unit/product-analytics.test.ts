@@ -221,3 +221,23 @@ it("does not relabel clicks from private pages as public after navigation", asyn
     }),
   ).toBeNull();
 });
+
+it("keeps a public-to-private navigation click attributed only to its public source", async () => {
+  const api = await import("@/lib/product-analytics");
+  await api.startProductAnalytics();
+  api.installReplayNavigationGuard();
+  listeners.click();
+  api.beforeAnalyticsNavigation("/saved");
+  window.location.href = "https://example.com/saved";
+  const beforeSend = mocks.init.mock.calls[0][1].before_send;
+  const result = beforeSend({
+    event: "$autocapture",
+    properties: {
+      $event_type: "click",
+      control: "login-open",
+      $current_url: "https://example.com/saved",
+    },
+  });
+  expect(result.properties.$current_url).toBe("https://example.com/maps/ramen");
+  expect(beforeSend({ event: "$pageview", properties: {} })).toBeNull();
+});

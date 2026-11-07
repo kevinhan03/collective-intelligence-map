@@ -152,7 +152,7 @@ export async function startProductAnalytics() {
           save_campaign_params: false,
           before_send: (event) => {
             const safe = currentUrl();
-            if (!event || !safe || !allowedEvents.has(event.event)) return null;
+            if (!event || !allowedEvents.has(event.event)) return null;
             if (
               event.event === "$autocapture" &&
               event.properties.$event_type !== "click"

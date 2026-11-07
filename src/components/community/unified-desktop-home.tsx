@@ -1,5 +1,6 @@
 "use client";
 
+import { analyticsControl } from "@/lib/analytics-controls";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -352,6 +353,7 @@ export function UnifiedDesktopHome({
                 data-slug={map.slug}
               >
                 <Link
+                  {...analyticsControl("map-open", map.id)}
                   href={`/maps/${map.slug}`}
                   prefetch={false}
                   onClick={(event) => {
@@ -429,6 +431,7 @@ export function UnifiedDesktopHome({
                       !engagement.ready ||
                       engagement.isPending("save_map", map.id)
                     }
+                    {...analyticsControl("map-save", map.id)}
                     onClick={() => void engagement.toggle("save_map", map.id)}
                   >
                     <span>

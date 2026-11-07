@@ -1,4 +1,5 @@
 "use client";
+import { analyticsControl } from "@/lib/analytics-controls";
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Bookmark } from "lucide-react";
@@ -83,6 +84,7 @@ function MobilePlaceRow({
   const distance = props.station?.distance(place);
   return (
     <article
+      {...analyticsControl("place-card", place.map_id, place)}
       ref={row}
       className="mobile-list-place"
       data-selected={props.selected === place.id}
@@ -108,6 +110,7 @@ function MobilePlaceRow({
             <button
               type="button"
               className="mobile-list-title"
+              {...analyticsControl("place-detail-open", place.map_id, place)}
               onClick={(event) => {
                 event.stopPropagation();
                 props.onOpen(place.id);
@@ -118,6 +121,7 @@ function MobilePlaceRow({
             <button
               type="button"
               className="mobile-list-save"
+              {...analyticsControl("place-save", place.map_id, place)}
               aria-label={`${place.name} ${saved ? "저장 해제" : "저장"}`}
               aria-pressed={saved}
               disabled={

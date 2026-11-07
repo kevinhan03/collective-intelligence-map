@@ -1,4 +1,5 @@
 "use client";
+import { analyticsControl } from "@/lib/analytics-controls";
 import Link from "next/link";
 import { Bookmark, Flame } from "lucide-react";
 import type { CatalogMap } from "@/domain/map-catalog";
@@ -25,6 +26,7 @@ function Reaction({
       : `지도 저장${active ? " 취소" : ""}`;
   return (
     <button
+      {...analyticsControl(action === "hype" ? "map-hype" : "map-save", map.id)}
       type="button"
       className={action === "hype" ? styles.hype : styles.bookmark}
       aria-label={`${map.displayTitle} ${label}`}
@@ -79,6 +81,7 @@ export function CatalogCard({
       data-slug={map.slug}
     >
       <Link
+        {...analyticsControl("map-open", map.id)}
         href={`/maps/${map.slug}`}
         prefetch={false}
         onClick={(event) => {

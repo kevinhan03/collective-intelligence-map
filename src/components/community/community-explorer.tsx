@@ -78,7 +78,8 @@ import { PlacePreview } from "./place-preview";
 const PendingReview = dynamic(() =>
   import("./pending-review").then((module) => module.PendingReview),
 );
-import { trackCommunityEvent } from "@/lib/community-analytics";
+import { analyticsControl } from "@/lib/analytics-controls";
+import { trackCommunityEvent as captureCommunityEvent } from "@/lib/community-analytics";
 import {
   isControversial,
   isNew,
@@ -137,6 +138,17 @@ function ExplorerContent({
   readOnly = false,
 }: ExplorerProps) {
   const mobile = useMobile();
+  const detailEntry = useRef<
+    "list" | "map_pin" | "map_preview" | "deep_link" | "comments" | "map_focus"
+  >("list");
+  const trackedDetail = useRef<string | null>(null);
+  const trackCommunityEvent = useCallback(
+    (...args: Parameters<typeof captureCommunityEvent>) => {
+      if (!demo && !readOnly)
+        captureCommunityEvent(args[0], { ...args[1], map_id: map.id });
+    },
+    [demo, readOnly, map.id],
+  );
   const prefetchPhotos = usePrefetchPlacePhotos();
   const [query, setQuery] = useState(""),
     [sort, setSort] = useState<Sort>("relevance"),
@@ -637,6 +649,23 @@ function ExplorerContent({
       ...pendingPlaces,
       ...(openedSearchPlace ? [openedSearchPlace] : []),
     ].find((p) => p.id === detailId) ?? null;
+  useEffect(() => {
+    if (!selectedPlaceBase) {
+      trackedDetail.current = null;
+      return;
+    }
+    if (
+      selectedPlaceBase.status !== "approved" ||
+      trackedDetail.current === selectedPlaceBase.id
+    )
+      return;
+    trackedDetail.current = selectedPlaceBase.id;
+    trackCommunityEvent("place_detail_opened", {
+      entry: detailEntry.current,
+      provider: config.provider,
+      place_id: selectedPlaceBase.place_id,
+    });
+  }, [selectedPlaceBase, config.provider, trackCommunityEvent]);
   const selectedPlace = selectedPlaceBase
     ? actions.withCounts(selectedPlaceBase)
     : null;
@@ -655,7 +684,11 @@ function ExplorerContent({
     }
     setError("");
     try {
-      await actions.follow(map.id);
+      const enabled = !actions.followed;
+      if (await actions.follow(map.id))
+        trackCommunityEvent(enabled ? "map_saved" : "map_unsaved", {
+          entry: "detail",
+        });
     } catch (error) {
       setError((error as Error).message);
     }
@@ -703,6 +736,16 @@ function ExplorerContent({
     setFailedSaveId(null);
     try {
       if (!(await actions.save(id))) return;
+      const place = [
+        ...places,
+        ...filtered,
+        ...(openedSearchPlace ? [openedSearchPlace] : []),
+      ].find((item) => item.id === id);
+      if (place?.status === "approved")
+        trackCommunityEvent(enabled ? "place_saved" : "place_unsaved", {
+          place_id: place.place_id,
+          entry: detailId ? "detail" : "list",
+        });
       setSaveNotice(
         undo || mobile
           ? null
@@ -718,7 +761,8 @@ function ExplorerContent({
     }
   };
   const focusPlace = useCallback(
-    (id: string) => {
+    (id: string, entry: "list" | "map_pin" = "list") => {
+      detailEntry.current = entry;
       const target = filtered.find((place) => place.id === id);
       if (!demo && target) prefetchPhotos(target.place_id);
       // Manual selection supersedes an autocomplete request that is still loading.
@@ -743,6 +787,8 @@ function ExplorerContent({
           setFocusRequest((request) => request + 1);
           trackCommunityEvent("place_preview_opened", {
             entry: "map_pin",
+            place_id:
+              target?.status === "approved" ? target.place_id : undefined,
             provider: config.provider,
           });
           return;
@@ -753,6 +799,7 @@ function ExplorerContent({
         setFocusRequest((request) => request + 1);
         trackCommunityEvent("place_preview_opened", {
           entry: "list",
+          place_id: target?.status === "approved" ? target.place_id : undefined,
           provider: config.provider,
         });
         return;
@@ -773,6 +820,7 @@ function ExplorerContent({
       filtered,
       changeView,
       searchSelection,
+      trackCommunityEvent,
     ],
   );
   const selectMapPlace = useCallback(
@@ -780,13 +828,16 @@ function ExplorerContent({
       if (pendingPlaces.some((place) => place.id === id)) {
         setSelected(id);
         setShowPending(true);
-      } else focusPlace(id);
+      } else focusPlace(id, "map_pin");
     },
     [pendingPlaces, focusPlace],
   );
   const completeMapFocus = useCallback(
     (id: string) => {
-      if (!mobile) setDetailId(id);
+      if (!mobile) {
+        detailEntry.current = "map_focus";
+        setDetailId(id);
+      }
     },
     [mobile],
   );
@@ -874,11 +925,8 @@ function ExplorerContent({
       setFocusRequest((request) => request + 1);
       setPreviewId(mapPlace.id);
       changeSheetStage("detail");
+      detailEntry.current = "deep_link";
       setDetailId(mapPlace.id);
-      trackCommunityEvent("place_detail_opened", {
-        entry: "deep_link",
-        provider: config.provider,
-      });
     }, 0);
     return () => window.clearTimeout(timer);
   }, [
@@ -1012,6 +1060,7 @@ function ExplorerContent({
         {(["map", "list"] as const).map((view) => (
           <button
             key={view}
+            {...analyticsControl(`view-${view}`, map.id)}
             type="button"
             aria-label={view === "map" ? "지도 보기" : "목록 보기"}
             aria-pressed={mobileView === view}
@@ -1186,6 +1235,7 @@ function ExplorerContent({
             <button
               key={option.value}
               type="button"
+              {...analyticsControl(`place-sort-${option.value}`, map.id)}
               className="sort-chip"
               aria-pressed={sort === option.value}
               onClick={() => {
@@ -1340,6 +1390,7 @@ function ExplorerContent({
   );
   return (
     <main
+      data-ph-capture-attribute-map_id={map.id}
       ref={explorerRoot}
       id="main"
       className="community-explorer mx-auto max-w-[1440px]"
@@ -1373,6 +1424,7 @@ function ExplorerContent({
                   <button
                     ref={infoTrigger}
                     className="map-title-button"
+                    {...analyticsControl("map-info-open", map.id)}
                     aria-label={`${map.title} 지도 정보 보기`}
                     onClick={() => setInfoOpen(true)}
                   >
@@ -1393,6 +1445,7 @@ function ExplorerContent({
             className="map-info-trigger lg:hidden"
             variant="ghost"
             size="icon"
+            {...analyticsControl("place-search-open", map.id)}
             aria-label="장소 검색 열기"
             onClick={() => {
               setSearchOpen((open) => !open);
@@ -1403,6 +1456,7 @@ function ExplorerContent({
           <div className="map-hero-actions flex gap-2">
             <Button
               variant="outline"
+              {...analyticsControl("map-info-open", map.id)}
               aria-label={`${map.title} 지도 정보 보기`}
               onClick={() => setInfoOpen(true)}
             >
@@ -1411,6 +1465,7 @@ function ExplorerContent({
             <Button
               variant={actions.followed ? "secondary" : "outline"}
               disabled={actions.isPending("follow", map.id) || readOnly}
+              {...analyticsControl("map-save", map.id)}
               onClick={toggleFollow}
             >
               <Bookmark
@@ -1548,6 +1603,7 @@ function ExplorerContent({
             <Button
               variant={actions.followed ? "secondary" : "outline"}
               disabled={actions.isPending("follow", map.id) || readOnly}
+              {...analyticsControl("map-save", map.id)}
               onClick={toggleFollow}
             >
               <Bookmark
@@ -1753,6 +1809,7 @@ function ExplorerContent({
               return (
                 <article
                   key={p.id}
+                  {...analyticsControl("place-card", map.id, p)}
                   onClick={() => focusPlace(p.id)}
                   data-selected={selected === p.id}
                   className="place-glass-card group cursor-pointer p-3 transition-colors"
@@ -1764,6 +1821,7 @@ function ExplorerContent({
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-1.5">
                         <button
+                          {...analyticsControl("place-detail-open", map.id, p)}
                           onClick={(event) => {
                             event.stopPropagation();
                             focusPlace(p.id);
@@ -1812,6 +1870,7 @@ function ExplorerContent({
                         )}
                     </div>
                     <button
+                      {...analyticsControl("place-detail-open", map.id, p)}
                       aria-label={`${p.name} 상세 보기`}
                       onClick={(event) => {
                         event.stopPropagation();
@@ -2026,6 +2085,7 @@ function ExplorerContent({
                   onVote={(id) => void votePlace(id, 1)}
                   onOpenComments={(id) => {
                     setSearchSelection(null);
+                    detailEntry.current = "comments";
                     setCommentsEntryId(id);
                     changeSheetStage("detail");
                     setSelected(id);
@@ -2040,6 +2100,7 @@ function ExplorerContent({
                   onSelect={selectPreview}
                   onOpen={(id) => {
                     setSearchSelection(null);
+                    detailEntry.current = "map_preview";
                     setCommentsEntryId(null);
                     changeSheetStage("detail");
                     setSelected(id);
@@ -2081,11 +2142,8 @@ function ExplorerContent({
               }}
               onOpenDetail={() => {
                 setPreviewId(null);
+                detailEntry.current = "map_preview";
                 setDetailId(previewPlace.id);
-                trackCommunityEvent("place_detail_opened", {
-                  entry: "map_preview",
-                  provider: config.provider,
-                });
               }}
               onVote={(value) => votePlace(previewPlace.id, value)}
               onSave={() => void savePlace(previewPlace.id)}

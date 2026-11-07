@@ -1,4 +1,5 @@
 "use client";
+import { analyticsControl } from "@/lib/analytics-controls";
 import { useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -108,6 +109,7 @@ export function MobileMapStory({
             !engagement.ready ||
             engagement.isPending("save_map", map.id)
           }
+          {...analyticsControl("map-save", map.id)}
           onClick={() => void engagement.toggle("save_map", map.id)}
         >
           <span className={styles.saveVisual}>

@@ -1,5 +1,6 @@
 "use client";
 
+import { analyticsControl } from "@/lib/analytics-controls";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
@@ -216,7 +217,11 @@ export function DesktopDiscovery({
                   className={`${styles.cover} group`}
                   aria-label={`${map.title} 미리보기`}
                 >
-                  <MapCardBackdrop slug={map.slug} editorial={map.editorial} sharp />
+                  <MapCardBackdrop
+                    slug={map.slug}
+                    editorial={map.editorial}
+                    sharp
+                  />
                   <span className={styles.shade} aria-hidden="true" />
                   <div className={styles.heading}>
                     <h3 className={styles.title}>{map.title}</h3>
@@ -257,6 +262,7 @@ export function DesktopDiscovery({
                     명
                   </p>
                   <Link
+                    {...analyticsControl("map-open", map.id)}
                     href={`/maps/${map.slug}`}
                     prefetch={false}
                     className="inline-flex min-h-9 items-center gap-1.5 text-sm font-medium text-primary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
@@ -303,6 +309,7 @@ export function DesktopDiscovery({
                     !engagement.ready ||
                     engagement.isPending("save_map", map.id)
                   }
+                  {...analyticsControl("map-save", map.id)}
                   onClick={() => void engagement.toggle("save_map", map.id)}
                 >
                   <Bookmark

@@ -1,3 +1,4 @@
+import { analyticsControl } from "@/lib/analytics-controls";
 import Link from "next/link";
 import { ArrowUpRight, Users } from "lucide-react";
 import type { ThemeMap } from "@/domain/types";
@@ -13,7 +14,11 @@ export function MobileThemeCard({
 }) {
   if (layout === "row")
     return (
-      <Link href={`/maps/${map.slug}`} className="mobile-theme-row">
+      <Link
+        {...analyticsControl("map-open", map.id)}
+        href={`/maps/${map.slug}`}
+        className="mobile-theme-row"
+      >
         <div className="mobile-theme-row-cover" aria-hidden="true">
           <MapCardBackdrop slug={map.slug} editorial={map.editorial} />
         </div>
@@ -31,6 +36,7 @@ export function MobileThemeCard({
     );
   return (
     <Link
+      {...analyticsControl("map-open", map.id)}
       href={`/maps/${map.slug}`}
       className="mobile-theme-card group block overflow-hidden rounded-xl border"
     >

@@ -49,7 +49,11 @@ test("invalid tags are removed and disjoint tags show no results", async ({
     bar.getByRole("button", { name: "전체", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
   await expect(page).toHaveURL(/tokyo-fashion$/);
-  await bar.getByRole("button", { name: "#빈티지", exact: true }).click();
+  const vintageChip = bar.getByRole("button", { name: "#빈티지", exact: true });
+  await vintageChip.click();
+  // Wait for the URL-backed first selection before requesting the second.
+  await expect(vintageChip).toHaveAttribute("aria-pressed", "true");
+  await expect(page).toHaveURL(new RegExp(`tag=${vintage}`));
   await bar.getByRole("button", { name: "#편집숍", exact: true }).click();
   await expect(page.locator(".map-pin")).toHaveCount(0);
   if (isMobile)

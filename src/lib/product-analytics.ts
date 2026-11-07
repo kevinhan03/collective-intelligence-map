@@ -2,14 +2,60 @@
 
 import type { PostHog } from "posthog-js";
 import type { clarity as Clarity } from "clarity-js";
+import {
+  publicEventProperties,
+  sanitizedSdkProperties,
+} from "./analytics-properties";
 import { canRecordPage, publicTelemetryUrl } from "./telemetry-policy";
 
 type Properties = Record<string, string>;
+const allowedEvents = new Set([
+  "$pageview",
+  "$autocapture",
+  "community_view_changed",
+  "community_info_opened",
+  "place_search_started",
+  "place_search_suggestion_selected",
+  "place_preview_opened",
+  "place_detail_opened",
+  "place_sort_changed",
+  "place_saved",
+  "place_unsaved",
+  "map_saved",
+  "map_unsaved",
+  "proposal_completed",
+]);
 let posthog: PostHog | undefined;
 let clarity: typeof Clarity | undefined;
 let loading: Promise<void> | undefined;
 let lastPage: string | undefined;
 let transitioning = false;
+let clickContext: { url: string | null } | undefined;
+const queued: {
+  event: string;
+  properties: Properties;
+  url: string;
+  at: number;
+}[] = [];
+let proposalCompletion: { mapId: string; url: string; at: number } | undefined;
+
+// Called only after a successful public-map proposal response. Pending place
+// IDs and proposal text stay private; emit on the matching public destination.
+export function queueProposalCompleted(mapId: string, slug: string) {
+  if (
+    typeof window === "undefined" ||
+    !publicEventProperties({ map_id: mapId }).map_id
+  )
+    return;
+  const path = window.location.pathname.replace(/^\/(ko|en)(?=\/|$)/, "");
+  if (path !== `/maps/${slug}/submit`) return;
+  const locale = window.location.pathname.match(/^\/(ko|en)(?=\/)/)?.[0] ?? "";
+  proposalCompletion = {
+    mapId,
+    url: new URL(`${locale}/maps/${slug}`, window.location.origin).href,
+    at: Date.now(),
+  };
+}
 
 function currentUrl() {
   return typeof window === "undefined" || transitioning
@@ -30,6 +76,19 @@ export function beforeAnalyticsNavigation(destination: string) {
 // Clarity's built-in history observer restarts recording automatically. Stop
 // before it sees a history change so only our public-page guard can restart it.
 export function installReplayNavigationGuard() {
+  // Snapshot the source page before React's click handlers can navigate. A
+  // click on a private page must not become public when it routes back home.
+  document.addEventListener(
+    "click",
+    () => {
+      const context = { url: currentUrl() };
+      clickContext = context;
+      window.setTimeout(() => {
+        if (clickContext === context) clickContext = undefined;
+      }, 0);
+    },
+    true,
+  );
   for (const method of ["pushState", "replaceState"] as const) {
     const original = window.history[method];
     window.history[method] = function (...args) {
@@ -61,7 +120,22 @@ export async function startProductAnalytics() {
         sdk.init(token, {
           api_host: host,
           defaults: "2026-08-30",
-          autocapture: false,
+          autocapture: {
+            dom_event_allowlist: ["click"],
+            element_allowlist: ["a", "button"],
+            css_selector_ignorelist: [
+              ".ph-no-capture",
+              ".ph-no-autocapture",
+              "[data-ph-no-autocapture]",
+              "[data-analytics-private]",
+              "form",
+              "[contenteditable]",
+            ],
+            capture_copied_text: false,
+          },
+          mask_all_element_attributes: true,
+          mask_all_text: true,
+          rageclick: false,
           capture_pageview: false,
           capture_pageleave: false,
           capture_dead_clicks: false,
@@ -78,15 +152,21 @@ export async function startProductAnalytics() {
           save_campaign_params: false,
           before_send: (event) => {
             const safe = currentUrl();
-            if (!event || !safe) return null;
-            // Strip SDK URL/entry/referrer properties as well as application
-            // query strings. No identity or form values are registered.
-            for (const key of Object.keys(event.properties)) {
-              if (/url|referr|pathname|initial|utm_|gclid|fbclid/i.test(key))
-                delete event.properties[key];
-            }
-            event.properties.$current_url = safe;
-            event.properties.$pathname = new URL(safe).pathname;
+            if (!event || !safe || !allowedEvents.has(event.event)) return null;
+            if (
+              event.event === "$autocapture" &&
+              event.properties.$event_type !== "click"
+            )
+              return null;
+            const sourceUrl =
+              event.event === "$autocapture" ? clickContext?.url : safe;
+            if (!sourceUrl) return null;
+            event.properties = sanitizedSdkProperties(
+              event.properties,
+              sourceUrl,
+            );
+            delete event.$set;
+            delete event.$set_once;
             return event;
           },
         });
@@ -115,6 +195,19 @@ export async function startProductAnalytics() {
   if (lastPage !== url) {
     posthog?.capture("$pageview", { $current_url: url });
     lastPage = url;
+  }
+  for (const item of queued.splice(0)) {
+    if (item.url === url && Date.now() - item.at < 60_000)
+      posthog?.capture(item.event, item.properties);
+  }
+  if (proposalCompletion) {
+    const completion = proposalCompletion;
+    proposalCompletion = undefined;
+    if (completion.url === url && Date.now() - completion.at < 60_000)
+      posthog?.capture("proposal_completed", {
+        map_id: completion.mapId,
+        entry: "proposal",
+      });
   }
   const projectId = process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID;
   if (
@@ -145,6 +238,16 @@ export function commitAnalyticsPage() {
 
 export function captureProductEvent(event: string, properties: Properties) {
   if (!currentUrl()) return;
-  posthog?.capture(event, properties);
+  const safe = publicEventProperties(properties);
+  if (posthog) posthog.capture(event, safe);
+  else {
+    if (queued.length >= 50) queued.shift();
+    queued.push({
+      event,
+      properties: safe,
+      url: currentUrl()!,
+      at: Date.now(),
+    });
+  }
   clarity?.event(event, "");
 }

@@ -1,4 +1,5 @@
 "use client";
+import { queueProposalCompleted } from "@/lib/product-analytics";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -846,6 +847,8 @@ export function ProposalForm({
                     : {}),
                 },
               );
+              if (!creator && result.created)
+                queueProposalCompleted(map.id, map.slug);
               form.reset();
               resetProposal();
               router.replace(

@@ -1,4 +1,5 @@
 "use client";
+import { analyticsControl } from "@/lib/analytics-controls";
 import { useLayoutEffect, useRef, type ReactNode } from "react";
 import {
   Bookmark,
@@ -184,6 +185,11 @@ export function MobilePlaceCarousel({
             <button
               type="button"
               className="mobile-save-action"
+              {...analyticsControl(
+                "place-save",
+                currentPlace.map_id,
+                currentPlace,
+              )}
               aria-label={`${currentPlace.name} ${isSaved(currentPlace.id) ? "저장 해제" : "저장"}`}
               aria-pressed={isSaved(currentPlace.id)}
               disabled={disabled || savePending}
@@ -233,6 +239,7 @@ export function MobilePlaceCarousel({
         {places.map((place, i) => (
           <article
             key={place.id}
+            {...analyticsControl("place-card", place.map_id, place)}
             className="mobile-place-slide"
             aria-label={`${place.name} 미리보기`}
             inert={i !== index}

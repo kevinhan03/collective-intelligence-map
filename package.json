@@ -13,7 +13,7 @@
     "test:db": "node scripts/test-db.mjs",
     "test:e2e": "playwright test",
     "check": "npm run typecheck && npm run lint && npm test && npm run build",
-    "check:ci": "npm audit --omit=dev && npm audit --audit-level=high && npm run check && npm run test:e2e",
+    "check:ci": "npm audit --omit=dev && npm audit --audit-level=high && npm run check && npm run test:e2e && npm run test:analytics",
     "dev:local": "node scripts/run-local.mjs dev",
     "test:live": "node scripts/test-live.mjs",
     "check:secrets": "node scripts/check-secrets.mjs",
@@ -32,7 +32,8 @@
     "catalog:cleanup": "node scripts/cleanup-catalog-images.mjs",
     "test:catalog:live": "node scripts/test-catalog-live.mjs",
     "test:places:performance": "node scripts/test-place-loading-db.mjs",
-    "test:photos:batch-performance": "node scripts/benchmark-thumbnail-browser.mjs"
+    "test:photos:batch-performance": "node scripts/benchmark-thumbnail-browser.mjs",
+    "test:analytics": "playwright test -c playwright.analytics.config.ts"
   },
   "dependencies": {
     "@sun-typeface/suit": "2.0.5",

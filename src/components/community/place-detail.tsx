@@ -1,4 +1,5 @@
 "use client";
+import { analyticsControl } from "@/lib/analytics-controls";
 import {
   useCallback,
   useEffect,
@@ -216,6 +217,7 @@ export function PlaceDetail({
     ) : (
       <button
         type="button"
+        {...analyticsControl("place-save", place.map_id, place)}
         className="detail-icon-action detail-save-action"
         aria-label={
           savedValue ? `${place.name} 저장 해제` : `${place.name} 저장`
@@ -242,6 +244,7 @@ export function PlaceDetail({
       <aside
         aria-label={`${place.name} 장소 상세`}
         className="place-detail-panel"
+        {...analyticsControl("place-detail", place.map_id, place)}
         data-mode={mode}
       >
         {mode === "detail" && (
@@ -284,6 +287,7 @@ export function PlaceDetail({
             <button
               type="button"
               className="detail-icon-action"
+              {...analyticsControl("place-detail-close", place.map_id, place)}
               aria-label="장소 상세 닫기"
               onClick={closeSelection}
             >

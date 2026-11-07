@@ -1,4 +1,5 @@
 "use client";
+import { analyticsControl } from "@/lib/analytics-controls";
 import { useState } from "react";
 import { Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -41,6 +42,7 @@ export function ShareButton({
       }
     >
       <Button
+        {...analyticsControl("share-link")}
         type="button"
         size={iconOnly ? "icon" : "sm"}
         variant={iconOnly ? "ghost" : "outline"}

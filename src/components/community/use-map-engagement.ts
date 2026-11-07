@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { trackCommunityEvent } from "@/lib/community-analytics";
 import { useRouter } from "next/navigation";
 import { useMobile } from "@/hooks/use-mobile";
 import { loginHref } from "@/domain/login-return";
@@ -72,7 +73,10 @@ export function useMapEngagement(
       controller.current?.abort();
     };
   }, [demo, mobile, surface, load]);
-  const withCounts = <T extends ThemeMap>(map: T) => ({ ...map, ...counts[map.id] });
+  const withCounts = <T extends ThemeMap>(map: T) => ({
+    ...map,
+    ...counts[map.id],
+  });
   const isSaved = (id: string) => personal.saved.includes(id);
   const isHyped = (id: string) => personal.hyped.includes(id);
   async function toggle(action: "hype" | "save_map", id: string) {
@@ -145,6 +149,11 @@ export function useMapEngagement(
       if (!response.ok)
         throw new Error(result.error ?? "지도 반응을 저장하지 못했습니다.");
       if (actor.current !== user) return;
+      if (action === "save_map")
+        trackCommunityEvent(enabled ? "map_saved" : "map_unsaved", {
+          map_id: id,
+          entry: "home",
+        });
       const authoritative =
         action === "hype"
           ? {

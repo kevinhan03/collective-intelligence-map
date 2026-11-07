@@ -5,9 +5,18 @@ import { publicTelemetryUrl } from "./telemetry-policy";
 import { track } from "@vercel/analytics/react";
 import type { RendererConfig, Sort } from "@/domain/types";
 
-// Keep client analytics aggregate-only. Do not add place IDs, map IDs, names,
-// queries, or any account data here.
-type Entry = "map_pin" | "map_preview" | "list" | "deep_link";
+// Only public map/place IDs are allowed in PostHog. Never include names,
+// queries, account data or IDs for pending/private places. Vercel stays aggregate-only.
+type Entry =
+  | "map_pin"
+  | "map_preview"
+  | "list"
+  | "deep_link"
+  | "detail"
+  | "home"
+  | "proposal"
+  | "comments"
+  | "map_focus";
 
 export function trackCommunityEvent(
   event:
@@ -17,8 +26,14 @@ export function trackCommunityEvent(
     | "place_search_suggestion_selected"
     | "place_preview_opened"
     | "place_detail_opened"
-    | "place_sort_changed",
+    | "place_sort_changed"
+    | "place_saved"
+    | "place_unsaved"
+    | "map_saved"
+    | "map_unsaved",
   properties: {
+    map_id?: string;
+    place_id?: string;
     entry?: Entry;
     provider?: RendererConfig["provider"];
     view?: "map" | "list";
@@ -30,6 +45,17 @@ export function trackCommunityEvent(
     !publicTelemetryUrl(window.location.href)
   )
     return;
-  track(event, properties);
-  captureProductEvent(event, properties);
+  const { map_id: _map, place_id: _place, ...aggregate } = properties;
+  void _map;
+  void _place;
+  try {
+    track(event, aggregate);
+  } catch {
+    /* Telemetry must not affect application actions. */
+  }
+  try {
+    captureProductEvent(event, properties);
+  } catch {
+    /* Keep the successful action successful. */
+  }
 }

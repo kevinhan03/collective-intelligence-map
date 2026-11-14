@@ -1,3 +1,4 @@
+import { testMyProposals } from "./test-my-proposals-db.mjs";
 import { testPhotoPreviews } from "./test-photo-previews-db.mjs";
 import pg from "pg";
 import { testCatalogAdmin } from "./test-catalog-db.mjs";
@@ -42,6 +43,7 @@ create function storage.foldername(text) returns text[] language sql immutable a
     );
   await c.query(await fs.readFile("supabase/seed.sql", "utf8"));
   await testPhotoPreviews(c);
+  await testMyProposals(c);
   // Verify migration privileges before any repair/SQL Editor scripts run.
   const frozen = await c.query(`select
     not has_function_privilege('service_role','public.record_anonymous_vote(uuid,text,smallint)','execute') as rpc_denied,

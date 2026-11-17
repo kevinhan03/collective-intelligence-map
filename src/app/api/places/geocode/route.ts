@@ -1,3 +1,4 @@
+import { requirePlaceRegistration } from "@/server/places/registration";
 import { countryCodes } from "@/domain/countries";
 import { searchScope } from "@/domain/search-scope";
 import { z } from "zod";
@@ -21,6 +22,7 @@ export async function POST(request: Request) {
       })
       .parse(await body(request));
     const map = await getSearchMap(input.mapId);
+    requirePlaceRegistration(map, viewer);
     if (!map) return failure(new HttpError("맵을 찾을 수 없습니다.", 404));
     if (searchScope(map) === "world" && !input.countryCode)
       throw new HttpError("국가를 선택해 주세요.");

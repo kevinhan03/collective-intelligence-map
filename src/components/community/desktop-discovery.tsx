@@ -1,5 +1,6 @@
 "use client";
 
+import { canRegisterPlaces } from "@/domain/place-registration";
 import Link from "@/i18n/link";
 import { useRouter } from "@/i18n/navigation";
 import { useRef, useState } from "react";
@@ -245,7 +246,7 @@ export function DesktopDiscovery({
                 <div className={styles.description}>
                   <p className={styles.location}>{formatLocation(map)}</p>
                   <p className={styles.body}>{map.description}</p>
-                  {!map.place_count && (
+                  {!map.place_count && canRegisterPlaces(map) && (
                     <Link
                       className="inline-block py-3 text-sm text-primary underline"
                       href={`/maps/${map.slug}/submit`}

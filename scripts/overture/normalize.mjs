@@ -1,6 +1,10 @@
+import excludedCategories from "./excluded-categories.json" with { type: "json" };
+const excluded = new Set(excludedCategories);
+
 /** The only module coupled to Overture's upstream schema. No community fields. */
 export function normalizePlace(row, region, release) {
   if (row.operating_status === "closed") return null;
+  if (excluded.has(row.categories?.primary)) return null;
   const name = row.names?.primary?.trim();
   const lon = Number(row.longitude),
     lat = Number(row.latitude);

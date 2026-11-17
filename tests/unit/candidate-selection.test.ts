@@ -60,7 +60,7 @@ it("keeps a Overture selection intact through signed submission", async () => {
     });
     const result = await selectCandidate(token, demoMap.id, {
       id: user,
-      role: "contributor",
+      role: "admin",
       handle: "tester",
       bio: "",
       avatar_path: null,
@@ -103,7 +103,7 @@ it("skips the paid provider call when the place was already resolved", async () 
     });
     const result = await selectCandidate(token, demoMap.id, {
       id: user,
-      role: "contributor",
+      role: "admin",
       handle: "tester",
       bio: "",
       avatar_path: null,
@@ -145,7 +145,7 @@ it("rejects a candidate whose country disagrees with the map even when coordinat
     await expect(
       selectCandidate(token, demoMap.id, {
         id: user,
-        role: "member",
+        role: "admin",
         handle: "tester",
         bio: "",
         avatar_path: null,

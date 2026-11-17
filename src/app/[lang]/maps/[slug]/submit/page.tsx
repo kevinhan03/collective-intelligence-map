@@ -1,3 +1,4 @@
+import { canRegisterPlaces } from "@/domain/place-registration";
 import { notFound } from "next/navigation";
 import { getMap, getViewer, rendererFor } from "@/server/queries";
 import { ProposalForm } from "@/components/community/proposal-form";
@@ -12,7 +13,8 @@ export default async function Submit({
     getMap((await params).slug),
     getViewer(),
   ]);
-  if (!map || map.kind === "creator") notFound();
+  if (!map || map.kind === "creator" || !canRegisterPlaces(map, viewer))
+    notFound();
   return (
     <main id="main" className="page-wrap proposal-page">
       <header className="proposal-intro">

@@ -38,3 +38,43 @@ it("excludes closed, out-of-region and other-country records", () => {
     normalizePlace({ ...row, latitude: "bad" }, region, "test"),
   ).toThrow();
 });
+
+it("excludes everyday facilities while retaining travel, food and shopping", () => {
+  for (const category of [
+    "hair_salon",
+    "grocery_store",
+    "atms",
+    "pharmacy",
+    "hospital",
+    "dentist",
+    "library",
+    "corporate_office",
+    "gas_station",
+    "preschool",
+    "parking",
+  ]) {
+    expect(
+      normalizePlace(
+        { ...row, categories: { primary: category } },
+        region,
+        "test",
+      ),
+    ).toBeNull();
+  }
+  for (const category of [
+    "cafe",
+    "japanese_restaurant",
+    "hotel",
+    "art_museum",
+    "clothing_store",
+    "park",
+  ]) {
+    expect(
+      normalizePlace(
+        { ...row, categories: { primary: category } },
+        region,
+        "test",
+      ),
+    ).not.toBeNull();
+  }
+});

@@ -22,6 +22,7 @@ import { matchesTags, tagIdsSchema } from "@/domain/map-tags";
 import { MapTagBar } from "./map-tag-bar";
 import { MapTagSettings } from "./map-tag-settings";
 import { useViewerState } from "./viewer-state";
+import { canRegisterPlaces } from "@/domain/place-registration";
 import Link from "@/i18n/link";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "@/i18n/navigation";
@@ -895,7 +896,11 @@ function ExplorerContent({
   const hasSearchFilters = Boolean(
     query.trim() || searchStation || region || selectedTags.length,
   );
-  const canSuggestPlace = map.kind !== "creator" && !readOnly && !demo;
+  const canSuggestPlace =
+    map.kind !== "creator" &&
+    !readOnly &&
+    !demo &&
+    canRegisterPlaces(map, viewer);
   const emptyState = (
     <>
       <h2 role="status" className="font-medium">
@@ -1427,21 +1432,23 @@ function ExplorerContent({
               />
               {actions.followed ? t("map.mapSaved") : t("map.saveMap")}
             </Button>
-            <Button asChild>
-              <Link
-                href={
-                  map.kind === "creator"
-                    ? `/u/${map.creator_handle ?? ""}`
-                    : `/maps/${map.slug}/submit`
-                }
-                prefetch={false}
-              >
-                <Plus size={15} />
-                {map.kind === "creator"
-                  ? t("map.creatorProfile")
-                  : t("map.suggestAPlace")}
-              </Link>
-            </Button>
+            {(map.kind === "creator" || canSuggestPlace) && (
+              <Button asChild>
+                <Link
+                  href={
+                    map.kind === "creator"
+                      ? `/u/${map.creator_handle ?? ""}`
+                      : `/maps/${map.slug}/submit`
+                  }
+                  prefetch={false}
+                >
+                  <Plus size={15} />
+                  {map.kind === "creator"
+                    ? t("map.creatorProfile")
+                    : t("map.suggestAPlace")}
+                </Link>
+              </Button>
+            )}
           </div>
         </div>
         <div className="map-hero-meta mt-2 flex flex-wrap items-center gap-4 text-[11px] text-muted-foreground">
@@ -1576,21 +1583,23 @@ function ExplorerContent({
               />
               {actions.followed ? t("map.mapSaved") : t("map.saveMap")}
             </Button>
-            <Button asChild>
-              <Link
-                href={
-                  map.kind === "creator"
-                    ? `/u/${map.creator_handle ?? ""}`
-                    : `/maps/${map.slug}/submit`
-                }
-                prefetch={false}
-              >
-                <Plus size={15} />
-                {map.kind === "creator"
-                  ? t("map.creatorProfile")
-                  : t("map.suggestAPlace")}
-              </Link>
-            </Button>
+            {(map.kind === "creator" || canSuggestPlace) && (
+              <Button asChild>
+                <Link
+                  href={
+                    map.kind === "creator"
+                      ? `/u/${map.creator_handle ?? ""}`
+                      : `/maps/${map.slug}/submit`
+                  }
+                  prefetch={false}
+                >
+                  <Plus size={15} />
+                  {map.kind === "creator"
+                    ? t("map.creatorProfile")
+                    : t("map.suggestAPlace")}
+                </Link>
+              </Button>
+            )}
           </div>
         </DialogContent>
       </Dialog>
@@ -1601,7 +1610,7 @@ function ExplorerContent({
             : `/maps/${map.slug}/submit`
         }
         prefetch={false}
-        className={`mobile-propose-floating lg:hidden ${map.kind === "creator" || readOnly ? "!hidden" : ""}`}
+        className={`mobile-propose-floating lg:hidden ${!canSuggestPlace ? "!hidden" : ""}`}
         aria-label={t("map.suggestAPlace")}
       >
         <Plus size={22} aria-hidden="true" />

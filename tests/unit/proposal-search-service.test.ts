@@ -36,7 +36,7 @@ const viewer = {
   handle: "test",
   bio: "",
   avatar_path: null,
-  role: "member" as const,
+  role: "admin" as const,
 };
 beforeEach(() => {
   vi.clearAllMocks();
@@ -130,4 +130,15 @@ it("isolates live searches by viewer and clears failed searches", async () => {
   await expect(searchPlaces(input, viewer)).rejects.toThrow("limit");
   await searchPlaces(input, viewer);
   expect(mock.regional).toHaveBeenCalledTimes(4);
+});
+
+it("blocks member overseas registration search before touching data or providers", async () => {
+  await expect(
+    searchPlaces(
+      { mapId: demoMap.id, query: "restricted", external: true },
+      { ...viewer, role: "member" },
+    ),
+  ).rejects.toMatchObject({ status: 403 });
+  expect(mock.rpc).not.toHaveBeenCalled();
+  expect(mock.regional).not.toHaveBeenCalled();
 });

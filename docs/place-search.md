@@ -82,3 +82,24 @@ DB 테스트: 인덱스 격리/RLS, 지역/별칭 검색, 동시 생성, 대기 
 - [Kakao 운영 정책](https://developers.kakao.com/terms/ko/site-policies): 검색/사용 범위와 별개로 영구 저장 권리를 가정하지 않음.
 - [Supabase database functions](https://supabase.com/docs/guides/database/functions)
 - [MapLibre Map API](https://maplibre.org/maplibre-gl-js/docs/API/classes/Map/)
+
+## 등록 운영 정책 (2026-11-17)
+
+- 한국 범위 지도(`country=KR`, `search_scope!=world`)는 기존 사용자 제안·검토 흐름을 유지한다.
+- 해외 및 세계 범위 지도 생성·장소 등록은 관리자만 가능하다. 회원의 한국 지도 범위를 해외로 바꾸는 요청도 차단한다.
+- 공개 지도·등록 장소 조회는 유지한다. 해외 검색용 Overture 원본도 관리자의 검색·선택에 계속 사용한다.
+- 화면/등록 페이지/API에서 같은 `canRegisterPlaces` 규칙을 사용한다. DB의 `private.guard_place_registration` 트리거는 `places`, `map_places`, `theme_maps`에서 RPC 직접 호출 및 기존 장소 재연결 우회를 차단한다. 서비스 역할의 등록 RPC도 검증된 사용자의 JWT subject를 설정한 뒤 같은 검사를 거친다.
+- 관리자 직접 등록은 주소 검색 외에도 지도 클릭으로 좌표를 지정할 수 있다. 장소 설명·주소의 출처는 직접 작성하거나 보관 가능한 자료를 사용한다.
+- 적용 SQL: `supabase/migrations/20261117113757_overseas_admin_registration.sql`.
+
+### 검색 원본 업종 정리
+
+`scripts/overture/excluded-categories.json`에 미용·식료품·편의점·ATM·약국·주차장·사무실·보육·의료(세부 진료과 포함)·도서관·주유소의 실제 분류 123개를 명시했다. 이름의 부분 문자열로 장소를 삭제하지 않는다. 음식점·카페·숙소·관광·쇼핑 등 나머지 분류는 유지한다. 현재 고정된 Overture 원본 형식의 ETL도 같은 목록을 사용해 제외 업종 재적재를 방지한다.
+
+운영 DB에서 179,917개(JP 75,576 / US 104,341)를 삭제했고 740,023개를 유지했다. `public.places` 235개 및 `public.map_places` 236개는 유지했다.
+
+재실행 도구는 `node scripts/cleanup-overture-categories.mjs`다. 기본은 읽기 전용 집계이며, 실제 삭제에는 `--apply --expected-count=<집계값>`이 필요하다. IPv4 연결이 필요한 경우 프로젝트에 맞는 `--pooler-host=<host>.pooler.supabase.com`을 지정한다. 삭제 대상 행을 `~/.local/share/collective-intelligence-map/backups/` 아래 비공개 NDJSON gzip 파일로 백업하고 압축 해제·행 수 검증 후 트랜잭션에서 삭제한다. 실제 적용에는 동일 경로에 집계 manifest가 남는다. 복원 시 생성 컬럼 `location`을 제외한 원본 필드로 삽입하면 좌표가 재생성된다.
+
+행 삭제 후 공간은 Postgres 내부에서 재사용되므로 물리적 DB 크기가 즉시 감소하지 않을 수 있다.
+
+검증: `npm test`, `npm run test:db`, `node scripts/test-place-registration-db.mjs`. DB 회귀 테스트는 이전 운영 정책에 맞는 역사적 fixture를 먼저 검사한 뒤 최종 등록 제한을 적용하고 새 정책의 한국 허용·해외/세계 차단·관리자 허용·RPC 우회 방지를 검사한다.

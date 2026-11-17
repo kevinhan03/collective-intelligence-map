@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { canRegisterPlaces } from "@/domain/place-registration";
 import Link from "@/i18n/link";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
@@ -218,6 +219,7 @@ export function CreatorStudio({
             key={map?.id ?? "new"}
             map={map}
             busy={busy}
+            admin={viewer.role === "admin"}
             action={action}
           />
           {map && (
@@ -228,13 +230,15 @@ export function CreatorStudio({
                     {t("creator.preview")}
                   </Link>
                 </Button>
-                {map.status !== "archived" && !map.hidden_at && (
-                  <Button asChild>
-                    <Link href={`/studio/${map.id}/add`}>
-                      {t("creator.addPlace")}
-                    </Link>
-                  </Button>
-                )}
+                {map.status !== "archived" &&
+                  !map.hidden_at &&
+                  canRegisterPlaces(map, viewer) && (
+                    <Button asChild>
+                      <Link href={`/studio/${map.id}/add`}>
+                        {t("creator.addPlace")}
+                      </Link>
+                    </Button>
+                  )}
                 {map.status === "published" && !map.hidden_at && (
                   <>
                     <Button asChild variant="outline">
@@ -268,10 +272,12 @@ export function CreatorStudio({
   );
 }
 function MapEditor({
+  admin,
   map,
   busy,
   action,
 }: {
+  admin: boolean;
   map?: CreatorMap;
   busy: boolean;
   action: (p: unknown) => Promise<boolean>;
@@ -318,13 +324,15 @@ function MapEditor({
           <select
             className="rounded-xl border bg-background p-3"
             name="country"
-            defaultValue={map?.country ?? "world"}
+            defaultValue={map?.country ?? (admin ? "world" : "KR")}
           >
             <option value="KR">{t("creator.korea")}</option>
-            <option value="JP">{t("creator.japan")}</option>
-            <option value="world">
-              {t("creator.worldwideAvailableSearchSources")}
-            </option>
+            {admin && <option value="JP">{t("creator.japan")}</option>}
+            {admin && (
+              <option value="world">
+                {t("creator.worldwideAvailableSearchSources")}
+              </option>
+            )}
           </select>
         </label>
         <Button disabled={busy}>

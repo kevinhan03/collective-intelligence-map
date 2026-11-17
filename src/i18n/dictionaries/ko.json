@@ -470,6 +470,7 @@
   "propose.findLocationFromAddress": "주소에서 위치 찾기",
   "propose.locationFoundCheckThePin": "위치를 찾았습니다. 핀이 맞는지 확인하고, 다르면 지도에서 원하는 위치를 눌러 조정하세요.",
   "propose.placeToAdd": "등록할 장소",
+  "propose.chooseLocationOnMap": "지도에서 장소의 위치를 클릭해 핀을 지정해 주세요.",
   "propose.locationAdjustedOnMap": "지도에서 조정한 위치",
   "propose.categoryOptional": "분류 (선택)",
   "propose.eGVintageShop": "예: 빈티지 숍",

@@ -30,7 +30,10 @@ create table storage.buckets(id text primary key,name text,public boolean,file_s
 create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text,name text);
 alter table storage.objects enable row level security;
 create function storage.foldername(text) returns text[] language sql immutable as $$ select string_to_array($1,'/') $$;`);
-  for (const f of (await fs.readdir("supabase/migrations")).sort())
+  // Historical regression fixtures include member-created overseas places.
+  // Install the new restriction after those fixtures, then verify the final policy.
+  for (const f of (await fs.readdir("supabase/migrations")).sort()) {
+    if (f.endsWith("_overseas_admin_registration.sql")) continue;
     await c.query(
       await fs.readFile(
         f.endsWith("_place_photos.sql")
@@ -39,6 +42,7 @@ create function storage.foldername(text) returns text[] language sql immutable a
         "utf8",
       ),
     );
+  }
   await c.query(await fs.readFile("supabase/seed.sql", "utf8"));
   // Verify migration privileges before any repair/SQL Editor scripts run.
   const frozen = await c.query(`select
@@ -1357,6 +1361,18 @@ create function storage.foldername(text) returns text[] language sql immutable a
   ).rows;
   assert.equal(functions.length, 0);
   console.log("PASS: no public SECURITY DEFINER functions");
+  await c.query(
+    await fs.readFile(
+      "supabase/migrations/20261117113757_overseas_admin_registration.sql",
+      "utf8",
+    ),
+  );
+  const registration = await promisify(execFile)(
+    process.execPath,
+    ["scripts/test-place-registration-db.mjs"],
+    { env: { ...process.env, TEST_DATABASE_URL: url } },
+  );
+  process.stdout.write(registration.stdout);
 } finally {
   await c.end();
 }

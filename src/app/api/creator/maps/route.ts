@@ -1,3 +1,4 @@
+import { requirePlaceRegistration } from "@/server/places/registration";
 import { db } from "@/lib/supabase/server";
 import { dbError } from "@/server/http";
 import { revalidateTag } from "next/cache";
@@ -14,8 +15,16 @@ export async function GET() {
 }
 export async function POST(request: Request) {
   try {
-    await requireViewer();
+    const viewer = await requireViewer();
     const input = creatorCommandSchema.parse(await body(request));
+    if (input.action === "create" || input.action === "update")
+      requirePlaceRegistration(
+        {
+          country: input.country === "world" ? null : input.country,
+          search_scope: input.country === "world" ? "world" : "country",
+        },
+        viewer,
+      );
     const result =
       input.action === "report"
         ? await (

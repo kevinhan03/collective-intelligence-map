@@ -18,7 +18,7 @@ import { searchPlaces } from "@/server/places/search-service";
 const viewer = {
   id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
   handle: "tester",
-  role: "contributor" as const,
+  role: "admin" as const,
   bio: "",
   avatar_path: null,
 };

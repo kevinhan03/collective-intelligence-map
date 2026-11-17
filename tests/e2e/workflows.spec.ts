@@ -2543,3 +2543,41 @@ test("map engagement fails closed on private-state errors and prompts anonymous 
   );
   await expect(page.locator("details[open]")).toHaveCount(0);
 });
+
+test("admin can place an overseas pin without geocoding", async ({ page }) => {
+  let geocodes = 0;
+  let submitted: Record<string, unknown> | undefined;
+  await page.route("**/api/places/geocode", (route) => {
+    geocodes++;
+    return route.fulfill({ status: 503, json: { error: "No geocoding" } });
+  });
+  await page.route("**/api/places/propose", (route) => {
+    submitted = route.request().postDataJSON();
+    return route.fulfill({
+      status: 503,
+      json: { error: "Test submission retained" },
+    });
+  });
+  await open(page, "admin-pin");
+  await page.getByText("찾는 장소가 없나요? 직접 등록").click();
+  await page.getByLabel("국가", { exact: true }).selectOption("JP");
+  await page
+    .getByLabel("장소 이름", { exact: true })
+    .fill("직접 등록한 해외 가게");
+  await page.getByLabel("주소", { exact: true }).fill("직접 확인한 해외 주소");
+  await expect(
+    page.getByText("지도에서 장소의 위치를 클릭해 핀을 지정해 주세요."),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "테스트 지도 위치 조정" }).click();
+  await page.getByRole("button", { name: "이 장소로 계속" }).click();
+  await page.getByRole("button", { name: "제안 내용 확인" }).click();
+  await page.getByRole("button", { name: "장소 제안하기" }).click();
+  await expect(page.getByText("Test submission retained")).toBeVisible();
+  expect(geocodes).toBe(0);
+  expect(submitted).toMatchObject({
+    countryCode: "JP",
+    lat: 37.5,
+    lng: 127.1,
+    name: "직접 등록한 해외 가게",
+  });
+});

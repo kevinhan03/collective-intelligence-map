@@ -1,3 +1,4 @@
+import { canRegisterPlaces } from "@/domain/place-registration";
 import { ownerMap } from "@/server/creator";
 import { getViewer, rendererFor } from "@/server/queries";
 import { ProposalForm } from "@/components/community/proposal-form";
@@ -16,6 +17,7 @@ export default async function Add({
   const id = z.uuid().safeParse((await params).id);
   if (!id.success) notFound();
   const map = await ownerMap(id.data);
+  if (!canRegisterPlaces(map, viewer)) notFound();
   return (
     <main id="main" className="page-wrap proposal-page">
       <header className="proposal-intro">

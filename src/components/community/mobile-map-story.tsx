@@ -1,5 +1,6 @@
 "use client";
 import { useRef } from "react";
+import { canRegisterPlaces } from "@/domain/place-registration";
 import Link from "@/i18n/link";
 import { useRouter } from "@/i18n/navigation";
 import { ArrowUpRight, Bookmark, ChevronUp, Flame } from "lucide-react";
@@ -147,7 +148,7 @@ export function MobileMapStory({
             </div>
             <div className={styles.previewDescription}>
               <p>{map.description}</p>
-              {!map.place_count && (
+              {!map.place_count && canRegisterPlaces(map) && (
                 <Link
                   href={`${href}/submit`}
                   className="inline-block py-3 text-sm text-primary underline"

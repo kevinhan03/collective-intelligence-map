@@ -1,3 +1,4 @@
+import { requirePlaceRegistration } from "./registration";
 import "server-only";
 import { productEvent } from "@/server/events";
 import { db } from "@/lib/supabase/server";
@@ -59,6 +60,7 @@ async function runSearchPlaces(
   const measure = <T>(stage: string, run: () => PromiseLike<T>) =>
     timing ? timing.measure(stage, run) : Promise.resolve(run());
   const map = await measure("map", () => getSearchMap(input.mapId));
+  requirePlaceRegistration(map, viewer);
   if (!map) throw new HttpError("맵이 없습니다.", 404);
   const client = await db();
   const { data: internal, error } = await measure("internal", () =>
@@ -215,6 +217,7 @@ export async function selectCandidate(
 ) {
   const claims = verifyCandidate(token, viewer.id, mapId);
   const map = await getSearchMap(mapId);
+  requirePlaceRegistration(map, viewer);
   if (!map) throw new HttpError("맵이 없습니다.", 404);
   const { name, adapter } = routeProvider(map.country, searchScope(map));
   if (name !== claims.provider)

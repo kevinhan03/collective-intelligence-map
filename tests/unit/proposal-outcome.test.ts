@@ -17,7 +17,10 @@ vi.mock("@/lib/supabase/admin", () => ({
   serviceDb: () => ({ rpc: mocks.rpc }),
 }));
 vi.mock("@/server/http", () => ({
-  requireViewer: async () => ({ id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" }),
+  requireViewer: async () => ({
+    id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    role: "admin",
+  }),
   body: async (request: Request) => request.json(),
   dbError: (error: Error | null) => {
     if (error) throw error;

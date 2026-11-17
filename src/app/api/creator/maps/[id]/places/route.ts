@@ -1,3 +1,4 @@
+import { requirePlaceRegistration } from "@/server/places/registration";
 import { z } from "zod";
 import { revalidateTag } from "next/cache";
 import { proposalSchema } from "@/domain/validation";
@@ -24,6 +25,7 @@ export async function POST(request: Request, { params }: Context) {
     const viewer = await requireViewer();
     const id = z.uuid().parse((await params).id);
     const map = await ownerMap(id);
+    requirePlaceRegistration(map, viewer);
     const input = proposalSchema.parse({ ...(await body(request)), mapId: id });
     const { candidateToken: token, ...payload } = input;
     let provider: { name: "overture" | "kakao"; externalId: string } | null =

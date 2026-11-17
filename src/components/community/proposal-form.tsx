@@ -989,37 +989,43 @@ export function ProposalForm({
                   {locationError}
                 </p>
               )}
-              {manualLocation && (
+              {(manualLocation || autoApprove) && (
                 <div className="overflow-hidden rounded-lg border">
                   <p className="bg-secondary p-3 text-sm">
-                    {t("propose.locationFoundCheckThePin")}
+                    {manualLocation
+                      ? t("propose.locationFoundCheckThePin")
+                      : t("propose.chooseLocationOnMap")}
                   </p>
                   <div className="h-[300px]">
                     <MapCanvas
                       config={config}
                       compact
-                      places={[
-                        {
-                          id: "manual-location",
-                          place_id: "manual-location",
-                          map_id: map.id,
-                          name: t("propose.placeToAdd"),
-                          address: manualAddress,
-                          category: "",
-                          lat: manualLocation.lat,
-                          lng: manualLocation.lng,
-                          rationale: "",
-                          status: "selected",
-                          added_by: null,
-                          handle: "",
-                          positive: 0,
-                          negative: 0,
-                          saved_count: 0,
-                          created_at: "",
-                          last_verified_at: null,
-                        },
-                      ]}
-                      selected="manual-location"
+                      places={
+                        manualLocation
+                          ? [
+                              {
+                                id: "manual-location",
+                                place_id: "manual-location",
+                                map_id: map.id,
+                                name: t("propose.placeToAdd"),
+                                address: manualAddress,
+                                category: "",
+                                lat: manualLocation.lat,
+                                lng: manualLocation.lng,
+                                rationale: "",
+                                status: "selected",
+                                added_by: null,
+                                handle: "",
+                                positive: 0,
+                                negative: 0,
+                                saved_count: 0,
+                                created_at: "",
+                                last_verified_at: null,
+                              },
+                            ]
+                          : []
+                      }
+                      selected={manualLocation ? "manual-location" : null}
                       onSelect={() => {}}
                       onMapClick={({ lat, lng }) =>
                         setManualLocation({
@@ -1028,12 +1034,16 @@ export function ProposalForm({
                           label: t("propose.locationAdjustedOnMap"),
                         })
                       }
-                      bounds={{
-                        south: manualLocation.lat - 0.006,
-                        north: manualLocation.lat + 0.006,
-                        west: manualLocation.lng - 0.008,
-                        east: manualLocation.lng + 0.008,
-                      }}
+                      bounds={
+                        manualLocation
+                          ? {
+                              south: manualLocation.lat - 0.006,
+                              north: manualLocation.lat + 0.006,
+                              west: manualLocation.lng - 0.008,
+                              east: manualLocation.lng + 0.008,
+                            }
+                          : map.bounds
+                      }
                       onBoundsChange={() => {}}
                     />
                   </div>

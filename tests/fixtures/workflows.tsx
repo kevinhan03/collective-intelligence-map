@@ -737,14 +737,18 @@ createRoot(document.getElementById("root")!).render(
   ) : (
     <ProposalForm
       map={
-        new URLSearchParams(location.search).get("fixture") === "world"
+        ["world", "admin-pin"].includes(
+          new URLSearchParams(location.search).get("fixture") ?? "",
+        )
           ? { ...map, country: null, search_scope: "world" }
           : new URLSearchParams(location.search).get("fixture") === "japan"
             ? { ...map, country: "JP" }
             : map
       }
       enabled
-      autoApprove={false}
+      autoApprove={
+        new URLSearchParams(location.search).get("fixture") === "admin-pin"
+      }
       config={{ provider: "preview", key: "" }}
     />
   ),

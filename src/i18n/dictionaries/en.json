@@ -537,6 +537,7 @@
   "propose.findLocationFromAddress": "Find location from address",
   "propose.locationFoundCheckThePin": "Location found. Check the pin, and if it's off, tap the right spot on the map to adjust.",
   "propose.placeToAdd": "Place to add",
+  "propose.chooseLocationOnMap": "Click the place’s location on the map to add a pin.",
   "propose.locationAdjustedOnMap": "Location adjusted on map",
   "propose.categoryOptional": "Category (optional)",
   "propose.eGVintageShop": "e.g. Vintage shop",

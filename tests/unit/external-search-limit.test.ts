@@ -24,7 +24,7 @@ vi.mock("@/lib/supabase/admin", () => ({
   }),
 }));
 vi.mock("@/server/places/search-map", () => ({
-  getSearchMap: async () => demoMap,
+  getSearchMap: async () => ({ ...demoMap, country: "KR" }),
 }));
 vi.mock("@/server/places/provider-router", () => ({
   routeProvider: () => ({ name: "kakao", adapter: { search: mock.regional } }),
